@@ -1,0 +1,15 @@
+<body>
+  <h1>Artist {{ .Artist.Name }}</h1>
+  <h2>Popular</h2>
+  {{ range .Popular }}
+  {{ .TrackNum }} {{ .Artist }} / {{ .Release }} / {{ .Title }} <br>
+  {{ end }}
+  <h2>Releases</h2>
+  {{ range .Releases }}
+  {{ .Name }} ({{ .Date.Year }}) - {{ .Type }} <br>
+  {{ end }}
+  <h2>Similar</h2>
+  {{ range .Similar }}
+  {{ .Name }} <br>
+  {{ end }}
+</body>

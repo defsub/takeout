@@ -37,6 +37,6 @@ func main() {
 	// m.SyncArtists()
 	// m.SyncReleases()
 	// m.SyncPopular()
-	// m.SyncSimilar()
-	m.FixTrackReleases()
+	m.SyncSimilar()
+	//m.FixTrackReleases()
 }

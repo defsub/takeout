@@ -138,12 +138,6 @@ type MusicHandler struct {
 	config *config.Config
 }
 
-type index struct {
-	Name string
-	T Track
-	Tracks []Track
-}
-
 func (handler *MusicHandler) viewHandler(w http.ResponseWriter, r *http.Request) {
 	music := NewMusic(handler.config)
 	if music.Open() != nil {
@@ -152,14 +146,10 @@ func (handler *MusicHandler) viewHandler(w http.ResponseWriter, r *http.Request)
 	}
 	defer music.Close()
 
-	data := &index{Name: "mark"}
-	data.Tracks = music.Singles("indie", nil)
-	data.T = data.Tracks[0]
-	log.Printf("got %d\n", len(data.Tracks))
+	view := music.ArtistView("Gary Numan")
 
-	var templates = template.Must(template.ParseFiles("templates/index.html"))
-
-	err := templates.ExecuteTemplate(w, "index.html", data)
+	var templates = template.Must(template.ParseFiles("web/template/music/artist.html"))
+	err := templates.ExecuteTemplate(w, "artist.html", view)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -181,7 +171,7 @@ func (handler *MusicHandler) viewHandler(w http.ResponseWriter, r *http.Request)
 
 func Serve(config *config.Config) {
 	handler := &MusicHandler{config: config}
-	fs := http.FileServer(http.Dir("static"))
+	fs := http.FileServer(http.Dir("web/static"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 	http.HandleFunc("/tracks", handler.doTracks)
 	http.HandleFunc("/singles", handler.doSingles)

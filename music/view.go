@@ -18,23 +18,23 @@
 package music
 
 type ArtistView struct {
-	artist   *Artist
-	releases []Release
-	popular  []Track
-	similar  []Artist
+	Artist   *Artist
+	Releases []Release
+	Popular  []Track
+	Similar  []Artist
 }
 
 func (m *Music) ArtistView(artist string) *ArtistView {
 	view := &ArtistView{}
-	view.artist = m.artist(artist)
-	view.releases = m.artistReleases(view.artist)
-	view.popular = m.artistPopularTracks(artist, nil)
-	if len(view.popular) > 10 {
-		view.popular = view.popular[:10]
+	view.Artist = m.artist(artist)
+	view.Releases = m.artistReleases(view.Artist)
+	view.Popular = m.artistPopularTracks(artist, nil)
+	if len(view.Popular) > 10 {
+		view.Popular = view.Popular[:10]
 	}
-	view.similar = 	m.similarArtists(view.artist)
-	if len(view.similar) > 10 {
-		view.similar = view.similar[:10]
+	view.Similar = 	m.similarArtists(view.Artist)
+	if len(view.Similar) > 10 {
+		view.Similar = view.Similar[:10]
 	}
 	return view
 }

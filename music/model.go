@@ -53,7 +53,7 @@ func (Popular) TableName() string {
 type Similar struct {
 	gorm.Model
 	Artist string `gorm:"unique_index:idx_similar"`
-	MBID   string
+	MBID   string `gorm:"unique_index:idx_similar"`
 	Rank   uint
 }
 
