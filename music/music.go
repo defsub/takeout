@@ -24,9 +24,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/minio/minio-go/v6"
 	"regexp"
-	"sort"
 	"strings"
-	"time"
 )
 
 type Music struct {
@@ -35,56 +33,8 @@ type Music struct {
 	minio  *minio.Client
 }
 
-type Artist struct {
-	gorm.Model
-	Name string `gorm:"unique_index:idx_artist"`
-	MBID string
-}
-
-type Release struct {
-	gorm.Model
-	Artist string `gorm:"unique_index:idx_release"`
-	Name   string `gorm:"unique_index:idx_release"`
-	MBID   string `gorm:"unique_index:idx_release"`
-	Asin   string
-	Type   string
-	Date   time.Time
-}
-
-type Popular struct {
-	gorm.Model
-	Artist string `gorm:"unique_index:idx_popular"`
-	Title  string `gorm:"unique_index:idx_popular"`
-	Rank   uint
-}
-
-type ArtistTag struct {
-	gorm.Model
-	Artist string `gorm:"unique_index:idx_tag"`
-	Tag    string `gorm:"unique_index:idx_tag"`
-	Count  uint
-}
-
-type Track struct {
-	gorm.Model
-	Artist       string `spiff:"creator"`
-	Release      string `spiff:"album"`
-	TrackNum     uint   `spiff:"tracknum"`
-	DiscNum      uint
-	Title        string `spiff:"title"`
-	Key          string
-	Size         int64
-	ETag         string
-	LastModified time.Time
-	Location     string `gorm:"-" spiff:"location"`
-}
-
 func NewMusic(config *config.Config) *Music {
 	return &Music{config: config}
-}
-
-func (Popular) TableName() string {
-	return "popular" // not populars
 }
 
 func (m *Music) Open() (err error) {
@@ -99,61 +49,61 @@ func (m *Music) Close() {
 	m.closeDB()
 }
 
-func (m *Music) Sync() (err error) {
+func (m *Music) SyncBucketTracks() (err error) {
 	m.deleteTracks()
 	trackCh, err := m.SyncFromBucket()
 	if err != nil {
 		return err
 	}
 	for t := range trackCh {
-		fmt.Printf("sync: %s / %s / %s\n", t.Artist, t.Release, t.Title)
+		//fmt.Printf("sync: %s / %s / %s\n", t.Artist, t.Release, t.Title)
+		t.Artist = fixName(t.Artist)
+		t.Release = fixName(t.Release)
+		t.Title = fixName(t.Title)
 		// TODO: title may have underscores - picard
 		m.createTrack(t)
 	}
 	return
 }
 
-func (m *Music) Releases(artist string) {
-	a := m.artist(artist)
-	releases := m.artistReleases(a)
-	for _, v := range releases {
-		fmt.Printf("releases: %s / %s / %s / %s / %d\n",
-			v.MBID, v.Artist, v.Name, v.Type, v.Date.Year())
-	}
-}
+// func (m *Music) Releases(artist string) {
+// 	a := m.artist(artist)
+// 	releases := m.artistReleases(a)
+// 	for _, v := range releases {
+// 		fmt.Printf("releases: %s / %s / %s / %s / %d\n",
+// 			v.MBID, v.Artist, v.Name, v.Type, v.Date.Year())
+// 	}
+// }
 
 func (m *Music) SyncReleases() {
-	artists := m.artistNames()
+	artists := m.artists()
 	for _, a := range artists {
-		fmt.Printf("releases for %s\n", a)
-		artist := m.artist(a)
-		if artist == nil {
-			continue
-		}
-
-		if artist.Name == "Various Artists" {
+		fmt.Printf("releases for %s\n", a.Name)
+		if a.Name == "Various Artists" {
 			// skipping!
 			continue
 		}
 
-		releases := m.artistReleases(artist)
-		if len(releases) > 0 {
-			fmt.Printf("skipping %s have %d releases\n", artist.Name, len(releases))
-			continue
-		}
-
-		releases = m.searchReleases(artist)
-		sort.Slice(releases, func(i, j int) bool {
-			return releases[i].Date.Before(releases[j].Date)
-		})
-
+		releases, _ := m.MusicBrainzReleaseGroups(&a)
 		for _, r := range releases {
 			r.Name = fixName(r.Name)
-			if r.Date.Year() == 1 {
-				// skip those w/o year
+			m.createRelease(&r)
+		}
+
+		checked := make(map[string]int)
+		tracks := m.artistTracksWithoutReleases(a.Name)
+		for _, t := range tracks {
+			_, ok := checked[t.Release]
+			if ok {
 				continue
 			}
-			m.createRelease(&r)
+			releases := m.MusicBrainzReleases(&a, t.Release)
+			fmt.Printf("checking %s / %s - found %d\n", t.Artist, t.Release, len(releases))
+			for _, r := range releases {
+				r.Name = fixName(r.Name)
+				m.createRelease(&r)
+			}
+			checked[t.Release] = len(releases)
 		}
 	}
 }
@@ -176,13 +126,13 @@ func fixName(name string) string {
 	name = strings.Replace(name, "‘", "'", -1)
 	name = strings.Replace(name, "“", "\"", -1)
 	name = strings.Replace(name, "”", "\"", -1)
+	name = strings.Replace(name, "…", "...", -1)
 	return name
 }
 
 func (m *Music) FixTrackReleases() error {
-	tracks := m.tracksWithoutReleases()
-
 	fixReleases := make(map[string]string)
+	tracks := m.tracksWithoutReleases()
 
 	for _, t := range tracks {
 		artist := m.artist(t.Artist)
@@ -190,17 +140,42 @@ func (m *Music) FixTrackReleases() error {
 			fmt.Printf("artist not found: %s\n", t.Artist)
 			continue
 		}
+
+		_, ok := fixReleases[t.Release]
+		if ok {
+			continue
+		}
+
+		if artist.Name == "Various Artists" {
+			continue
+		}
+
 		releases := m.artistReleasesLike(artist, t.Release)
 		if len(releases) == 1 {
 			fixReleases[t.Release] = releases[0].Name
 		} else {
-			releases = m.artistReleases(artist)
+			releases = m.releases(artist)
 			matched := false
 			for _, r := range releases {
+				// try fuzzy match
 				if fuzzyName(t.Release) == fuzzyName(r.Name) {
 					fixReleases[t.Release] = r.Name
 					matched = true
 					break
+				}
+			}
+			if !matched {
+				// use config
+				mbid, ok := m.config.Music.UserReleaseID(t.Release)
+				if ok {
+					r, _ := m.MusicBrainzRelease(artist, mbid)
+					if r != nil {
+						r.Name = fixName(r.Name)
+						m.createRelease(r)
+
+						fixReleases[t.Release] = r.Name
+						matched = true
+					}
 				}
 			}
 			if !matched {
@@ -220,32 +195,34 @@ func (m *Music) FixTrackReleases() error {
 }
 
 func (m *Music) SyncPopular() {
-	artists := m.artistNames()
+	artists := m.artists()
 	for _, a := range artists {
-		fmt.Printf("popular for %s\n", a)
-		artist := m.artist(a)
-		if artist == nil {
-			continue
-		}
-		popular := m.popularByArtist(artist)
+		fmt.Printf("popular for %s\n", a.Name)
+		popular := m.lastfmArtistTopTracks(&a)
 		for _, p := range popular {
 			m.createPopular(&p)
 		}
 	}
 }
 
-func (m *Music) MetaSync() error {
-	artists := m.artistNames()
+func (m *Music) SyncSimilar() {
+	artists := m.artists()
 	for _, a := range artists {
-		artist := m.artist(a)
+		fmt.Printf("similar for %s\n", a.Name)
+		similar := m.lastfmSimilarArtists(&a)
+		for _, s := range similar {
+			m.createSimilar(&s)
+		}
+	}
+}
+
+func (m *Music) SyncArtists() error {
+	artists := m.trackArtistNames()
+	for _, name := range artists {
+		var tags []ArtistTag
+		artist := m.artist(name)
 		if artist == nil {
-			fmt.Printf("not found %s\n", a)
-			var tags []ArtistTag
-			artist, tags = m.SearchArtist(a)
-			if artist == nil {
-				fmt.Printf("try with %s\n", fuzzyArtist(a))
-				artist, tags = m.SearchArtist(fuzzyArtist(a))
-			}
+			artist, tags = m.resolveArtist(name)
 			if artist != nil {
 				artist.Name = fixName(artist.Name)
 				fmt.Printf("creating %s\n", artist.Name)
@@ -258,18 +235,40 @@ func (m *Music) MetaSync() error {
 		}
 
 		if artist == nil {
-			err := errors.New("artist not found")
-			fmt.Printf("MetaSync %s\n", err)
+			err := errors.New(fmt.Sprintf("'%s' artist not found", name))
+			fmt.Printf("%s\n", err)
 			continue
 		}
 
-		if a != artist.Name {
+		if name != artist.Name {
 			// fix track artist name: AC_DC -> AC/DC
-			fmt.Printf("fixing name %s to %s\n", a, artist.Name)
-			m.updateTrackArtist(a, artist.Name)
+			fmt.Printf("fixing name %s to %s\n", name, artist.Name)
+			m.updateTrackArtist(name, artist.Name)
 		}
 	}
 	return nil
+}
+
+func (m *Music) resolveArtist(name string) (artist *Artist, tags []ArtistTag) {
+	artist, tags = m.SearchArtist(name)
+	if artist == nil {
+		// try again
+		artist, tags = m.SearchArtist(fuzzyArtist(name))
+	}
+	if artist == nil {
+		// try lastfm
+		artist = m.lastfmArtistSearch(name)
+		if artist != nil {
+			fmt.Printf("try lastfm got %s mbid:'%s'\n", artist.Name, artist.MBID)
+			// resolve with mbz
+			if artist.MBID != "" {
+				artist, tags = m.SearchArtistId(artist.MBID)
+			} else {
+				artist = nil
+			}
+		}
+	}
+	return
 }
 
 func (m *Music) doTracks(f func() []Track) []Track {
@@ -302,4 +301,13 @@ func (m *Music) ArtistTracks(artists string, dr *DateRange) []Track {
 
 func (m *Music) ArtistPopular(artists string, dr *DateRange) []Track {
 	return m.doTracks(func() []Track { return m.artistPopularTracks(artists, dr) })
+}
+
+func (m *Music) SimilarArtists(artist string) []Artist {
+	a := m.artist(artist)
+	return m.similarArtists(a)
+}
+
+func (m *Music) ArtistRelease(artist string, release string) []Track {
+	return m.doTracks(func() []Track { return m.artistReleaseTracks(artist, release) })
 }

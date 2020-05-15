@@ -31,7 +31,7 @@ func (m *Music) openDB() (err error) {
 		return
 	}
 	m.db.LogMode(m.config.Music.DB.LogMode)
-	m.db.AutoMigrate(&Artist{}, &ArtistTag{}, &Popular{}, &Release{}, &Track{})
+	m.db.AutoMigrate(&Artist{}, &ArtistTag{}, &Popular{}, &Similar{}, &Release{}, &Track{})
 	return
 }
 
@@ -75,13 +75,22 @@ func (m *Music) updateTrackRelease(oldName, newName string) (err error) {
 func (m *Music) tracksWithoutReleases() []Track {
 	var tracks []Track
 	m.db.Where("not exists" +
-		" (select release.name from release where" +
-		" release.artist = tracks.artist and release.name = tracks.release)").
+		" (select releases.name from releases where" +
+		" releases.artist = tracks.artist and releases.name = tracks.release)").
 		Find(&tracks)
 	return tracks
 }
 
-func (m *Music) artistNames() []string {
+func (m *Music) artistTracksWithoutReleases(artist string) []Track {
+	var tracks []Track
+	m.db.Where("artist = ? and not exists" +
+		" (select releases.name from releases where" +
+		" releases.artist = tracks.artist and releases.name = tracks.release)", artist).
+		Find(&tracks)
+	return tracks
+}
+
+func (m *Music) trackArtistNames() []string {
 	var tracks []*Track
 	m.db.Select("distinct(artist)").Find(&tracks)
 	var artists []string
@@ -91,8 +100,12 @@ func (m *Music) artistNames() []string {
 	return artists
 }
 
-func orderBy(db *gorm.DB) *gorm.DB {
-	return db.Order("tracks.artist, tracks.release, tracks.disc_num, tracks.track_num")
+func orderBy(c Criteria, db *gorm.DB) *gorm.DB {
+	if c.Popular {
+		return db.Order("popular.rank")
+	} else {
+		return db.Order("tracks.artist, tracks.release, tracks.disc_num, tracks.track_num")
+	}
 }
 
 func filterByTags(tags []string, db *gorm.DB) *gorm.DB {
@@ -105,21 +118,21 @@ func filterByTags(tags []string, db *gorm.DB) *gorm.DB {
 
 func filterByArtist(artists []string, db *gorm.DB) *gorm.DB {
 	if len(artists) > 0 {
-		db = db.Where("artist in (?)", artists)
+		db = db.Where("tracks.artist in (?)", artists)
 	}
 	return db
 }
 
 func filterByRelease(releases []string, db *gorm.DB) *gorm.DB {
 	if len(releases) > 0 {
-		db = db.Where("release in (?)", releases)
+		db = db.Where("tracks.release in (?)", releases)
 	}
 	return db
 }
 
 func filterByTitle(titles []string, db *gorm.DB) *gorm.DB {
 	if len(titles) > 0 {
-		db = db.Where("title in (?)", titles)
+		db = db.Where("tracks.title in (?)", titles)
 	}
 	return db
 }
@@ -174,7 +187,7 @@ func split(s string) []string {
 
 func (m *Music) filter(c Criteria) []Track {
 	var tracks []Track
-	db := orderBy(m.db)
+	db := orderBy(c, m.db)
 	db = filterByArtist(split(c.Artists), db)
 	db = filterByRelease(split(c.Releases), db)
 	db = filterByTitle(split(c.Titles), db)
@@ -185,8 +198,11 @@ func (m *Music) filter(c Criteria) []Track {
 	}
 	if c.Popular {
 		db = filterByPopular(db)
+		db = db.Group("tracks.artist, tracks.title")
+	} else {
+		db = db.Group("tracks.artist, tracks.release, tracks.title")
 	}
-	db.Group("tracks.artist, tracks.release, tracks.title").Find(&tracks)
+	db.Find(&tracks)
 	if c.Shuffle {
 		rand.Seed(time.Now().UnixNano())
 		rand.Shuffle(len(tracks), func(i, j int) {
@@ -226,10 +242,84 @@ func (m *Music) artistPopularTracks(artists string, date *DateRange) []Track {
 	return m.filter(c)
 }
 
+func (m *Music) artistReleaseTracks(artist string, release string) []Track {
+	c := Criteria{Artists: artist, Releases: release}
+	return m.filter(c)
+}
+
+func (m *Music) artists() []Artist {
+	var artists []Artist
+	m.db.Order("sort_name asc").Find(&artists)
+	return artists
+}
+
+func (m *Music) artistsByMBID(mbids []string) []Artist {
+	var artists []Artist
+	m.db.Where("mb_id in (?)", mbids).Find(&artists)
+	return artists
+}
+
+func (m *Music) similarArtistsByTags(a *Artist) []Artist {
+	var artists []Artist
+	m.db.Order("count(artist_tags.artist) desc").
+		Joins("inner join artist_tags on artists.name = artist_tags.artist").
+		Where("artist_tags.tag in (select tag from artist_tags where artist = ?)", a.Name).
+		Group("artist_tags.artist").Find(&artists)
+	return artists
+}
+
+func (m *Music) similarArtists(a *Artist) []Artist {
+	var artists []Artist
+	m.db.Joins("inner join similar on similar.artist = ?", a.Name).
+		Where("artists.mb_id = similar.mb_id").
+		Order("similar.rank asc").
+		Find(&artists)
+	return artists
+}
+
 func (m *Music) artistReleases(a *Artist) []Release {
 	var releases []Release
-	m.db.Where("artist = ?", a.Name).Find(&releases)
+	m.db.Where("releases.name in (select release from tracks where artist = ?)", a.Name).
+		Having("date = min(date)").
+		Group("name").
+		Order("date").Find(&releases)
 	return releases
+}
+
+func (m *Music) releases(a *Artist) []Release {
+	var releases []Release
+	m.db.Where("artist = ?", a.Name).
+		Order("date").Find(&releases)
+	return releases
+}
+
+func (m *Music) releaseID(a *Artist, mbid string) *Release {
+	r := &Release{MBID: mbid, Artist: a.Name}
+	if m.db.Find(r, r).RecordNotFound() {
+		return nil
+	}
+	return r
+}
+
+func (m *Music) artistMinReleases(a *Artist, releaseType string) []Release {
+	var releases []Release
+	m.db.Where("artist = ? and type = ?", a.Name, releaseType).
+		Having("date = min(date)").
+		Group("name").
+		Order("date").Find(&releases)
+	return releases
+}
+
+func (m *Music) artistAlbums(a *Artist) []Release {
+	return m.artistMinReleases(a, "Album")
+}
+
+func (m *Music) artistSingles(a *Artist) []Release {
+	return m.artistMinReleases(a, "Single")
+}
+
+func (m *Music) artistEPs(a *Artist) []Release {
+	return m.artistMinReleases(a, "EP")
 }
 
 func (m *Music) artistReleasesLike(a *Artist, pattern string) []Release {
@@ -265,6 +355,11 @@ func (m *Music) createRelease(a *Release) (err error) {
 
 func (m *Music) createPopular(p *Popular) (err error) {
 	err = m.db.Create(p).Error
+	return
+}
+
+func (m *Music) createSimilar(s *Similar) (err error) {
+	err = m.db.Create(s).Error
 	return
 }
 

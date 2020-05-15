@@ -18,14 +18,17 @@
 package music
 
 import (
-	"fmt"
 	"github.com/shkh/lastfm-go/lastfm"
-	"github.com/defsub/takeout/config"
 	"strconv"
 	"sort"
 )
 
-func (m *Music) popularByArtist(artist *Artist) []Popular {
+// Lastfm is used for:
+// * getting popular tracks for each artist
+// * getting similar artists for each artist
+// * looking up artists not found by MusicBrainz to get their MBID
+
+func (m *Music) lastfmArtistTopTracks(artist *Artist) []Popular {
 	sleep()
 	api := lastfm.New(m.config.LastFM.Key, m.config.LastFM.Secret)
 
@@ -45,40 +48,46 @@ func (m *Music) popularByArtist(artist *Artist) []Popular {
 	return popular
 }
 
-func Last(config *config.Config) {
-	api := lastfm.New(config.LastFM.Key, config.LastFM.Secret)
+func (m *Music) lastfmSimilarArtists(artist *Artist) []Similar {
+	sleep()
 
-	result, _ := api.Artist.GetTopTracks(lastfm.P{"artist": "Gary Numan"})
-	sort.Slice(result.Tracks, func(i, j int) bool {
-		p1, _ := strconv.Atoi(result.Tracks[i].PlayCount)
-		p2, _ := strconv.Atoi(result.Tracks[j].PlayCount)
-		return p1 > p2
-	})
-	for _, track := range result.Tracks {
-		fmt.Printf("%-20s %-20s %s %s\n", result.Artist, track.Name, track.PlayCount, track.Rank)
+	api := lastfm.New(m.config.LastFM.Key, m.config.LastFM.Secret)
+	result, _ := api.Artist.GetSimilar(lastfm.P{"mbid": artist.MBID})
+
+	var mbids []string
+	rank := make(map[string]float64)
+	for _, similar := range result.Similars {
+		mbids = append(mbids, similar.Mbid)
+		rank[similar.Mbid], _ = strconv.ParseFloat(similar.Match, 64)
 	}
 
-	fmt.Println("");
-
-	result2, _ := api.Chart.GetTopArtists(lastfm.P{})
-	sort.Slice(result2.Artists, func(i, j int) bool {
-		p1, _ := strconv.Atoi(result2.Artists[i].PlayCount)
-		p2, _ := strconv.Atoi(result2.Artists[j].PlayCount)
-		return p1 > p2
+	artists := m.artistsByMBID(mbids)
+	sort.Slice(artists, func(i, j int) bool {
+		return rank[artists[i].MBID] > rank[artists[j].MBID]
 	})
-	for _, artist := range result2.Artists {
-		fmt.Printf("%-20s %s %s\n", artist.Name, artist.PlayCount, artist.Listeners)
+
+	var similar []Similar
+	for index, a := range artists {
+		similar = append(similar, Similar{Artist: artist.Name, MBID: a.MBID, Rank: uint(index)})
 	}
 
-	fmt.Println("");
+	return similar
+}
 
-	result3, _ := api.Chart.GetTopTracks(lastfm.P{})
-	sort.Slice(result3.Tracks, func(i, j int) bool {
-		p1, _ := strconv.Atoi(result3.Tracks[i].PlayCount)
-		p2, _ := strconv.Atoi(result3.Tracks[j].PlayCount)
-		return p1 > p2
-	})
-	for _, track := range result3.Tracks {
-		fmt.Printf("%-20s %-20s %s %s\n", track.Artist.Name, track.Name, track.PlayCount, track.Listeners)
+func (m *Music) lastfmArtistSearch(name string) *Artist {
+	sleep()
+
+	api := lastfm.New(m.config.LastFM.Key, m.config.LastFM.Secret)
+	result, _ := api.Artist.Search(lastfm.P{"artist": name})
+
+	var artist *Artist
+	for index, match := range result.ArtistMatches {
+		//fmt.Printf("%s %s\n", match.Name, match.Mbid)
+		if index == 0 {
+			artist = &Artist{Name: match.Name, MBID: match.Mbid}
+			break;
+		}
 	}
+
+	return artist
 }

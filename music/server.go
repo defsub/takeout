@@ -18,11 +18,13 @@
 package music
 
 import (
+	"fmt"
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/encoding/spiff"
 	"log"
 	"net/http"
 	"strings"
+	"html/template"
 )
 
 type trackType string
@@ -110,15 +112,82 @@ func (handler *MusicHandler) doPopular(w http.ResponseWriter, r *http.Request) {
 	handler.doit(popularTrack, w, r)
 }
 
+func (handler *MusicHandler) doRelease(w http.ResponseWriter, r *http.Request) {
+	music := NewMusic(handler.config)
+	if music.Open() != nil {
+		http.Error(w, "bummer", http.StatusInternalServerError)
+		return
+	}
+	defer music.Close()
+	artist, ok := r.URL.Query()["artist"]
+	if ok {
+		release, ok := r.URL.Query()["name"]
+		if !ok {
+			release, ok = r.URL.Query()["release"]
+		}
+		if ok {
+			tracks := music.ArtistRelease(artist[0], release[0])
+			handler.doSpiff(fmt.Sprintf("%s / %s", artist[0], release[0]), tracks, w, r)
+			return
+		}
+	}
+	http.Error(w, "bummer", http.StatusBadRequest)
+}
+
 type MusicHandler struct {
 	config *config.Config
 }
 
+type index struct {
+	Name string
+	T Track
+	Tracks []Track
+}
+
+func (handler *MusicHandler) viewHandler(w http.ResponseWriter, r *http.Request) {
+	music := NewMusic(handler.config)
+	if music.Open() != nil {
+		http.Error(w, "bummer", http.StatusInternalServerError)
+		return
+	}
+	defer music.Close()
+
+	data := &index{Name: "mark"}
+	data.Tracks = music.Singles("indie", nil)
+	data.T = data.Tracks[0]
+	log.Printf("got %d\n", len(data.Tracks))
+
+	var templates = template.Must(template.ParseFiles("templates/index.html"))
+
+	err := templates.ExecuteTemplate(w, "index.html", data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// /artists/
+// /artists/name
+// /artists/name/releases
+// /artists/name/releases/name
+// /artists/name/tracks/name
+// /artists/name/singles
+// /artists/name/popular
+// /tracks/name
+//
+// play
+// playlist
+// artists
+// artist, album
+
 func Serve(config *config.Config) {
 	handler := &MusicHandler{config: config}
+	fs := http.FileServer(http.Dir("static"))
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
 	http.HandleFunc("/tracks", handler.doTracks)
 	http.HandleFunc("/singles", handler.doSingles)
 	http.HandleFunc("/popular", handler.doPopular)
+	http.HandleFunc("/release", handler.doRelease)
+	http.HandleFunc("/view", handler.viewHandler)
 	log.Printf("running...\n")
 	http.ListenAndServe(config.BindAddress, nil)
 }

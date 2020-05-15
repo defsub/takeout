@@ -15,11 +15,19 @@
 // You should have received a copy of the GNU General Public License
 // along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
-package takeout
+package main
 
-// https://musicbrainz.org/doc/XML_Web_Service/Rate_Limiting#Provide_meaningful_User-Agent_strings
-const (
-	AppName = "Takeout"
-	Version = "0.1"
-	Contact = "https://github.com/defsub/takeout"
+import (
+	"log"
+
+	"github.com/defsub/takeout/config"
+	"github.com/defsub/takeout/music"
 )
+
+func main() {
+	config, err := config.GetConfig()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	music.Serve(config)
+}

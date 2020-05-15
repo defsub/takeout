@@ -7,9 +7,9 @@ import (
 
 func TestSearchReleases(t *testing.T) {
 	// radiohead
-	artist := Artist{MBID: "a74b1b7f-71a5-4011-9441-d0b5e4122711"}
+	//artist := Artist{MBID: "a74b1b7f-71a5-4011-9441-d0b5e4122711"}
 
-	config, err := config.GetConfig()
+	config, err := config.TestConfig()
 	if err != nil {
 		t.Errorf("GetConfig %s\n", err)
 	}
@@ -17,5 +17,5 @@ func TestSearchReleases(t *testing.T) {
 	m := NewMusic(config)
 	m.Open()
 	//defer m.Close()
-	m.SearchReleases(&artist)
+	//m.SearchReleases(&artist)
 }

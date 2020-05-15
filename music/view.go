@@ -15,11 +15,26 @@
 // You should have received a copy of the GNU General Public License
 // along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
-package takeout
+package music
 
-// https://musicbrainz.org/doc/XML_Web_Service/Rate_Limiting#Provide_meaningful_User-Agent_strings
-const (
-	AppName = "Takeout"
-	Version = "0.1"
-	Contact = "https://github.com/defsub/takeout"
-)
+type ArtistView struct {
+	artist   *Artist
+	releases []Release
+	popular  []Track
+	similar  []Artist
+}
+
+func (m *Music) ArtistView(artist string) *ArtistView {
+	view := &ArtistView{}
+	view.artist = m.artist(artist)
+	view.releases = m.artistReleases(view.artist)
+	view.popular = m.artistPopularTracks(artist, nil)
+	if len(view.popular) > 10 {
+		view.popular = view.popular[:10]
+	}
+	view.similar = 	m.similarArtists(view.artist)
+	if len(view.similar) > 10 {
+		view.similar = view.similar[:10]
+	}
+	return view
+}
