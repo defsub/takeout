@@ -24,16 +24,17 @@ import (
 
 type Artist struct {
 	gorm.Model
-	Name     string `gorm:"unique_index:idx_artist"`
+	Name     string `gorm:"unique_index:idx_artist_name"`
 	SortName string
-	MBID     string
+	ARID     string `gorm:"unique_index:idx_artist_arid"`
 }
 
 type Release struct {
 	gorm.Model
 	Artist string `gorm:"unique_index:idx_release"`
 	Name   string `gorm:"unique_index:idx_release"`
-	MBID   string `gorm:"unique_index:idx_release"`
+	RGID   string `gorm:"unique_index:idx_release"`
+	REID   string `gorm:"unique_index:idx_release"`
 	Asin   string
 	Type   string
 	Date   time.Time
@@ -53,7 +54,7 @@ func (Popular) TableName() string {
 type Similar struct {
 	gorm.Model
 	Artist string `gorm:"unique_index:idx_similar"`
-	MBID   string `gorm:"unique_index:idx_similar"`
+	ARID   string `gorm:"unique_index:idx_similar"`
 	Rank   uint
 }
 

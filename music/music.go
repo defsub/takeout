@@ -20,9 +20,10 @@ package music
 import (
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/defsub/takeout/config"
 	"github.com/jinzhu/gorm"
-	"github.com/minio/minio-go/v6"
+	"net/url"
 	"regexp"
 	"strings"
 )
@@ -30,7 +31,7 @@ import (
 type Music struct {
 	config *config.Config
 	db     *gorm.DB
-	minio  *minio.Client
+	s3     *s3.S3
 }
 
 func NewMusic(config *config.Config) *Music {
@@ -56,7 +57,7 @@ func (m *Music) SyncBucketTracks() (err error) {
 		return err
 	}
 	for t := range trackCh {
-		//fmt.Printf("sync: %s / %s / %s\n", t.Artist, t.Release, t.Title)
+		fmt.Printf("sync: %s / %s / %s\n", t.Artist, t.Release, t.Title)
 		t.Artist = fixName(t.Artist)
 		t.Release = fixName(t.Release)
 		t.Title = fixName(t.Title)
@@ -65,15 +66,6 @@ func (m *Music) SyncBucketTracks() (err error) {
 	}
 	return
 }
-
-// func (m *Music) Releases(artist string) {
-// 	a := m.artist(artist)
-// 	releases := m.artistReleases(a)
-// 	for _, v := range releases {
-// 		fmt.Printf("releases: %s / %s / %s / %s / %d\n",
-// 			v.MBID, v.Artist, v.Name, v.Type, v.Date.Year())
-// 	}
-// }
 
 func (m *Music) SyncReleases() {
 	artists := m.artists()
@@ -259,10 +251,10 @@ func (m *Music) resolveArtist(name string) (artist *Artist, tags []ArtistTag) {
 		// try lastfm
 		artist = m.lastfmArtistSearch(name)
 		if artist != nil {
-			fmt.Printf("try lastfm got %s mbid:'%s'\n", artist.Name, artist.MBID)
+			fmt.Printf("try lastfm got %s mbid:'%s'\n", artist.Name, artist.ARID)
 			// resolve with mbz
-			if artist.MBID != "" {
-				artist, tags = m.SearchArtistId(artist.MBID)
+			if artist.ARID != "" {
+				artist, tags = m.SearchArtistId(artist.ARID)
 			} else {
 				artist = nil
 			}
@@ -271,36 +263,33 @@ func (m *Music) resolveArtist(name string) (artist *Artist, tags []ArtistTag) {
 	return
 }
 
-func (m *Music) doTracks(f func() []Track) []Track {
-	tracks := f()
-	for i, _ := range tracks {
-		tracks[i].Location = m.objectURL(tracks[i]).String()
-	}
-	return tracks
+func (m *Music) TrackURL(t *Track) *url.URL {
+	url := m.bucketURL(t)
+	return url
 }
 
 func (m *Music) Tracks(tags string, dr *DateRange) []Track {
-	return m.doTracks(func() []Track { return m.tracks(tags, dr) })
+	return m.tracks(tags, dr)
 }
 
 func (m *Music) Singles(tags string, dr *DateRange) []Track {
-	return m.doTracks(func() []Track { return m.singleTracks(tags, dr) })
+	return m.singleTracks(tags, dr)
 }
 
 func (m *Music) Popular(tags string, dr *DateRange) []Track {
-	return m.doTracks(func() []Track { return m.popularTracks(tags, dr) })
+	return m.popularTracks(tags, dr)
 }
 
 func (m *Music) ArtistSingles(artists string, dr *DateRange) []Track {
-	return m.doTracks(func() []Track { return m.artistSingleTracks(artists, dr) })
+	return m.artistSingleTracks(artists, dr)
 }
 
 func (m *Music) ArtistTracks(artists string, dr *DateRange) []Track {
-	return m.doTracks(func() []Track { return m.artistTracks(artists, dr) })
+	return m.artistTracks(artists, dr)
 }
 
 func (m *Music) ArtistPopular(artists string, dr *DateRange) []Track {
-	return m.doTracks(func() []Track { return m.artistPopularTracks(artists, dr) })
+	return m.artistPopularTracks(artists, dr)
 }
 
 func (m *Music) SimilarArtists(artist string) []Artist {
@@ -309,5 +298,5 @@ func (m *Music) SimilarArtists(artist string) []Artist {
 }
 
 func (m *Music) ArtistRelease(artist string, release string) []Track {
-	return m.doTracks(func() []Track { return m.artistReleaseTracks(artist, release) })
+	return m.artistReleaseTracks(artist, release)
 }

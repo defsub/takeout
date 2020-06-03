@@ -28,6 +28,7 @@ import (
 
 type MusicBucket struct {
 	Endpoint        string
+	Region          string
 	AccessKeyID     string
 	SecretAccessKey string
 	BucketName      string

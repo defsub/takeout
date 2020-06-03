@@ -18,9 +18,12 @@
 package music
 
 import (
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/defsub/takeout/config"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
-	"github.com/minio/minio-go/v6"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -33,10 +36,15 @@ func (m *Music) bucketConfig() config.MusicBucket {
 
 func (m *Music) openBucket() error {
 	bucket := m.bucketConfig()
-	minioClient, err := minio.New(bucket.Endpoint, bucket.AccessKeyID, bucket.SecretAccessKey, bucket.UseSSL)
-	if err == nil {
-		m.minio = minioClient
-	}
+	creds := credentials.NewStaticCredentials(
+		bucket.AccessKeyID, bucket.SecretAccessKey, "")
+	s3Config := &aws.Config{
+		Credentials:      creds,
+		Endpoint:         aws.String(bucket.Endpoint),
+		Region:           aws.String(bucket.Region),
+		S3ForcePathStyle: aws.Bool(true)}
+	session, err := session.NewSession(s3Config)
+	m.s3 = s3.New(session)
 	return err
 }
 
@@ -45,30 +53,41 @@ func (m *Music) SyncFromBucket() (trackCh chan *Track, err error) {
 
 	go func() {
 		defer close(trackCh)
-
-		doneCh := make(chan struct{})
-		defer close(doneCh)
-
-		isRecursive := true
 		bucket := m.bucketConfig()
-		objectCh := m.minio.ListObjectsV2(bucket.BucketName, bucket.ObjectPrefix, isRecursive, doneCh)
-		for object := range objectCh {
-			if object.Err != nil {
+
+		var continuationToken *string
+		continuationToken = nil
+		for {
+			req := s3.ListObjectsV2Input{
+				Bucket: aws.String(bucket.BucketName),
+				Prefix: aws.String(bucket.ObjectPrefix)}
+			if continuationToken != nil {
+				req.ContinuationToken = continuationToken
+			}
+			resp, err := m.s3.ListObjectsV2(&req)
+			if err != nil {
 				break
 			}
-			checkObject(&object, trackCh)
+			for _, obj := range resp.Contents {
+				checkObject(obj, trackCh)
+			}
+
+			if !*resp.IsTruncated {
+				break
+			}
+			continuationToken = resp.NextContinuationToken
 		}
 	}()
 
 	return
 }
 
-func checkObject(object *minio.ObjectInfo, trackCh chan *Track) {
-	matchPath(object.Key, trackCh, func(t *Track, trackCh chan *Track) {
-		t.Key = object.Key
-		t.ETag = object.ETag
-		t.Size = object.Size
-		t.LastModified = object.LastModified
+func checkObject(object *s3.Object, trackCh chan *Track) {
+	matchPath(*object.Key, trackCh, func(t *Track, trackCh chan *Track) {
+		t.Key = *object.Key
+		t.ETag = *object.ETag
+		t.Size = *object.Size
+		t.LastModified = *object.LastModified
 		trackCh <- t
 	})
 }
@@ -121,9 +140,12 @@ func matchTrack(file string, t *Track) bool {
 	return true
 }
 
-func (m *Music) objectURL(t Track) *url.URL {
-	reqParams := make(url.Values)
+func (m *Music) bucketURL(t *Track) *url.URL {
 	// Generates a presigned url which expires in a day.
-	url, _ := m.minio.PresignedGetObject(m.config.Music.Bucket.BucketName, t.Key, time.Second*24*60*60, reqParams)
+	req, _ := m.s3.GetObjectRequest(&s3.GetObjectInput{
+		Bucket: aws.String(m.config.Music.Bucket.BucketName),
+		Key: aws.String(t.Key)})
+	urlStr, _ := req.Presign(24 * time.Hour)
+	url, _ := url.Parse(urlStr)
 	return url
 }

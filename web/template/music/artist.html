@@ -1,15 +1,57 @@
-<body>
-  <h1>Artist {{ .Artist.Name }}</h1>
-  <h2>Popular</h2>
-  {{ range .Popular }}
-  {{ .TrackNum }} {{ .Artist }} / {{ .Release }} / {{ .Title }} <br>
-  {{ end }}
-  <h2>Releases</h2>
-  {{ range .Releases }}
-  {{ .Name }} ({{ .Date.Year }}) - {{ .Type }} <br>
-  {{ end }}
-  <h2>Similar</h2>
-  {{ range .Similar }}
-  {{ .Name }} <br>
-  {{ end }}
-</body>
+<div>
+  <h1>{{ .Artist.Name }}</h1>
+  <div>
+    <h2>Releases</h2>
+    {{ range .Releases }}
+    <div style="float: left; padding: 10px; max-width: 110px;">
+      <a data-link="{{.|link}}" style="text-decoration: none;">
+	<img width="110" height="110" src="{{.|coverSmall}}" style="border-radius: 10px;">
+	<br/>
+	<div class="release-small-title">{{ .Name }}</div>
+	<br style="display: none"/>
+	<div class="release-small-year">{{ .Date.Year }}</div>
+      </a>
+    </div>
+    {{ end }}
+  </div>
+  <p style="clear: both;"/>
+  <div>
+    <h2>Popular Tracks</h2>
+    <table>
+      {{ range .Popular }}
+      <tr style="cursor: pointer;">
+	<td></td>
+	<td class="track-title">
+	  <a data-track="{{.TrackNum}}"
+	     data-track-artist="{{.Artist}}"
+	     data-track-release="{{.Release}}"
+	     data-track-title="{{.Title}}"
+	     data-track-url="{{.|link}}">
+	    {{ .Title }}
+	  </a>
+	</td>
+      </tr>
+      <tr style="cursor: pointer;">
+	<td></td>
+	<td class="track-artist">{{ .Release }}</td>
+      </tr>
+      {{ end }}
+    </table>
+  </div>
+  <p style="clear: both;"/>
+  <div>
+    <h2>Similar Artists</h2>
+    <table>
+      {{ range .Similar }}
+      <tr>
+	<td>
+	  <a data-link="{{.|link}}"><span class="circle">{{.|letter}}</span></a>
+	</td>
+	<td class="similar-artist">
+	  <a data-link="{{.|link}}">{{ .Name }}</a>
+	</td>
+      </tr>
+    {{ end }}
+    </table>
+  </div>
+</div>

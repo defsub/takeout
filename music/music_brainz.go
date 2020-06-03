@@ -67,7 +67,7 @@ func (m *Music) SearchArtistId(mbid string) (a *Artist, tags []ArtistTag) {
 	a = &Artist{
 		Name:     artist.Name,
 		SortName: artist.SortName,
-		MBID:     string(artist.ID)}
+		ARID:     string(artist.ID)}
 
 	for _, t := range artist.Tags {
 		at := ArtistTag{
@@ -115,7 +115,7 @@ func (m *Music) SearchArtist(name string) (a *Artist, tags []ArtistTag) {
 	a = &Artist{
 		Name:     artist.Name,
 		SortName: artist.SortName,
-		MBID:     string(artist.ID)}
+		ARID:     string(artist.ID)}
 
 	for _, t := range artist.Tags {
 		at := ArtistTag{
@@ -140,7 +140,8 @@ func (m *Music) MusicBrainzRelease(a *Artist, mbid string) (*Release, error) {
 		Artist: a.Name,
 		Name:   r.Title,
 		Date:   r.Date.Time,
-		MBID:   string(r.ID),
+		REID:   string(r.ID),
+		RGID:   string(r.ReleaseGroup.ID),
 		Type:   r.ReleaseGroup.PrimaryType,
 		Asin:   r.Asin}
 	return release, err
@@ -161,14 +162,14 @@ func (m *Music) MusicBrainzReleaseGroups(a *Artist) ([]Release, error) {
 	limit, offset := 100, 0
 	for {
 		sleep()
-		result, _ := doArtistReleaseGroups(a.MBID, limit, offset)
+		result, _ := doArtistReleaseGroups(a.ARID, limit, offset)
 		//fmt.Printf("got %d %d %d\n", offset, result.ReleaseGroupList.Count, result.ReleaseGroupList.Offset)
 		for _, r := range result.ReleaseGroupList.ReleaseGroups {
 			//fmt.Printf("%s %s %s\n", r.ID, r.Title, r.FirstReleaseDate)
 			releases = append(releases, Release{
 				Artist: a.Name,
 				Name: r.Title,
-				MBID: string(r.ID),
+				RGID: string(r.ID),
 				Type: r.PrimaryType,
 				Date: r.FirstReleaseDate.Time})
 		}
@@ -210,13 +211,14 @@ func doArtistReleaseGroups(mbid string, limit int, offset int) (*releaseGroupLis
 
 func (m *Music) MusicBrainzReleases(a *Artist, release string) []Release {
 	var releases []Release
-	results := doReleaseSearch(fmt.Sprintf(`arid:"%s" AND release:"%s"`, a.MBID, release))
+	results := doReleaseSearch(fmt.Sprintf(`arid:"%s" AND release:"%s"`, a.ARID, release))
 	for _, r := range results {
 		releases = append(releases, Release{
 			Artist: a.Name,
 			Name:   r.Title,
 			Date:   r.Date.Time,
-			MBID:   string(r.ID),
+			REID:   string(r.ID),
+			RGID:   string(r.ReleaseGroup.ID),
 			Type:   r.ReleaseGroup.PrimaryType,
 			Asin:   r.Asin})
 	}

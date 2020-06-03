@@ -1,0 +1,54 @@
+<html>
+  <head>
+    <title>Takeout</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="/static/music.css">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <script type="text/javascript" src="/static/music.js"></script>
+  </head>
+  <body>
+    <div id="head">
+      Takeout
+    </div>
+    <div id="main">
+      Loading...
+    </div>
+    <div id="foot" class="footer" style="display: none;">
+      <audio id="audio">
+	<source id="audio-source" src=""></source>
+      </audio>
+      <table class="full-width">
+	<tr>
+	  <td class="np-cover">
+	    <img class="mini-cover" id="np-cover"/>
+	  </td>
+	  <td>
+	    <div class="np-track">
+	      <div class="np-title" id="np-title"></div>
+	      <div class="np-artist" id="np-artist"></div>
+	    </div>
+	  </td>
+	  <td class="np-control">
+	    <img id="np-playpause" class="np-control" src="">
+	  </td>
+	  <td class="np-control">
+	    <img id="np-next" class="np-control" src="">
+	  </td>
+	</tr>
+      </table>
+      <table class="full-width">
+	<tr>
+	  <td class="np-time">
+	    <span id="np-time"></span>
+	  </td>
+	  <td>
+	    <progress id="np-progress" class="full-width"></progress>
+	  </td>
+	  <td class="np-duration">
+	    <span id="np-duration"></span>
+	  </td>
+	</tr>
+      </table>
+    </div>
+  </body>
+</html>

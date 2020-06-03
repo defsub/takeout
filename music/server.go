@@ -21,10 +21,13 @@ import (
 	"fmt"
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/encoding/spiff"
-	"log"
-	"net/http"
-	"strings"
 	"html/template"
+	"log"
+	"os"
+	"path/filepath"
+	"net/http"
+	"strconv"
+	"strings"
 )
 
 type trackType string
@@ -84,10 +87,10 @@ func (handler *MusicHandler) doit(t trackType, w http.ResponseWriter, r *http.Re
 		}
 	}
 
-	handler.doSpiff(title, tracks, w, r)
+	handler.doSpiff(music, title, tracks, w, r)
 }
 
-func (handler *MusicHandler) doSpiff(title string, tracks []Track,
+func (handler *MusicHandler) doSpiff(music *Music, title string, tracks []Track,
 	w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", spiff.ContentType)
 
@@ -95,6 +98,7 @@ func (handler *MusicHandler) doSpiff(title string, tracks []Track,
 	encoder.Header(title)
 	for _, t := range tracks {
 		log.Printf("spiff: %s / %s / %s\n", t.Artist, t.Release, t.Title)
+		t.Location = music.TrackURL(&t).String()
 		encoder.Encode(t)
 	}
 	encoder.Footer()
@@ -127,7 +131,7 @@ func (handler *MusicHandler) doRelease(w http.ResponseWriter, r *http.Request) {
 		}
 		if ok {
 			tracks := music.ArtistRelease(artist[0], release[0])
-			handler.doSpiff(fmt.Sprintf("%s / %s", artist[0], release[0]), tracks, w, r)
+			handler.doSpiff(music, fmt.Sprintf("%s / %s", artist[0], release[0]), tracks, w, r)
 			return
 		}
 	}
@@ -138,6 +142,71 @@ type MusicHandler struct {
 	config *config.Config
 }
 
+func cover(r Release, t string) string {
+	if r.REID != "" {
+		return fmt.Sprintf("https://coverartarchive.org/release/%s/%s", r.REID, t)
+	} else {
+		return fmt.Sprintf("https://coverartarchive.org/release-group/%s/%s", r.RGID, t)
+	}
+}
+
+func parseTemplates(templ *template.Template, dir string) *template.Template {
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if strings.Contains(path, ".html") {
+			_, err = templ.ParseFiles(path)
+			if err != nil {
+				return err
+			}
+		}
+		return err
+	})
+
+	if err != nil {
+		fmt.Printf("%s\n", err)
+	}
+
+	return templ
+}
+
+func (handler *MusicHandler) render(music *Music, temp string, view interface{},
+	w http.ResponseWriter, r *http.Request) {
+	funcMap := template.FuncMap{
+		"link": func(o interface{}) string {
+			var link string
+			switch o.(type) {
+			case Release:
+				link = fmt.Sprintf("/v?release=%d", o.(Release).ID)
+			case Artist:
+				link = fmt.Sprintf("/v?artist=%d", o.(Artist).ID)
+			case Track:
+				t := o.(Track)
+				link = music.TrackURL(&t).String()
+			}
+			return link
+		},
+		"coverSmall": func(r Release) string {
+			return cover(r, "front-250")
+		},
+		"coverLarge": func(r Release) string {
+			return cover(r, "front-500")
+		},
+		"coverExtraLarge": func(r Release) string {
+			return cover(r, "front-1200")
+		},
+		"letter": func(a Artist) string {
+			return a.SortName[0:1]
+		},
+
+	}
+
+	var templates = parseTemplates(template.New("").Funcs(funcMap), "web/template")
+
+	err := templates.ExecuteTemplate(w, temp, view)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 func (handler *MusicHandler) viewHandler(w http.ResponseWriter, r *http.Request) {
 	music := NewMusic(handler.config)
 	if music.Open() != nil {
@@ -146,13 +215,27 @@ func (handler *MusicHandler) viewHandler(w http.ResponseWriter, r *http.Request)
 	}
 	defer music.Close()
 
-	view := music.ArtistView("Gary Numan")
+	var view interface{}
+	var temp string
 
-	var templates = template.Must(template.ParseFiles("web/template/music/artist.html"))
-	err := templates.ExecuteTemplate(w, "artist.html", view)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if v := r.URL.Query().Get("release"); v != "" {
+		id, _ := strconv.Atoi(v)
+		release, _ := music.lookupRelease(uint(id))
+		view = music.ReleaseView(release)
+		temp = "release.html"
+	} else if v := r.URL.Query().Get("artist"); v != "" {
+		id, _ := strconv.Atoi(v)
+		artist, _ := music.lookupArtist(uint(id))
+		view = music.ArtistView(artist)
+		temp = "artist.html"
+	} else if v := r.URL.Query().Get("music"); v != "" {
+		view = music.HomeView()
+		temp = "music.html"
+	} else {
+		temp = "index.html"
 	}
+
+	handler.render(music, temp, view, w, r)
 }
 
 // /artists/
@@ -176,8 +259,9 @@ func Serve(config *config.Config) {
 	http.HandleFunc("/tracks", handler.doTracks)
 	http.HandleFunc("/singles", handler.doSingles)
 	http.HandleFunc("/popular", handler.doPopular)
-	http.HandleFunc("/release", handler.doRelease)
-	http.HandleFunc("/view", handler.viewHandler)
+	//http.HandleFunc("/release", handler.doRelease)
+	http.HandleFunc("/", handler.viewHandler)
+	http.HandleFunc("/v", handler.viewHandler)
 	log.Printf("running...\n")
 	http.ListenAndServe(config.BindAddress, nil)
 }

@@ -18,6 +18,7 @@
 package music
 
 import (
+	"errors"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"math/rand"
@@ -83,8 +84,8 @@ func (m *Music) tracksWithoutReleases() []Track {
 
 func (m *Music) artistTracksWithoutReleases(artist string) []Track {
 	var tracks []Track
-	m.db.Where("artist = ? and not exists" +
-		" (select releases.name from releases where" +
+	m.db.Where("artist = ? and not exists"+
+		" (select releases.name from releases where"+
 		" releases.artist = tracks.artist and releases.name = tracks.release)", artist).
 		Find(&tracks)
 	return tracks
@@ -255,7 +256,7 @@ func (m *Music) artists() []Artist {
 
 func (m *Music) artistsByMBID(mbids []string) []Artist {
 	var artists []Artist
-	m.db.Where("mb_id in (?)", mbids).Find(&artists)
+	m.db.Where("ar_id in (?)", mbids).Find(&artists)
 	return artists
 }
 
@@ -271,19 +272,49 @@ func (m *Music) similarArtistsByTags(a *Artist) []Artist {
 func (m *Music) similarArtists(a *Artist) []Artist {
 	var artists []Artist
 	m.db.Joins("inner join similar on similar.artist = ?", a.Name).
-		Where("artists.mb_id = similar.mb_id").
+		Where("artists.ar_id = similar.ar_id").
 		Order("similar.rank asc").
 		Find(&artists)
 	return artists
 }
 
+func (m *Music) similarReleases(a *Artist, r Release) []Release {
+	artists := m.similarArtists(a);
+	var names []string
+	for _, sa := range artists {
+		names = append(names, sa.Name)
+	}
+
+	after := r.Date.AddDate(-1, 0, 0);
+	before := r.Date.AddDate(1, 0, 0);
+
+	var releases []Release
+	m.db.Joins("inner join tracks on tracks.artist in (?)", names).
+		Where("releases.name = tracks.release and releases.artist = tracks.artist").
+		Having("min(releases.date) >= ? and min(releases.date) <= ?", after, before).
+		Group("releases.name").
+		Order("releases.date").Find(&releases)
+	return releases
+}
+
 func (m *Music) artistReleases(a *Artist) []Release {
 	var releases []Release
-	m.db.Where("releases.name in (select release from tracks where artist = ?)", a.Name).
+	m.db.Where("releases.artist = ? and releases.name in (select release from tracks where artist = ?)",
+		a.Name, a.Name).
 		Having("date = min(date)").
 		Group("name").
 		Order("date").Find(&releases)
 	return releases
+}
+
+func (m *Music) artistRelease(a *Artist, name string) *Release {
+	releases := m.artistReleases(a)
+	for _, r := range releases {
+		if r.Name == name {
+			return &r
+		}
+	}
+	return nil
 }
 
 func (m *Music) releases(a *Artist) []Release {
@@ -294,7 +325,7 @@ func (m *Music) releases(a *Artist) []Release {
 }
 
 func (m *Music) releaseID(a *Artist, mbid string) *Release {
-	r := &Release{MBID: mbid, Artist: a.Name}
+	r := &Release{REID: mbid, Artist: a.Name}
 	if m.db.Find(r, r).RecordNotFound() {
 		return nil
 	}
@@ -341,6 +372,51 @@ func (m *Music) artist(artist string) (a *Artist) {
 		return nil
 	}
 	return a
+}
+
+func (m *Music) recentlyAdded() []Release {
+	var releases []Release
+	limit := 25
+	m.db.Joins("inner join tracks on tracks.release = releases.name and tracks.artist = releases.artist").
+		Group("releases.name").
+		Order("tracks.last_modified desc").
+		Limit(limit).
+		Find(&releases)
+	return releases
+}
+
+func (m *Music) recentlyReleased() []Release {
+	var releases []Release
+	limit := 25
+	m.db.Joins("inner join tracks on tracks.release = releases.name and tracks.artist = releases.artist").
+		Group("releases.name").
+		Order("releases.date desc").
+		Limit(limit).
+		Find(&releases)
+	return releases
+}
+
+func (m *Music) lookupRelease(id uint) (Release, error) {
+	var release Release
+	if m.db.First(&release, id).RecordNotFound() {
+		return Release{}, errors.New("release not found")
+	}
+	return release, nil
+}
+
+func (m *Music) releaseTracks(release Release) []Track {
+	var tracks []Track
+	m.db.Where("artist = ? and release = ?", release.Artist, release.Name).
+		Order("tracknum").Find(&tracks)
+	return tracks
+}
+
+func (m *Music) lookupArtist(id uint) (Artist, error) {
+	var artist Artist
+	if m.db.First(&artist, id).RecordNotFound() {
+		return Artist{}, errors.New("artist not found")
+	}
+	return artist, nil
 }
 
 func (m *Music) createArtist(a *Artist) (err error) {

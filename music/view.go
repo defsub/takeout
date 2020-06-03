@@ -17,24 +17,64 @@
 
 package music
 
+type HomeView struct {
+	Added    []Release
+	Released []Release
+}
+
+type ArtistsView struct {
+	Artists []Artist
+}
+
 type ArtistView struct {
-	Artist   *Artist
+	Artist   Artist
 	Releases []Release
 	Popular  []Track
 	Similar  []Artist
 }
 
-func (m *Music) ArtistView(artist string) *ArtistView {
+type ReleaseView struct {
+	Artist  Artist
+	Release Release
+	Tracks  []Track
+	Similar []Release
+}
+
+func (m *Music) HomeView() *HomeView {
+	view := &HomeView{}
+	view.Added = m.recentlyAdded()
+	view.Released = m.recentlyReleased()
+	return view
+}
+
+func (m *Music) ArtistsView() *ArtistsView {
+	view := &ArtistsView{}
+	view.Artists = m.artists()
+	return view
+}
+
+func (m *Music) ArtistView(artist Artist) *ArtistView {
 	view := &ArtistView{}
-	view.Artist = m.artist(artist)
-	view.Releases = m.artistReleases(view.Artist)
-	view.Popular = m.artistPopularTracks(artist, nil)
-	if len(view.Popular) > 10 {
-		view.Popular = view.Popular[:10]
+	view.Artist = artist
+	view.Releases = m.artistReleases(&artist)
+	view.Popular = m.artistPopularTracks(artist.Name, nil)
+	if len(view.Popular) > 5 {
+		view.Popular = view.Popular[:5]
 	}
-	view.Similar = 	m.similarArtists(view.Artist)
+
+	view.Similar = m.similarArtists(&artist)
 	if len(view.Similar) > 10 {
 		view.Similar = view.Similar[:10]
 	}
+
+	return view
+}
+
+func (m *Music) ReleaseView(release Release) *ReleaseView {
+	view := &ReleaseView{}
+	view.Release = release
+	view.Artist = *m.artist(release.Artist)
+	view.Tracks = m.releaseTracks(release)
+	view.Similar = m.similarReleases(&view.Artist, release)
 	return view
 }

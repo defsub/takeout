@@ -1,0 +1,160 @@
+* {
+    background-color: #222;
+    color: #e6e6e6;
+    border-color: #a6a6a6;
+}
+
+a, a:visited, a:hover, a:active {
+    color: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+h1 {
+    text-transform: uppercase;
+    font-size: large;
+    text-align: center;
+}
+
+h2 {
+    text-transform: uppercase;
+    font-size: medium;
+    text-align: left;
+}
+
+h3 {
+    text-transform: uppercase;
+    font-size: small;
+    text-align: left;
+}
+
+.circle {
+    background: grey;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+
+.track-artist {
+    font-size: small;
+    opacity: 0.5;
+}
+
+.track-time {
+    font-size: small;
+    opacity: 0.5;
+}
+
+.track-title {
+    font-size: medium;
+}
+
+.track-num {
+    padding-right: 10px;
+    font-size: small;
+    text-align: right;
+    opacity: 0.5;
+}
+
+.release-cover-large {
+    width: 500;
+    height: 500;
+    border-radius: 15px;
+}
+
+.release-cover-small {
+    width: 250;
+    height: 250;
+    border-radius: 15px;
+}
+
+.release-header {
+    text-align: center;
+}
+
+.release-small-title {
+    text-align: center;
+    font-size: small;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.release-small-year {
+    text-align: center;
+    font-size: small;
+    opacity: 0.5;
+}
+
+.similar-artist {
+    font-size: medium;
+}
+
+.np-cover {
+    width: 50px;
+}
+
+.np-track {
+    padding-left: 5px;
+}
+
+.np-control {
+    width: 50px;
+    cursor: pointer;
+}
+
+.np-next {
+    width: 50px;
+    cursor: pointer;
+}
+
+.np-title {
+    font-size: medium;
+}
+
+.np-artist {
+    font-size: small;
+    opacity: 0.5;
+}
+
+.np-time {
+    text-align: center;
+    font-size: small;
+    opacity: 0.5;
+    width: 50px;
+}
+
+.np-duration {
+    text-align: center;
+    font-size: small;
+    opacity: 0.5;
+    width: 50px;
+}
+
+.mini-cover {
+    width: 50px;
+    height: 50px;
+}
+
+.playing-track {
+    padding-left: 5px;
+}
+
+.full-width {
+    width: 100%;
+}
+
+body {
+    margin-bottom: 75px;
+}
+
+.footer {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+}

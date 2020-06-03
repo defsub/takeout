@@ -32,7 +32,7 @@ func (m *Music) lastfmArtistTopTracks(artist *Artist) []Popular {
 	sleep()
 	api := lastfm.New(m.config.LastFM.Key, m.config.LastFM.Secret)
 
-	result, _ := api.Artist.GetTopTracks(lastfm.P{"mbid": artist.MBID})
+	result, _ := api.Artist.GetTopTracks(lastfm.P{"mbid": artist.ARID})
 	sort.Slice(result.Tracks, func(i, j int) bool {
 		a, _ := strconv.Atoi(result.Tracks[i].PlayCount)
 		b, _ := strconv.Atoi(result.Tracks[j].PlayCount)
@@ -52,7 +52,7 @@ func (m *Music) lastfmSimilarArtists(artist *Artist) []Similar {
 	sleep()
 
 	api := lastfm.New(m.config.LastFM.Key, m.config.LastFM.Secret)
-	result, _ := api.Artist.GetSimilar(lastfm.P{"mbid": artist.MBID})
+	result, _ := api.Artist.GetSimilar(lastfm.P{"mbid": artist.ARID})
 
 	var mbids []string
 	rank := make(map[string]float64)
@@ -63,12 +63,12 @@ func (m *Music) lastfmSimilarArtists(artist *Artist) []Similar {
 
 	artists := m.artistsByMBID(mbids)
 	sort.Slice(artists, func(i, j int) bool {
-		return rank[artists[i].MBID] > rank[artists[j].MBID]
+		return rank[artists[i].ARID] > rank[artists[j].ARID]
 	})
 
 	var similar []Similar
 	for index, a := range artists {
-		similar = append(similar, Similar{Artist: artist.Name, MBID: a.MBID, Rank: uint(index)})
+		similar = append(similar, Similar{Artist: artist.Name, ARID: a.ARID, Rank: uint(index)})
 	}
 
 	return similar
@@ -84,10 +84,36 @@ func (m *Music) lastfmArtistSearch(name string) *Artist {
 	for index, match := range result.ArtistMatches {
 		//fmt.Printf("%s %s\n", match.Name, match.Mbid)
 		if index == 0 {
-			artist = &Artist{Name: match.Name, MBID: match.Mbid}
+			artist = &Artist{Name: match.Name, ARID: match.Mbid}
 			break;
 		}
 	}
 
 	return artist
 }
+
+// func (m *Music) lastfmArtistUpdateInfo(artist *Artist) {
+// 	sleep()
+
+// 	api := lastfm.New(m.config.LastFM.Key, m.config.LastFM.Secret)
+// 	result, err := api.Artist.GetInfo(lastfm.P{"mbid": artist.ARID})
+// 	if err != null {
+// 		return
+// 	}
+
+// 	for _, image := range result.Images {
+// 		if image.Size == "small" {
+// 			artist.S = image.Url
+// 		} else if image.Size == "medium" {
+// 			artist.M = image.Url
+// 		} else if image.Size == "large" {
+// 			artist.L = image.Url
+// 		} else if image.Size == "extralarge" {
+// 			artist.XL = image.Url
+// 		} else if image.Size == "mega" {
+// 			artist.Mega = image.Url
+// 		}
+// 	}
+
+// 	artist.Bio = result.Bio.Summary
+// }
