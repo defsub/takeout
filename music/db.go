@@ -419,6 +419,28 @@ func (m *Music) lookupArtist(id uint) (Artist, error) {
 	return artist, nil
 }
 
+func (m *Music) search(query string) ([]Artist, []Release, []Track) {
+	var artists []Artist
+	var releases []Release
+	var tracks []Track
+
+	query = "%" + query + "%"
+
+	limit := 25
+
+	m.db.Where("name like ?", query).Order("sort_name asc").Limit(limit).Find(&artists)
+
+	m.db.Joins("inner join tracks on" +
+		" tracks.artist = releases.artist and tracks.release = releases.name" +
+		" and tracks.release like ?", query).
+		Group("releases.name").
+		Order("releases.name").Limit(limit).Find(&releases)
+
+	m.db.Where("title like ?", query).Order("title").Limit(limit).Find(&tracks)
+
+	return artists, releases, tracks
+}
+
 func (m *Music) createArtist(a *Artist) (err error) {
 	err = m.db.Create(a).Error
 	return

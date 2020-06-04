@@ -142,12 +142,21 @@ type MusicHandler struct {
 	config *config.Config
 }
 
-func cover(r Release, t string) string {
+func cover(r Release, s string) string {
 	if r.REID != "" {
-		return fmt.Sprintf("https://coverartarchive.org/release/%s/%s", r.REID, t)
+		return fmt.Sprintf("https://coverartarchive.org/release/%s/%s", r.REID, s)
 	} else {
-		return fmt.Sprintf("https://coverartarchive.org/release-group/%s/%s", r.RGID, t)
+		return fmt.Sprintf("https://coverartarchive.org/release-group/%s/%s", r.RGID, s)
 	}
+}
+
+func trackCover(music *Music, t Track, s string) string {
+	artist := music.artist(t.Artist)
+	release := music.artistRelease(artist, t.Release)
+	if release == nil {
+		return ""
+	}
+	return cover(*release, s)
 }
 
 func parseTemplates(templ *template.Template, dir string) *template.Template {
@@ -184,8 +193,14 @@ func (handler *MusicHandler) render(music *Music, temp string, view interface{},
 			}
 			return link
 		},
-		"coverSmall": func(r Release) string {
-			return cover(r, "front-250")
+		"coverSmall": func(o interface{}) string {
+			switch o.(type) {
+			case Release:
+				return cover(o.(Release), "front-250")
+			case Track:
+				return trackCover(music, o.(Track), "front-250")
+			}
+			return ""
 		},
 		"coverLarge": func(r Release) string {
 			return cover(r, "front-500")
@@ -231,6 +246,9 @@ func (handler *MusicHandler) viewHandler(w http.ResponseWriter, r *http.Request)
 	} else if v := r.URL.Query().Get("music"); v != "" {
 		view = music.HomeView()
 		temp = "music.html"
+	} else if v := r.URL.Query().Get("q"); v != "" {
+		view = music.SearchView(v)
+		temp = "search.html"
 	} else {
 		temp = "index.html"
 	}

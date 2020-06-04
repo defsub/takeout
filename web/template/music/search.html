@@ -1,5 +1,23 @@
 <div>
-  <h1>{{ .Artist.Name }}</h1>
+  {{ if .Artists }}
+  <div>
+    <h2>Artists</h2>
+    <table>
+      {{ range .Artists }}
+      <tr>
+	<td>
+	  <a data-link="{{.|link}}"><span class="circle">{{.|letter}}</span></a>
+	</td>
+	<td class="similar-artist">
+	  <a data-link="{{.|link}}">{{ .Name }}</a>
+	</td>
+      </tr>
+      {{ end }}
+    </table>
+  </div>
+  {{ end }}
+
+  {{ if .Releases }}
   <div>
     <h2>Releases</h2>
     {{ range .Releases }}
@@ -15,11 +33,13 @@
     {{ end }}
   </div>
   <div style="clear: both;"/>
-  {{ if .Popular }}
+  {{ end }}
+
+  {{ if .Tracks }}
   <div>
-    <h2>Popular Tracks</h2>
+    <h2>Tracks</h2>
     <table>
-      {{ range .Popular }}
+      {{ range .Tracks }}
       <tr style="cursor: pointer;">
 	<td></td>
 	<td class="track-title">
@@ -35,27 +55,9 @@
       </tr>
       <tr style="cursor: pointer;">
 	<td></td>
-	<td class="track-artist">{{ .Release }}</td>
+	<td class="track-artist">{{ .Artist }} ~ {{ .Release }}</td>
       </tr>
       {{ end }}
-    </table>
-  </div>
-  {{ end }}
-  <div style="clear: both;"/>
-  {{ if .Similar }}
-  <div>
-    <h2>Similar Artists</h2>
-    <table>
-      {{ range .Similar }}
-      <tr>
-	<td>
-	  <a data-link="{{.|link}}"><span class="circle">{{.|letter}}</span></a>
-	</td>
-	<td class="similar-artist">
-	  <a data-link="{{.|link}}">{{ .Name }}</a>
-	</td>
-      </tr>
-    {{ end }}
     </table>
   </div>
   {{ end }}

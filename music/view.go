@@ -40,6 +40,12 @@ type ReleaseView struct {
 	Similar []Release
 }
 
+type SearchView struct {
+	Artists  []Artist
+	Releases []Release
+	Tracks   []Track
+}
+
 func (m *Music) HomeView() *HomeView {
 	view := &HomeView{}
 	view.Added = m.recentlyAdded()
@@ -76,5 +82,14 @@ func (m *Music) ReleaseView(release Release) *ReleaseView {
 	view.Artist = *m.artist(release.Artist)
 	view.Tracks = m.releaseTracks(release)
 	view.Similar = m.similarReleases(&view.Artist, release)
+	return view
+}
+
+func (m *Music) SearchView(query string) *SearchView {
+	view := &SearchView{}
+	artists, releases, tracks := m.search(query)
+	view.Artists = artists
+	view.Releases = releases
+	view.Tracks = tracks
 	return view
 }

@@ -4,6 +4,10 @@ Takeout.music = (function() {
     let playQueue = [];
     let playing = false;
 
+    const clearTracks = function() {
+	playQueue = [];
+    }
+
     const appendTrack = function(track) {
 	playQueue.push(track);
     };
@@ -115,8 +119,20 @@ Takeout.music = (function() {
 	const tracks = document.querySelectorAll("[data-track]");
 	tracks.forEach(e => {
 	    e.addEventListener("click", function() {
-		const track = trackData(e);
-		appendTrack(track);
+		appendTrack(trackData(e));
+		playNext();
+	    }, false);
+	});
+
+	const plays = document.querySelectorAll("[data-play]");
+	plays.forEach(e => {
+	    e.style.cursor = "pointer";
+	    e.addEventListener("click", function() {
+		const tracks = document.querySelectorAll("[data-track]");
+		clearTracks();
+		tracks.forEach(e => {
+		    appendTrack(trackData(e));
+		});
 		playNext();
 	    }, false);
 	});
@@ -184,6 +200,14 @@ Takeout.music = (function() {
 	}
     };
 
+    const setupSearch = function() {
+	document.getElementById("f").onsubmit = function() {
+	    let q = document.getElementById("q").value;
+	    forward("/v?q=" + encodeURI(q));
+	    return false;
+	};
+    };
+
     const init = function () {
 	window.onpopstate = function(event) {
 	    let state = event.state;
@@ -194,7 +218,8 @@ Takeout.music = (function() {
 	    console.log("onload");
 	    checkLinks();
 	    registerEvents();
-	    load("/v?music=1");
+	    setupSearch();
+	    forward("/v?music=1");
 	};
     };
 

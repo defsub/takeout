@@ -2,7 +2,7 @@
   <h1>{{ .Release.Name }}</h1>
   <div style="float: left; padding-right: 25px; padding-bottom: 15px;">
     <div>
-      <img src="{{.Release|coverSmall}}" class="release-cover-small">
+      <img src="{{.Release|coverSmall}}" class="release-cover-small" data-play="">
     </div>
     <div style="text-align: center; padding: 5px;">
       <a data-link="{{.Artist|link}}">{{ .Artist.Name }}</a>
@@ -33,23 +33,21 @@
       {{ end }}
     </table>
   </div>
-  <p style="clear: both;"/>
+  <div style="clear: both; padding-top: 5px;"/>
   {{ if .Similar }}
-  <div>
-    <h2>Similar Releases</h2>
-    <div style="overflow-x: auto; overflow-y: hidden; white-space: nowrap;">
-      {{ range .Similar }}
-      <div style="padding: 10px; max-width: 110px; display: inline-block;">
-	<a data-link="{{.|link}}" style="text-decoration: none;">
-	  <img width="110" height="110" src="{{.|coverSmall}}" style="border-radius: 10px;">
-	  <br/>
-	  <div class="release-small-title">{{ .Name }}</div>
-	  <br style="display: none"/>
-	  <div class="release-small-year">{{ .Date.Year }}</div>
-	</a>
-      </div>
-      {{ end }}
+  <h2>Similar Releases</h2>
+  <div style="overflow-x: auto; overflow-y: hidden; white-space: nowrap;">
+    {{ range .Similar }}
+    <div style="padding: 10px; max-width: 110px; display: inline-block;">
+      <a data-link="{{.|link}}" style="text-decoration: none;">
+	<img width="110" height="110" src="{{.|coverSmall}}" style="border-radius: 10px;">
+	<br/>
+	<div class="release-small-title">{{ .Name }}</div>
+	<br style="display: none"/>
+	<div class="release-small-year">{{ .Date.Year }}</div>
+      </a>
     </div>
+    {{ end }}
   </div>
   {{ end }}
 </div>
