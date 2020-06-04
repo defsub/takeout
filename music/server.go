@@ -193,6 +193,9 @@ func (handler *MusicHandler) render(music *Music, temp string, view interface{},
 			}
 			return link
 		},
+		"home": func() string {
+			return "/v?music=1"
+		},
 		"coverSmall": func(o interface{}) string {
 			switch o.(type) {
 			case Release:

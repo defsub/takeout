@@ -113,35 +113,39 @@ Takeout.music = (function() {
 		play();
 	    }
 	});
+
+	document.getElementById("np-next").addEventListener("click", function() {
+	    playNext();
+	});
     };
 
     const checkLinks = function() {
 	const tracks = document.querySelectorAll("[data-track]");
 	tracks.forEach(e => {
-	    e.addEventListener("click", function() {
+	    e.onclick = function() {
 		appendTrack(trackData(e));
 		playNext();
-	    }, false);
+	    };
 	});
 
 	const plays = document.querySelectorAll("[data-play]");
 	plays.forEach(e => {
 	    e.style.cursor = "pointer";
-	    e.addEventListener("click", function() {
+	    e.onclick = function() {
 		const tracks = document.querySelectorAll("[data-track]");
 		clearTracks();
 		tracks.forEach(e => {
 		    appendTrack(trackData(e));
 		});
 		playNext();
-	    }, false);
+	    };
 	});
 
 	const links = document.querySelectorAll("[data-link]");
 	links.forEach(e => {
-	    e.addEventListener("click", function() {
+	    e.onclick = function() {
 		forward(e.getAttribute("data-link"));
-	    }, false);
+	    };
 	});
     };
 
