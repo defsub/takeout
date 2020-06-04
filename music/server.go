@@ -18,14 +18,16 @@
 package music
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/encoding/spiff"
 	"html/template"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
-	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -214,7 +216,6 @@ func (handler *MusicHandler) render(music *Music, temp string, view interface{},
 		"letter": func(a Artist) string {
 			return a.SortName[0:1]
 		},
-
 	}
 
 	var templates = parseTemplates(template.New("").Funcs(funcMap), "web/template")
@@ -259,19 +260,42 @@ func (handler *MusicHandler) viewHandler(w http.ResponseWriter, r *http.Request)
 	handler.render(music, temp, view, w, r)
 }
 
-// /artists/
-// /artists/name
-// /artists/name/releases
-// /artists/name/releases/name
-// /artists/name/tracks/name
-// /artists/name/singles
-// /artists/name/popular
-// /tracks/name
-//
-// play
-// playlist
-// artists
-// artist, album
+func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-type", "application/json")
+
+	music := NewMusic(handler.config)
+	if music.Open() != nil {
+		http.Error(w, "bummer", http.StatusInternalServerError)
+		return
+	}
+	defer music.Close()
+
+	path := r.URL.Path
+
+	artistRegexp := regexp.MustCompile(`/api/artists/([\d]+)`)
+	releaseRegexp := regexp.MustCompile(`/api/releases/([\d]+)`)
+
+	var view interface{}
+
+	matches := artistRegexp.FindStringSubmatch(path)
+	if matches != nil {
+		v := matches[1]
+		id, _ := strconv.Atoi(v)
+		artist, _ := music.lookupArtist(uint(id))
+		view = music.ArtistView(artist)
+	} else {
+		matches = releaseRegexp.FindStringSubmatch(path)
+		if matches != nil {
+			v := matches[1]
+			id, _ := strconv.Atoi(v)
+			release, _ := music.lookupRelease(uint(id))
+			view = music.ReleaseView(release)
+		}
+	}
+
+	enc := json.NewEncoder(w)
+	enc.Encode(view)
+}
 
 func Serve(config *config.Config) {
 	handler := &MusicHandler{config: config}
@@ -280,9 +304,9 @@ func Serve(config *config.Config) {
 	http.HandleFunc("/tracks", handler.doTracks)
 	http.HandleFunc("/singles", handler.doSingles)
 	http.HandleFunc("/popular", handler.doPopular)
-	//http.HandleFunc("/release", handler.doRelease)
 	http.HandleFunc("/", handler.viewHandler)
 	http.HandleFunc("/v", handler.viewHandler)
+	http.HandleFunc("/api/", handler.apiHandler)
 	log.Printf("running...\n")
 	http.ListenAndServe(config.BindAddress, nil)
 }
