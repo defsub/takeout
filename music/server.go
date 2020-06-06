@@ -20,6 +20,7 @@ package music
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/encoding/spiff"
 	"html/template"
@@ -226,7 +227,54 @@ func (handler *MusicHandler) render(music *Music, temp string, view interface{},
 	}
 }
 
+func (handler *MusicHandler) loginHandler(w http.ResponseWriter, r *http.Request) {
+	a := auth.NewAuth(handler.config)
+	if a.Open() != nil {
+		http.Error(w, "bummer", http.StatusInternalServerError)
+		return
+	}
+	defer a.Close()
+
+	if r.Method == "POST" {
+		r.ParseForm()
+		user := r.Form.Get("user")
+		pass := r.Form.Get("pass")
+		cookie, err := a.Login(user, pass)
+		if err == nil {
+			http.SetCookie(w, &cookie)
+			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		}
+	}
+
+	http.Error(w, "bummer", http.StatusUnauthorized)
+}
+
+func (handler *MusicHandler) authorized(w http.ResponseWriter, r *http.Request) bool {
+	a := auth.NewAuth(handler.config)
+	if a.Open() != nil {
+		http.Error(w, "bummer", http.StatusInternalServerError)
+		return false
+	}
+	defer a.Close()
+
+	cookie, err := r.Cookie(auth.CookieName)
+	if err != nil {
+		http.Error(w, "bummer", http.StatusUnauthorized)
+		return false
+	}
+	if !a.Valid(*cookie) {
+		a.Logout(*cookie)
+		http.Error(w, "bummer", http.StatusUnauthorized)
+		return false
+	}
+	return true
+}
+
 func (handler *MusicHandler) viewHandler(w http.ResponseWriter, r *http.Request) {
+	if !handler.authorized(w, r) {
+		return
+	}
+
 	music := NewMusic(handler.config)
 	if music.Open() != nil {
 		http.Error(w, "bummer", http.StatusInternalServerError)
@@ -306,6 +354,7 @@ func Serve(config *config.Config) {
 	http.HandleFunc("/popular", handler.doPopular)
 	http.HandleFunc("/", handler.viewHandler)
 	http.HandleFunc("/v", handler.viewHandler)
+	http.HandleFunc("/login", handler.loginHandler)
 	http.HandleFunc("/api/", handler.apiHandler)
 	log.Printf("running...\n")
 	http.ListenAndServe(config.BindAddress, nil)

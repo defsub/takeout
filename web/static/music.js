@@ -83,8 +83,8 @@ Takeout.music = (function() {
 
     const audioProgress = function() {
 	const audio = audioTag();
-	document.getElementById("np-time").innerHTML = formatTime(audio.currentTime);
-	document.getElementById("np-duration").innerHTML = formatTime(audio.duration);
+	//document.getElementById("np-time").innerHTML = formatTime(audio.currentTime);
+	//document.getElementById("np-duration").innerHTML = "-" + formatTime(audio.duration - audio.currentTime);
 	let p = (audio.currentTime / audio.duration);
 	document.getElementById("np-progress").setAttribute("value", p);
     };
@@ -123,6 +123,7 @@ Takeout.music = (function() {
 	const tracks = document.querySelectorAll("[data-track]");
 	tracks.forEach(e => {
 	    e.onclick = function() {
+		clearTracks();
 		appendTrack(trackData(e));
 		playNext();
 	    };

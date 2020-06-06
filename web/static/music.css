@@ -123,14 +123,14 @@ h3 {
 
 .np-time {
     text-align: center;
-    font-size: small;
+    font-size: x-small;
     opacity: 0.5;
     width: 50px;
 }
 
 .np-duration {
     text-align: center;
-    font-size: small;
+    font-size: x-small;
     opacity: 0.5;
     width: 50px;
 }

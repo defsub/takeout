@@ -56,7 +56,18 @@ type LastFMAPIConfig struct {
 	Secret string
 }
 
+type AuthDB struct {
+	Driver  string
+	Source  string
+	LogMode bool
+}
+
+type AuthConfig struct {
+	DB AuthDB
+}
+
 type Config struct {
+	Auth        AuthConfig
 	Music       MusicConfig
 	LastFM      LastFMAPIConfig
 	BindAddress string
@@ -91,12 +102,18 @@ func (mc *MusicConfig) readMaps() {
 }
 
 func configDefaults() {
+	viper.SetDefault("Auth.DB.Driver", "sqlite3")
+	viper.SetDefault("Auth.DB.Source", "auth.db")
+	viper.SetDefault("Auth.DB.LogMode", "false")
+
 	viper.SetDefault("Music.Bucket.UseSSL", "true")
 	viper.SetDefault("Music.DB.Driver", "sqlite3")
 	viper.SetDefault("Music.DB.Source", "music.db")
 	viper.SetDefault("Music.DB.LogMode", "false")
+
 	viper.SetDefault("LastFM.Key", "77033164cfcda2acc4c58681dcba3cf8")
 	viper.SetDefault("LastFM.Secret", "8f43410e8e81c33d4542738ee84dc39b")
+
 	viper.SetDefault("BindAddress", "127.0.0.1:3000")
 }
 
@@ -118,6 +135,7 @@ func TestConfig() (*Config, error) {
 	configDefaults()
 	viper.SetConfigFile(filepath.Join(testDir, "test.ini"))
 	viper.SetDefault("Music.DB.Source", filepath.Join(testDir, "music.db"))
+	viper.SetDefault("Auth.DB.Source", filepath.Join(testDir, "auth.db"))
 	return readConfig()
 }
 
