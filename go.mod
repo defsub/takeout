@@ -2,6 +2,7 @@ module github.com/defsub/takeout
 
 require (
 	github.com/aws/aws-sdk-go v1.31.0
+	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/jinzhu/gorm v1.9.12

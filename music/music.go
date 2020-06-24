@@ -263,8 +263,30 @@ func (m *Music) resolveArtist(name string) (artist *Artist, tags []ArtistTag) {
 	return
 }
 
+func (m *Music) cover(r Release, s string) string {
+	if r.REID != "" {
+		return fmt.Sprintf("https://coverartarchive.org/release/%s/%s", r.REID, s)
+	} else {
+		return fmt.Sprintf("https://coverartarchive.org/release-group/%s/%s", r.RGID, s)
+	}
+}
+
+func (m *Music) trackCover(t *Track, s string) string {
+	artist := m.artist(t.Artist)
+	release := m.artistRelease(artist, t.Release)
+	if release == nil {
+		return ""
+	}
+	return cover(*release, s)
+}
+
 func (m *Music) TrackURL(t *Track) *url.URL {
 	url := m.bucketURL(t)
+	return url
+}
+
+func (m *Music) TrackImage(t *Track) *url.URL {
+	url, _ := url.Parse(m.trackCover(t, "front-250"))
 	return url
 }
 

@@ -10,6 +10,10 @@ a, a:visited, a:hover, a:active {
     cursor: pointer;
 }
 
+.nodecor {
+    text-decoration: none;
+}
+
 h1 {
     text-transform: uppercase;
     font-size: large;
@@ -26,6 +30,13 @@ h3 {
     text-transform: uppercase;
     font-size: small;
     text-align: left;
+}
+
+.takeout {
+    font-size: small;
+    opacity: 0.5;
+    text-decoration: none;
+    cursor: pointer;
 }
 
 .circle {
@@ -54,7 +65,8 @@ h3 {
 }
 
 .track-num {
-    padding-right: 10px;
+    padding-right: 1em;
+    width: 2em;
     font-size: small;
     text-align: right;
     opacity: 0.5;
@@ -103,12 +115,7 @@ h3 {
 }
 
 .np-control {
-    width: 50px;
-    cursor: pointer;
-}
-
-.np-next {
-    width: 50px;
+    width: 36px;
     cursor: pointer;
 }
 
@@ -157,4 +164,68 @@ body {
     left: 0;
     bottom: 0;
     width: 100%;
+}
+
+.left {
+    /* top right bottom left */
+    margin: 0.5em auto 0.5em 0.5em;
+}
+
+.middle {
+    /* top right bottom left */
+    margin: 0.5em 0.5em 0.5em 0.5em;
+}
+
+.right {
+    /* top right bottom left */
+    margin: 0.5em 0.5em 0.5em auto;
+}
+
+.separator {
+    flex-grow: 1;
+}
+
+.parent {
+    display: flex;
+    overflow: hidden;
+    align-items: center;
+}
+
+.parent2 {
+    display: flex;
+    overflow: hidden;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.parent3 {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.border {
+    border: 1px solid white;
+}
+
+.dropdown-content {
+    display: none;
+    position: relative;
+    min-width: 160px;
+    z-index: 1;
+}
+
+.dropdown-content a {
+    padding: 5px 5px;
+    text-decoration: none;
+    display: block;
+}
+
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
 }

@@ -80,5 +80,24 @@ type Track struct {
 	Size         int64
 	ETag         string
 	LastModified time.Time
-	Location     string `gorm:"-" spiff:"location"`
+	Location     []string `gorm:"-" spiff:"location"`
+}
+
+type UserPlaylist struct {
+	gorm.Model
+	User     string
+	Playlist []byte
+}
+
+type Criteria struct {
+	Name     string
+	Artists  string
+	Releases string
+	Titles   string
+	Tags     string
+	After    string
+	Before   string
+	Singles  bool
+	Popular  bool
+	Shuffle  bool
 }

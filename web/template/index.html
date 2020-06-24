@@ -7,52 +7,59 @@
     <script type="text/javascript" src="/static/music.js"></script>
   </head>
   <body>
-    <div id="head">
+    <div id="top">
       <table class="full-width">
 	<tr>
-	  <td><a data-link="{{home}}">Takeout</a></td>
-	  <td></td>
+	  <td style="width: 100px;">
+	    <img src="/static/menu-white-24dp.svg">
+	  </td>
+	  <td><a data-link="{{home}}" class="takeout">Takeout</a></td>
 	  <td style="width: 100px;">
 	    <form id="f">
 	      <input id="q" type="text" placeholder="Search...">
 	    </form>
 	  </td>
 	</tr>
-	</table>
+      </table>
     </div>
     <div id="main">
       Loading...
     </div>
-    <div id="foot" class="footer" style="display: none;">
+    <div id="playlist" style="display: none;">
+    </div>
+    <p style="clear: both;"/>
+    <div id="playing" style="display: none;">
       <audio id="audio">
 	<source id="audio-source" src=""></source>
       </audio>
-      <table class="full-width">
-	<tr>
-	  <td class="np-cover">
-	    <img class="mini-cover" id="np-cover"/>
-	  </td>
-	  <td>
-	    <div class="np-track">
-	      <div class="np-title" id="np-title"></div>
-	      <div class="np-artist" id="np-artist"></div>
-	    </div>
-	  </td>
-	  <td class="np-control">
-	    <img id="np-playpause" class="np-control" src="">
-	  </td>
-	  <td class="np-control">
-	    <img id="np-next" class="np-control" src="">
-	  </td>
-	</tr>
-      </table>
-      <table class="full-width">
-	<tr>
-	  <td>
-	    <progress id="np-progress" style="height: 8px;" class="full-width"></progress>
-	  </td>
-	</tr>
-      </table>
+      <div class="footer" style="display: block;">
+	<table class="full-width">
+	  <tr>
+	    <td class="np-cover" onclick="toggle();">
+	      <img class="mini-cover" name="np-cover"/>
+	    </td>
+	    <td>
+	      <div class="np-track" onclick="toggle();">
+		<div class="np-title" name="np-title"></div>
+		<div class="np-artist" name="np-artist"></div>
+	      </div>
+	    </td>
+	    <td class="np-control">
+	      <img id="np-playpause" class="np-control" src="">
+	    </td>
+	    <td class="np-control">
+	      <img id="np-next" class="np-control" src="">
+	    </td>
+	  </tr>
+	</table>
+	<table class="full-width">
+	  <tr>
+	    <td>
+	      <progress id="np-progress" style="height: 8px;" class="full-width"></progress>
+	    </td>
+	  </tr>
+	</table>
+      </div>
     </div>
   </body>
 </html>

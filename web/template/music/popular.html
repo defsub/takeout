@@ -1,0 +1,45 @@
+<div>
+  <a class="nodecor" data-link="{{.Artist|link}}"><h1>{{ .Artist.Name }}</h1></a>
+  <div>
+    <div class="parent">
+      <div class="left">
+	<a class="nodecor" data-playlist="add-ref" data-ref='{{ref .Artist "popular"}}'>
+	  <h2>Polular Tracks</h2>
+	</a>
+      </div>
+      <div class="right">
+	<a data-playlist="append-ref" data-ref='{{ref .Artist "popular"}}'>
+	  <img src="/static/playlist_add-white-24dp.svg"/>
+	</a>
+      </div>
+    </div>
+    {{ range .Popular }}
+    <div class="parent">
+      <div class="left" style="cursor: pointer;">
+	<div class="parent2">
+	  <div class="track-title">
+	    <a data-playlist="add-ref"
+	       data-ref="{{.|ref}}"
+	       data-play="now"
+	       data-creator="{{.Artist}}"
+	       data-album="{{.Release}}"
+	       data-title="{{.Title}}"
+	       data-image="{{.|coverSmall}}"
+	       data-url="{{.|link}}">
+	      {{ .Title }}
+	    </a>
+	  </div>
+	  <div class="track-artist">
+	    {{ .Release }}
+	  </div>
+	</div>
+      </div>
+      <div class="right">
+	<a data-playlist="append-ref" data-ref="{{.|ref}}">
+	  <img src="/static/playlist_add-white-24dp.svg">
+	</a>
+      </div>
+    </div>
+    {{ end }}
+  </div>
+</div>

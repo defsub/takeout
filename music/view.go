@@ -30,7 +30,18 @@ type ArtistView struct {
 	Artist   Artist
 	Releases []Release
 	Popular  []Track
+	Singles  []Track
 	Similar  []Artist
+}
+
+type PopularView struct {
+	Artist   Artist
+	Popular  []Track
+}
+
+type SinglesView struct {
+	Artist   Artist
+	Singles  []Track
 }
 
 type ReleaseView struct {
@@ -43,6 +54,10 @@ type ReleaseView struct {
 type SearchView struct {
 	Artists  []Artist
 	Releases []Release
+	Tracks   []Track
+}
+
+type PlayView struct {
 	Tracks   []Track
 }
 
@@ -64,8 +79,13 @@ func (m *Music) ArtistView(artist Artist) *ArtistView {
 	view.Artist = artist
 	view.Releases = m.artistReleases(&artist)
 	view.Popular = m.artistPopularTracks(artist.Name, nil)
-	if len(view.Popular) > 5 {
-		view.Popular = view.Popular[:5]
+	n := 5
+	if len(view.Popular) > n {
+		view.Popular = view.Popular[:n]
+	}
+	view.Singles = m.artistSingleTracks(artist.Name, nil)
+	if len(view.Singles) > n {
+		view.Singles = view.Singles[:n]
 	}
 
 	view.Similar = m.similarArtists(&artist)
@@ -73,6 +93,26 @@ func (m *Music) ArtistView(artist Artist) *ArtistView {
 		view.Similar = view.Similar[:10]
 	}
 
+	return view
+}
+
+func (m *Music) PopularView(artist Artist) *PopularView {
+	view := &PopularView{}
+	view.Artist = artist
+	view.Popular = m.artistPopularTracks(artist.Name, nil)
+	if len(view.Popular) > 25 {
+		view.Popular = view.Popular[:25]
+	}
+	return view
+}
+
+func (m *Music) SinglesView(artist Artist) *SinglesView {
+	view := &SinglesView{}
+	view.Artist = artist
+	view.Singles = m.artistSingleTracks(artist.Name, nil)
+	if len(view.Singles) > 25 {
+		view.Singles = view.Singles[:25]
+	}
 	return view
 }
 
@@ -90,6 +130,12 @@ func (m *Music) SearchView(query string) *SearchView {
 	artists, releases, tracks := m.search(query)
 	view.Artists = artists
 	view.Releases = releases
+	view.Tracks = tracks
+	return view
+}
+
+func (m *Music) PlayView(tracks []Track) *PlayView {
+	view := &PlayView{}
 	view.Tracks = tracks
 	return view
 }

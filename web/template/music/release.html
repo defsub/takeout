@@ -1,37 +1,50 @@
 <div>
   <h1>{{ .Release.Name }}</h1>
-  <div style="float: left; padding-right: 25px; padding-bottom: 15px;">
-    <div style="position: relative;">
-      <img src="{{.Release|coverSmall}}" class="release-cover-small" data-play="">
+  <div class="parent3">
+    <div class="middle">
+      <a data-playlist="add-ref" data-ref="{{.Release|ref}}"><img src="{{.Release|coverSmall}}" class="release-cover-small"></a>
     </div>
-    <div style="text-align: center; padding: 5px;">
+    <div class="middle">
       <a data-link="{{.Artist|link}}">{{ .Artist.Name }}</a>
       <span class="release-small-year">{{ .Release.Date.Year }}</span>
     </div>
   </div>
-  <div style="float: left; min-width: 250px;">
+  <div>
     <h2>Tracks</h2>
-    <table>
+    <div>
       {{ range .Tracks }}
-      <tr>
-	<td class="track-num">{{ .TrackNum }}.</td>
-	<td class="track-title">
-	  <a data-track="{{.TrackNum}}"
-	     data-artist="{{.Artist}}"
-	     data-release="{{.Release}}"
-	     data-title="{{.Title}}"
-	     data-cover="{{$.Release|coverSmall}}"
-	     data-url="{{.|link}}">
-	    {{ .Title }}
+      <div class="parent">
+	<div class="track-num">
+	  {{ .TrackNum }}.
+	</div>
+	<div class="left" style="cursor: pointer;">
+	  <div class="parent2">
+	    <div class="track-title">
+	      <a data-playlist="append-ref"
+		 data-ref="{{.|ref}}"
+		 data-play="now"
+		 data-creator="{{.Artist}}"
+		 data-album="{{.Release}}"
+		 data-title="{{.Title}}"
+		 data-image="{{.|coverSmall}}"
+		 data-url="{{.|link}}">
+		{{ .Title }}
+	      </a>
+	    </div>
+	    <div class="track-artist">
+	      {{ .Release }}
+	    </div>
+	  </div>
+	</div>
+	<div class="separator"></div>
+	<div class="right">
+	  <a data-playlist="append-ref" data-ref="{{.|ref}}">
+	    <img src="/static/playlist_add-white-24dp.svg">
 	  </a>
-	</td>
-      </tr>
-      <tr>
-	<td></td>
-	<td class="track-artist">{{ .Artist }}</td>
-      </tr>
+	</div>
+      </div>
       {{ end }}
-    </table>
+    </div>
   </div>
   <div style="clear: both; padding-top: 5px;"/>
   {{ if .Similar }}

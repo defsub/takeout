@@ -17,31 +17,88 @@
   <div style="clear: both;"/>
   {{ if .Popular }}
   <div>
-    <h2>Popular Tracks</h2>
-    <table>
+    <div class="parent">
+      <div class="left">
+	<a class="nodecor" data-link="{{.Artist|popular}}"><h2>Popular Tracks</h2></a>
+      </div>
+      <div class="right">
+	<a data-link="{{.Artist|popular}}"><img src="/static/navigate_next-white-24dp.svg"/></a>
+      </div>
+    </div>
+    <div>
       {{ range .Popular }}
-      <tr style="cursor: pointer;">
-	<td></td>
-	<td class="track-title">
-	  <a data-track="{{.TrackNum}}"
-	     data-artist="{{.Artist}}"
-	     data-release="{{.Release}}"
-	     data-title="{{.Title}}"
-	     data-cover="{{.|coverSmall}}"
-	     data-url="{{.|link}}">
-	    {{ .Title }}
+      <div class="parent">
+	<div class="left" style="cursor: pointer;">
+	  <div class="parent2">
+	    <div class="track-title">
+	      <a data-playlist="add-ref"
+		 data-ref="{{.|ref}}"
+		 data-play="now"
+		 data-creator="{{.Artist}}"
+		 data-album="{{.Release}}"
+		 data-title="{{.Title}}"
+		 data-image="{{.|coverSmall}}"
+		 data-url="{{.|link}}">
+		{{ .Title }}
+	      </a>
+	    </div>
+	    <div class="track-artist">
+	      {{ .Release }}
+	    </div>
+	  </div>
+	</div>
+	<div class="right">
+	  <a data-playlist="append-ref" data-ref="{{.|ref}}">
+	    <img src="/static/playlist_add-white-24dp.svg">
 	  </a>
-	</td>
-      </tr>
-      <tr style="cursor: pointer;">
-	<td></td>
-	<td class="track-artist">{{ .Release }}</td>
-      </tr>
+	</div>
+      </div>
       {{ end }}
-    </table>
+    </div>
   </div>
   {{ end }}
-  <div style="clear: both;"/>
+  {{ if .Singles }}
+  <div>
+    <div class="parent">
+      <div class="left">
+	<a class="nodecor" data-link="{{.Artist|singles}}"><h2>Singles</h2></a>
+      </div>
+      <div class="right">
+	<a data-link="{{.Artist|singles}}"><img src="/static/navigate_next-white-24dp.svg"/></a>
+      </div>
+    </div>
+    <div>
+      {{ range .Singles }}
+      <div class="parent">
+	<div class="left" style="cursor: pointer;">
+	  <div class="parent2">
+	    <div class="track-title">
+	      <a data-playlist="add-ref"
+		 data-ref="{{.|ref}}"
+		 data-play="now"
+		 data-creator="{{.Artist}}"
+		 data-album="{{.Release}}"
+		 data-title="{{.Title}}"
+		 data-image="{{.|coverSmall}}"
+		 data-url="{{.|link}}">
+		{{ .Title }}
+	      </a>
+	    </div>
+	    <div class="track-artist">
+	      {{ .Release }}
+	    </div>
+	  </div>
+	</div>
+	<div class="right">
+	  <a data-playlist="append-ref" data-ref="{{.|ref}}">
+	    <img src="/static/playlist_add-white-24dp.svg">
+	  </a>
+	</div>
+      </div>
+      {{ end }}
+    </div>
+  </div>
+  {{ end }}
   {{ if .Similar }}
   <div>
     <h2>Similar Artists</h2>

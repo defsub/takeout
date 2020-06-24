@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type MusicBucket struct {
@@ -63,7 +64,8 @@ type AuthDB struct {
 }
 
 type AuthConfig struct {
-	DB AuthDB
+	DB     AuthDB
+	MaxAge time.Duration
 }
 
 type Config struct {
@@ -102,6 +104,7 @@ func (mc *MusicConfig) readMaps() {
 }
 
 func configDefaults() {
+	viper.SetDefault("Auth.MaxAge", "24h")
 	viper.SetDefault("Auth.DB.Driver", "sqlite3")
 	viper.SetDefault("Auth.DB.Source", "auth.db")
 	viper.SetDefault("Auth.DB.LogMode", "false")

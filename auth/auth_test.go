@@ -94,10 +94,7 @@ func TestLogout(t *testing.T) {
 		t.Errorf("cookie should be good")
 	}
 
-	err = a.Logout(cookie)
-	if err != nil {
-		t.Errorf("Logout %s\n", err)
-	}
+	a.Logout(cookie)
 
 	if a.Valid(cookie) == true {
 		t.Errorf("cookie should fail")

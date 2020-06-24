@@ -19,6 +19,7 @@ package music
 
 import (
 	"errors"
+	"github.com/defsub/takeout/auth"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"math/rand"
@@ -32,7 +33,7 @@ func (m *Music) openDB() (err error) {
 		return
 	}
 	m.db.LogMode(m.config.Music.DB.LogMode)
-	m.db.AutoMigrate(&Artist{}, &ArtistTag{}, &Popular{}, &Similar{}, &Release{}, &Track{})
+	m.db.AutoMigrate(&Artist{}, &ArtistTag{}, &Popular{}, &Similar{}, &Release{}, &Track{}, &UserPlaylist{})
 	return
 }
 
@@ -102,6 +103,7 @@ func (m *Music) trackArtistNames() []string {
 }
 
 func orderBy(c Criteria, db *gorm.DB) *gorm.DB {
+	// TODO order singles by ??
 	if c.Popular {
 		return db.Order("popular.rank")
 	} else {
@@ -419,6 +421,14 @@ func (m *Music) lookupArtist(id uint) (Artist, error) {
 	return artist, nil
 }
 
+func (m *Music) lookupTrack(id uint) (Track, error) {
+	var track Track
+	if m.db.First(&track, id).RecordNotFound() {
+		return Track{}, errors.New("track not found")
+	}
+	return track, nil
+}
+
 func (m *Music) search(query string) ([]Artist, []Release, []Track) {
 	var artists []Artist
 	var releases []Release
@@ -439,6 +449,18 @@ func (m *Music) search(query string) ([]Artist, []Release, []Track) {
 	m.db.Where("title like ?", query).Order("title").Limit(limit).Find(&tracks)
 
 	return artists, releases, tracks
+}
+
+func (m *Music) lookupPlaylist(user *auth.User) *UserPlaylist {
+	up := &UserPlaylist{User: user.Name}
+	if m.db.Find(up, up).RecordNotFound() {
+		return nil
+	}
+	return up
+}
+
+func (m *Music) updatePlaylist(up* UserPlaylist) error {
+	return m.db.Save(up).Error
 }
 
 func (m *Music) createArtist(a *Artist) (err error) {
@@ -466,7 +488,7 @@ func (m *Music) createArtistTag(t *ArtistTag) (err error) {
 	return
 }
 
-func (m *Music) createPlaylist(p *Playlist) (err error) {
-	err = m.db.Create(p).Error
+func (m *Music) createPlaylist(up *UserPlaylist) (err error) {
+	err = m.db.Create(up).Error
 	return
 }
