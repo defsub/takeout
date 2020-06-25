@@ -91,10 +91,13 @@ Takeout.music = (function() {
 	let i = 0;
 	playlist.forEach(t => {
 	    html = html.concat('<div class="parent">',
+			       '<div>',
+			       '<img class="np-cover" src="', t["image"], '">',
+			       '</div>',
 			       '<div class="left">',
 			       '<div class="parent2">',
 			       '<div class="track-title">', t["title"], '</div>',
-			       '<div class="track-artist">', t["creator"], '</div>',
+			       '<div class="track-artist">', t["creator"] + ' ~ ' + t['album'], '</div>',
 			       '</div>',
 			       '</div>',
 			       '<div class="separator"></div>',
