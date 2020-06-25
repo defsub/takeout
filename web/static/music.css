@@ -37,6 +37,7 @@ h3 {
     opacity: 0.5;
     text-decoration: none;
     cursor: pointer;
+    padding-left: 1em;
 }
 
 .circle {
@@ -204,28 +205,9 @@ body {
     align-items: center;
 }
 
-.border {
-    border: 1px solid white;
-}
-
-.dropdown-content {
-    display: none;
-    position: relative;
-    min-width: 160px;
-    z-index: 1;
-}
-
-.dropdown-content a {
-    padding: 5px 5px;
-    text-decoration: none;
-    display: block;
-}
-
-.dropdown {
-    position: relative;
-    display: inline-block;
-}
-
-.dropdown:hover .dropdown-content {
-    display: block;
+.parent4 {
+    display: flex;
+    overflow: hidden;
+    align-items: center;
+    justify-content: space-between;
 }

@@ -39,7 +39,7 @@ Takeout.music = (function() {
 
     const playNext = function() {
 	playNow(nextTrack());
-	updatePlaylist();
+	remove(0);
     };
 
     const playNow = function(track) {
@@ -86,12 +86,25 @@ Takeout.music = (function() {
 
     const updatePlaylist = function() {
 	e = document.getElementById("playlist");
-	e.innerHTML = "";
+
+	let html = '<a onclick="playNext();"><h2>Playlist</h2></a>';
+	let i = 0;
 	playlist.forEach(t => {
-	    let item = document.createElement("div");
-	    item.append(t["title"]);
-	    e.append(item);
+	    html = html.concat('<div class="parent">',
+			       '<div class="left">',
+			       '<div class="parent2">',
+			       '<div class="track-title">', t["title"], '</div>',
+			       '<div class="track-artist">', t["creator"], '</div>',
+			       '</div>',
+			       '</div>',
+			       '<div class="separator"></div>',
+			       '<div class="right">',
+			       '<img class="np-control" src="/static/clear-white-24dp.svg" onclick="remove('+i+');">',
+			       '</div>',
+			       '</div>');
+	    i++;
 	});
+	e.innerHTML = html;
     };
 
     const updateControls = function() {
@@ -168,6 +181,15 @@ Takeout.music = (function() {
 	});
     };
 
+    const remove = function(index) {
+	let body = [
+	    { op: "remove", path: "/playlist/track/" + index }
+	];
+	doPatch(body, function() {
+	    updatePlaylist();
+	});
+    };
+
     const prependRef = function(ref) {
 	addRef(ref, false, "0");
     };
@@ -191,8 +213,17 @@ Takeout.music = (function() {
 	    value: { "$ref": ref }
 	});
 
-	console.log(JSON.stringify(body));
+	doPatch(body, function() {
+	    if (clear) {
+		playNext();
+	    } else {
+		updatePlaylist();
+	    }
+	});
+    };
 
+    const doPatch = function(body, cb) {
+	console.log(JSON.stringify(body));
 	fetch("/api/playlist", {
 	    method: "PATCH",
 	    body: JSON.stringify(body),
@@ -202,13 +233,9 @@ Takeout.music = (function() {
 	    then(response => response.json()).
 	    then(data => {
 		addTracks(data.playlist);
-		if (clear) {
-		    playNext();
-		} else {
-		    updatePlaylist();
-		}
+		cb();
 	    });
-    };
+    }
 
     const checkLinks = function() {
 	const refs = document.querySelectorAll("[data-playlist]");
@@ -324,10 +351,12 @@ Takeout.music = (function() {
 	};
     };
 
+
     const toggle = function() {
 	if (document.getElementById("playlist").style.display == "none") {
 	    document.getElementById("main").style.display = "none";
 	    document.getElementById("playlist").style.display = "block";
+	    refreshPlaylist();
 	} else {
 	    document.getElementById("playlist").style.display = "none";
 	    document.getElementById("main").style.display = "block";
@@ -337,6 +366,7 @@ Takeout.music = (function() {
     return {
 	init: init,
 	toggle: toggle,
+	remove: remove,
 	playNext: playNext
     };
 })();
@@ -350,5 +380,10 @@ function toggle() {
 
 function playNext() {
     Takeout.music.playNext();
+    return false;
+}
+
+function remove(i) {
+    Takeout.music.remove(i);
     return false;
 }

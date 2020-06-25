@@ -8,19 +8,20 @@
   </head>
   <body>
     <div id="top">
-      <table class="full-width">
-	<tr>
-	  <td style="width: 100px;">
-	    <img src="/static/menu-white-24dp.svg">
-	  </td>
-	  <td><a data-link="{{home}}" class="takeout">Takeout</a></td>
-	  <td style="width: 100px;">
-	    <form id="f">
-	      <input id="q" type="text" placeholder="Search...">
-	    </form>
-	  </td>
-	</tr>
-      </table>
+      <div class="parent4">
+	<div class="parent">
+	  <div>
+	    <img class="np-control" onclick="toggle();" src="/static/list-white-36dp.svg">
+	  </div>
+	  <div>
+	    <a data-link="{{home}}" class="takeout">Takeout</a>
+	  </div>
+	</div>
+	<div>
+	  <form id="f">
+	    <input id="q" type="text" placeholder="Search...">
+	  </form>
+	</div>
     </div>
     <div id="main">
       Loading...
