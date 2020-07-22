@@ -224,6 +224,7 @@ func (m *Music) trackRelease(t *Track) *Release {
 // Beatles/The Beatles in Mono. These each have media with titles that
 // themselves were previous releases so check them too.
 func (m *Music) trackFirstReleaseDate(t *Track) time.Time {
+	result := time.Time{}
 	var releases []Release
 	names := []string{t.Release}
 	if t.MediaTitle != "" {
@@ -235,7 +236,17 @@ func (m *Music) trackFirstReleaseDate(t *Track) time.Time {
 		Having("date = min(date)").
 		Group("name").
 		Order("date").Find(&releases)
-	return releases[0].Date
+	if len(releases) > 0 {
+		result = releases[0].Date
+	} else {
+		// could be disambiguation like "Weezer (Blue Album)" so just
+		// use release date for now
+		r, err := m.assignedRelease(t)
+		if err == nil {
+			result = r.Date
+		}
+	}
+	return result
 }
 
 // At this point a release couldn't be found easily. Like Weezer has
