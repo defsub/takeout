@@ -63,4 +63,10 @@
     {{ end }}
   </div>
   {{ end }}
+  <div style="clear: both; padding-top: 5px;"/>
+  <h3>External Links</h3>
+  MusicBrainz:
+  <a target="_blank" href="https://musicbrainz.org/artist/{{ .Artist.ARID }}">Artist</a>,
+  <a target="_blank" href="https://musicbrainz.org/release-group/{{ .Release.RGID }}">Release Group</a>,
+  <a target="_blank" href="https://musicbrainz.org/release/{{ .Release.REID }}">Release</a>
 </div>

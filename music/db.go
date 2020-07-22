@@ -277,7 +277,7 @@ func (m *Music) artistSingleTracks(a Artist) []Track {
 	m.db.Where("tracks.artist = ?", a.Name).
 		Joins("inner join releases on tracks.artist = releases.artist" +
 		" and tracks.title = releases.name and releases.type = 'Single'").
-		Order("tracks.artist, tracks.release, tracks.date, tracks.disc_num, tracks.track_num").
+		Order("releases.date").
 		Group("tracks.artist, tracks.release, tracks.title").
 		Find(&tracks)
 	return tracks

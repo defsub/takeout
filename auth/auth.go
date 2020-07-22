@@ -142,7 +142,6 @@ func (a *Auth) Valid(cookie http.Cookie) bool {
 		return false
 	}
 	now := time.Now()
-	fmt.Printf("valid %s vs %s\n", now, session.Expires)
 	if now.After(session.Expires) {
 		return false
 	}

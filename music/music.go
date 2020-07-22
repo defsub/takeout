@@ -568,9 +568,6 @@ func (m *Music) SyncIndex() {
 			// skipping!
 			continue
 		}
-		if a.Name != "The Beatles" {
-			continue
-		}
 		index, _ := m.artistIndex(&a)
 		for _, idx := range index {
 			s.Index(idx)

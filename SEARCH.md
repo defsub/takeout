@@ -42,8 +42,7 @@ Tracks by the artist Mogwai:
 
 	artist:mogwai
 
-Tracks with Ringo on lead vocals by The Beatles release between after 1963 and
-before 1970:
+Tracks with Ringo on lead vocals by The Beatles released between 1963 and 1970:
 
     +lead_vocals:ringo +artist:beatles +date:>"1963-01-01" +date:<"1969-12-31"
 
@@ -70,6 +69,10 @@ Tracks with flute and violin played by anyone:
 Tracks longer than 15 minutes (60*15=900):
 
 	+length:>900
+
+Tracks produced by Butch Vig:
+
+	producer="bitch vig"
 
 # Bleve
 
