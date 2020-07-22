@@ -1,4 +1,5 @@
 <div>
+  <div class="search-results">Found {{ .Hits }} results</div>
   {{ if .Artists }}
   <div>
     <h2>Artists</h2>
@@ -37,27 +38,47 @@
 
   {{ if .Tracks }}
   <div>
-    <h2>Tracks</h2>
-    <table>
-      {{ range .Tracks }}
-      <tr style="cursor: pointer;">
-	<td></td>
-	<td class="track-title">
-	  <a data-track="{{.TrackNum}}"
-	     data-artist="{{.Artist}}"
-	     data-release="{{.Release}}"
-	     data-title="{{.Title}}"
-	     data-cover="{{.|coverSmall}}">
-	    {{ .Title }}
-	  </a>
-	</td>
-      </tr>
-      <tr style="cursor: pointer;">
-	<td></td>
-	<td class="track-artist">{{ .Artist }} ~ {{ .Release }}</td>
-      </tr>
-      {{ end }}
-    </table>
+    <div class="parent">
+      <div class="left">
+
+	<a class="nodecor" data-playlist="add-ref" data-ref='{{.Query|ref}}'>
+	  <h2>Tracks</h2>
+	</a>
+      </div>
+      <div class="right">
+	<a data-playlist="append-ref" data-ref='{{.Query|ref}}'>
+	  <img src="/static/playlist_add-white-24dp.svg"/>
+	</a>
+      </div>
+    </div>
+    {{ range .Tracks }}
+    <div class="parent">
+      <div class="left" style="cursor: pointer;">
+	<div class="parent2">
+	  <div class="track-title">
+	    <a data-playlist="add-ref"
+	       data-ref="{{.|ref}}"
+	       data-play="now"
+	       data-creator="{{.Artist}}"
+	       data-album="{{.ReleaseTitle}}"
+	       data-title="{{.Title}}"
+	       data-image="{{.|coverSmall}}"
+	       data-url="{{.|link}}">
+	      {{ .Title }}
+	    </a>
+	  </div>
+	  <div class="track-artist">
+	    {{ .Artist }} ~ {{ .ReleaseTitle }}
+	  </div>
+	</div>
+      </div>
+      <div class="right">
+	<a data-playlist="append-ref" data-ref="{{.|ref}}">
+	  <img src="/static/playlist_add-white-24dp.svg">
+	</a>
+      </div>
+    </div>
+    {{ end }}
   </div>
   {{ end }}
 </div>

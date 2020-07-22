@@ -2,17 +2,17 @@
 //
 // This file is part of Takeout.
 //
-// Takeout is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 2 of the License, or
-// (at your option) any later version.
+// Takeout is free software: you can redistribute it and/or modify it under the
+// terms of the GNU Affero General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option)
+// any later version.
 //
-// Takeout is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// Takeout is distributed in the hope that it will be useful, but WITHOUT ANY
+// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+// FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for
+// more details.
 //
-// You should have received a copy of the GNU General Public License
+// You should have received a copy of the GNU Affero General Public License
 // along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
 package music
@@ -55,10 +55,8 @@ type SearchView struct {
 	Artists  []Artist
 	Releases []Release
 	Tracks   []Track
-}
-
-type PlayView struct {
-	Tracks   []Track
+	Query    string
+	Hits     int
 }
 
 func (m *Music) HomeView() *HomeView {
@@ -78,20 +76,16 @@ func (m *Music) ArtistView(artist Artist) *ArtistView {
 	view := &ArtistView{}
 	view.Artist = artist
 	view.Releases = m.artistReleases(&artist)
-	view.Popular = m.artistPopularTracks(artist.Name, nil)
+	view.Popular = m.artistPopularTracks(artist)
 	n := 5
 	if len(view.Popular) > n {
 		view.Popular = view.Popular[:n]
 	}
-	view.Singles = m.artistSingleTracks(artist.Name, nil)
+	view.Singles = m.artistSingleTracks(artist)
 	if len(view.Singles) > n {
 		view.Singles = view.Singles[:n]
 	}
-
 	view.Similar = m.similarArtists(&artist)
-	if len(view.Similar) > 10 {
-		view.Similar = view.Similar[:10]
-	}
 
 	return view
 }
@@ -99,9 +93,10 @@ func (m *Music) ArtistView(artist Artist) *ArtistView {
 func (m *Music) PopularView(artist Artist) *PopularView {
 	view := &PopularView{}
 	view.Artist = artist
-	view.Popular = m.artistPopularTracks(artist.Name, nil)
-	if len(view.Popular) > 25 {
-		view.Popular = view.Popular[:25]
+	view.Popular = m.artistPopularTracks(artist)
+	limit := m.config.Music.PopularLimit
+	if len(view.Popular) > limit {
+		view.Popular = view.Popular[:limit]
 	}
 	return view
 }
@@ -109,9 +104,10 @@ func (m *Music) PopularView(artist Artist) *PopularView {
 func (m *Music) SinglesView(artist Artist) *SinglesView {
 	view := &SinglesView{}
 	view.Artist = artist
-	view.Singles = m.artistSingleTracks(artist.Name, nil)
-	if len(view.Singles) > 25 {
-		view.Singles = view.Singles[:25]
+	view.Singles = m.artistSingleTracks(artist)
+	limit := m.config.Music.SinglesLimit
+	if len(view.Singles) > limit {
+		view.Singles = view.Singles[:limit]
 	}
 	return view
 }
@@ -127,15 +123,12 @@ func (m *Music) ReleaseView(release Release) *ReleaseView {
 
 func (m *Music) SearchView(query string) *SearchView {
 	view := &SearchView{}
-	artists, releases, tracks := m.search(query)
+	artists, releases, _ := m.search(query)
 	view.Artists = artists
 	view.Releases = releases
-	view.Tracks = tracks
-	return view
-}
-
-func (m *Music) PlayView(tracks []Track) *PlayView {
-	view := &PlayView{}
-	view.Tracks = tracks
+	// view.Tracks = tracks
+	view.Query = query
+	view.Tracks = m.Search(query)
+	view.Hits = len(view.Artists) + len(view.Releases) + len(view.Tracks)
 	return view
 }

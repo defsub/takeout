@@ -2,17 +2,17 @@
 //
 // This file is part of Takeout.
 //
-// Takeout is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 2 of the License, or
-// (at your option) any later version.
+// Takeout is free software: you can redistribute it and/or modify it under the
+// terms of the GNU Affero General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option)
+// any later version.
 //
-// Takeout is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// Takeout is distributed in the hope that it will be useful, but WITHOUT ANY
+// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+// FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for
+// more details.
 //
-// You should have received a copy of the GNU General Public License
+// You should have received a copy of the GNU Affero General Public License
 // along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
 package config
@@ -35,6 +35,7 @@ type MusicBucket struct {
 	BucketName      string
 	ObjectPrefix    string
 	UseSSL          bool
+	URLExpiration   time.Duration
 }
 
 type MusicDB struct {
@@ -44,12 +45,19 @@ type MusicDB struct {
 }
 
 type MusicConfig struct {
-	Bucket      MusicBucket
-	DB          MusicDB
-	ArtistFile  string
-	ReleaseFile string
-	artistMap   map[string]string
-	releaseMap  map[string]string
+	Bucket               MusicBucket
+	DB                   MusicDB
+	ArtistFile           string
+	ReleaseFile          string
+	artistMap            map[string]string
+	Recent               time.Duration
+	RecentLimit          int
+	SearchLimit          int
+	PopularLimit         int
+	SinglesLimit         int
+	SimilarArtistsLimit  int
+	SimilarReleases      time.Duration
+	SimilarReleasesLimit int
 }
 
 type LastFMAPIConfig struct {
@@ -68,20 +76,20 @@ type AuthConfig struct {
 	MaxAge time.Duration
 }
 
+type SearchConfig struct {
+	BlevePath string
+}
+
 type Config struct {
 	Auth        AuthConfig
 	Music       MusicConfig
 	LastFM      LastFMAPIConfig
 	BindAddress string
+	Search      SearchConfig
 }
 
 func (mc *MusicConfig) UserArtistID(name string) (string, bool) {
 	mbid, ok := mc.artistMap[name]
-	return mbid, ok
-}
-
-func (mc *MusicConfig) UserReleaseID(name string) (string, bool) {
-	mbid, ok := mc.releaseMap[name]
 	return mbid, ok
 }
 
@@ -98,9 +106,6 @@ func (mc *MusicConfig) readMaps() {
 	if mc.ArtistFile != "" {
 		readJsonStringMap(mc.ArtistFile, &mc.artistMap)
 	}
-	if mc.ReleaseFile != "" {
-		readJsonStringMap(mc.ReleaseFile, &mc.releaseMap)
-	}
 }
 
 func configDefaults() {
@@ -109,7 +114,18 @@ func configDefaults() {
 	viper.SetDefault("Auth.DB.Source", "auth.db")
 	viper.SetDefault("Auth.DB.LogMode", "false")
 
+	viper.SetDefault("Music.Recent", "8760h") // 1 year
+	viper.SetDefault("Music.RecentLimit", "50")
+	viper.SetDefault("Music.SearchLimit", "50")
+	viper.SetDefault("Music.PopularLimit", "50")
+	viper.SetDefault("Music.SinglesLimit", "50")
+	viper.SetDefault("Music.SimilarArtistsLimit", "10")
+	viper.SetDefault("Music.SimilarReleases", "8760h") // +/- 1 year
+	viper.SetDefault("Music.SimilarReleasesLimit", "10")
+
 	viper.SetDefault("Music.Bucket.UseSSL", "true")
+	viper.SetDefault("Music.Bucket.URLExpiration", "72h")
+
 	viper.SetDefault("Music.DB.Driver", "sqlite3")
 	viper.SetDefault("Music.DB.Source", "music.db")
 	viper.SetDefault("Music.DB.LogMode", "false")
@@ -118,6 +134,8 @@ func configDefaults() {
 	viper.SetDefault("LastFM.Secret", "8f43410e8e81c33d4542738ee84dc39b")
 
 	viper.SetDefault("BindAddress", "127.0.0.1:3000")
+
+	viper.SetDefault("Search.BlevePath", ".")
 }
 
 func readConfig() (*Config, error) {

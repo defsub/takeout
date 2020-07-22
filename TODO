@@ -1,0 +1,27 @@
+MusicBrainz:
+* Prefer physical media over digital media
+** Or prefer releases with media that have titles
+* Replace remaining usage of gomusicbrainz
+
+Search:
+* Reindexing - remove or update index?
+* Resulting ordering other than Bleve default?
+* Index original date of track
+
+Sync:
+* Add command line options
+
+Music:
+* Artist browsing
+* Artist images
+* Full screen now playing view
+
+Playlist:
+* Save named playists?
+
+General:
+* Add logging instead of fmt.Printf
+
+Much later:
+* Movies
+* Photos

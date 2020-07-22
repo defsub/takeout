@@ -3,12 +3,43 @@
     <title>Takeout</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <style>
+      * {
+	  background-color: #222;
+	  color: #e6e6e6;
+	  border-color: #a6a6a6;
+      }
+
+      .container {
+	  display: flex;
+	  flex-direction: column;
+	  justify-content: center;
+	  align-items: center;
+	  height: 300px;
+      }
+      .box {
+	  width: 300px;
+	  margin: 5px;
+	  text-align: center;
+      }
+    </style>
   </head>
   <body>
     <form method="post" action="/login">
-      user: <input type="text" name="user">
-      pass: <input type="password" name="pass">
-      <input type="submit">
+      <div class="container">
+	<div class="box">
+	  <h2>Takeout Login</h2>
+	</div>
+	<div class="box">
+	  <input type="text" name="user" placeholder="Username..." size="32" required>
+	</div>
+	<div class="box">
+	  <input type="password" name="pass" placeholder="Password..." size="32" required>
+	</div>
+	<div class="box">
+	  <button type="submit">Login</button>
+	</div>
+      </div>
     </form>
   </body>
 </html>

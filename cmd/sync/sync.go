@@ -35,8 +35,17 @@ func main() {
 	defer m.Close()
 	m.SyncBucketTracks()
 	m.SyncArtists()
-	m.SyncReleases()
+	err = m.SyncReleases()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	m.FixTrackReleases()
+	m.AssignTrackReleases()
+	err = m.FixTrackReleaseTitles()
+	if err != nil {
+		log.Fatalln(err)
+	}
 	m.SyncPopular()
 	m.SyncSimilar()
-	m.FixTrackReleases()
+	m.SyncIndex()
 }

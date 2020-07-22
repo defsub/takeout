@@ -13,54 +13,56 @@
 	  <div>
 	    <img class="np-control" onclick="toggle();" src="/static/list-white-36dp.svg">
 	  </div>
-	  <div>
-	    <a data-link="{{home}}" class="takeout">Takeout</a>
-	  </div>
 	</div>
 	<div>
+	  <a data-link="{{home}}" class="takeout">Takeout</a>
+	</div>
+      </div>
+      <div style="display: flex; justify-content: center;">
+	<div>
 	  <form id="f">
-	    <input id="q" type="text" placeholder="Search...">
+	    <input class="search" id="q" type="text" placeholder="Search...">
 	  </form>
 	</div>
-    </div>
-    <div id="main">
-      Loading...
-    </div>
-    <div id="playlist" style="display: none;">
-    </div>
-    <p style="clear: both;"/>
-    <div id="playing" style="display: none;">
-      <audio id="audio">
-	<source id="audio-source" src=""></source>
-      </audio>
-      <div class="footer" style="display: block;">
-	<table class="full-width">
-	  <tr>
-	    <td class="np-cover" onclick="toggle();">
-	      <img class="mini-cover" name="np-cover"/>
-	    </td>
-	    <td>
-	      <div class="np-track" onclick="toggle();">
-		<div class="np-title" name="np-title"></div>
-		<div class="np-artist" name="np-artist"></div>
-	      </div>
-	    </td>
-	    <td class="np-control">
-	      <img id="np-playpause" class="np-control" src="">
-	    </td>
-	    <td class="np-control">
-	      <img id="np-next" class="np-control" src="">
-	    </td>
-	  </tr>
-	</table>
-	<table class="full-width">
-	  <tr>
-	    <td>
-	      <progress id="np-progress" style="height: 8px;" class="full-width"></progress>
-	    </td>
-	  </tr>
-	</table>
       </div>
-    </div>
+      <div id="main">
+	Loading...
+      </div>
+      <div id="playlist" style="display: none;">
+      </div>
+      <p style="clear: both;"/>
+      <div id="playing" style="display: none;">
+	<audio id="audio">
+	  <source id="audio-source" src=""></source>
+	</audio>
+	<div class="footer" style="display: block;">
+	  <table class="full-width">
+	    <tr>
+	      <td class="np-cover" onclick="toggle();">
+		<img class="mini-cover" name="np-cover"/>
+	      </td>
+	      <td>
+		<div class="np-track" onclick="toggle();">
+		  <div class="np-title" name="np-title"></div>
+		  <div class="np-artist" name="np-artist"></div>
+		</div>
+	      </td>
+	      <td class="np-control">
+		<img id="np-playpause" class="np-control" src="">
+	      </td>
+	      <td class="np-control">
+		<img id="np-next" class="np-control" src="">
+	      </td>
+	    </tr>
+	  </table>
+	  <table class="full-width">
+	    <tr>
+	      <td>
+		<progress id="np-progress" style="height: 8px;" class="full-width"></progress>
+	      </td>
+	    </tr>
+	  </table>
+	</div>
+      </div>
   </body>
 </html>

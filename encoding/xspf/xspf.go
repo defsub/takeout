@@ -2,17 +2,17 @@
 //
 // This file is part of Takeout.
 //
-// Takeout is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 2 of the License, or
-// (at your option) any later version.
+// Takeout is free software: you can redistribute it and/or modify it under the
+// terms of the GNU Affero General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option)
+// any later version.
 //
-// Takeout is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// Takeout is distributed in the hope that it will be useful, but WITHOUT ANY
+// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+// FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for
+// more details.
 //
-// You should have received a copy of the GNU General Public License
+// You should have received a copy of the GNU Affero General Public License
 // along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
 package xspf
@@ -39,7 +39,7 @@ func (tag *StringTag) MarshalJSON() ([]byte, error) {
 }
 
 type IntTag struct {
-	Value uint `xml:",chardata"`
+	Value int `xml:",chardata"`
 }
 
 func (tag *IntTag) MarshalJSON() ([]byte, error) {
@@ -139,7 +139,7 @@ func encode(e Encoder, track interface{}) error {
 				case "title":
 					trackTag.Title = StringTag{valueField.String()}
 				case "tracknum":
-					trackTag.TrackNum = IntTag{uint(valueField.Uint())}
+					trackTag.TrackNum = IntTag{int(valueField.Int())}
 				case "location":
 					trackTag.Location = StringTag{valueField.Index(0).String()}
 				}

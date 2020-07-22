@@ -2,17 +2,17 @@
 //
 // This file is part of Takeout.
 //
-// Takeout is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 2 of the License, or
-// (at your option) any later version.
+// Takeout is free software: you can redistribute it and/or modify it under the
+// terms of the GNU Affero General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option)
+// any later version.
 //
-// Takeout is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// Takeout is distributed in the hope that it will be useful, but WITHOUT ANY
+// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+// FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for
+// more details.
 //
-// You should have received a copy of the GNU General Public License
+// You should have received a copy of the GNU Affero General Public License
 // along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
 package auth
@@ -116,24 +116,33 @@ func (a *Auth) Login(email, pass string) (http.Cookie, error) {
 	return a.newCookie(session), nil
 }
 
+func (a *Auth) Expire(cookie *http.Cookie) {
+	cookie.MaxAge = 0
+	cookie.Expires = time.Now().Add(-24 * time.Hour)
+}
+
 func (a *Auth) newCookie(session *Session) http.Cookie {
 	return http.Cookie{
 		Name: CookieName,
 		Value: session.Cookie,
 		MaxAge: session.maxAge(),
+		Path: "/",
 		Secure: true,
 		HttpOnly: true}
 }
 
 func (a *Auth) Valid(cookie http.Cookie) bool {
 	if cookie.Name != CookieName {
+		fmt.Printf("bad name %s\n", cookie.Name)
 		return false
 	}
 	session := a.findSession(cookie)
 	if session == nil {
+		fmt.Printf("session not found %+v\n", cookie)
 		return false
 	}
 	now := time.Now()
+	fmt.Printf("valid %s vs %s\n", now, session.Expires)
 	if now.After(session.Expires) {
 		return false
 	}
@@ -212,5 +221,5 @@ func (a *Auth) maxAge() time.Duration {
 }
 
 func (s *Session) maxAge() int {
-	return int(s.Expires.Sub(time.Now()))
+	return int(s.Expires.Sub(time.Now()).Seconds())
 }

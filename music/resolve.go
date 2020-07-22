@@ -2,17 +2,17 @@
 //
 // This file is part of Takeout.
 //
-// Takeout is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 2 of the License, or
-// (at your option) any later version.
+// Takeout is free software: you can redistribute it and/or modify it under the
+// terms of the GNU Affero General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option)
+// any later version.
 //
-// Takeout is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// Takeout is distributed in the hope that it will be useful, but WITHOUT ANY
+// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+// FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for
+// more details.
 //
-// You should have received a copy of the GNU General Public License
+// You should have received a copy of the GNU Affero General Public License
 // along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
 package music
@@ -21,16 +21,21 @@ import (
 	"github.com/defsub/takeout/spiff"
 	"regexp"
 	"strconv"
+	"time"
 )
+
+func (m *Music) refreshLocation(entry *spiff.Entry, t *Track) {
+	entry.Location = []string{m.TrackURL(t).String()}
+}
+
 
 func (m *Music) addTrackEntries(tracks []Track, entries []spiff.Entry) []spiff.Entry {
 	for _, t := range tracks {
 		e := spiff.Entry{
 			Creator:    t.Artist,
-			Album:      t.Release,
+			Album:      t.ReleaseTitle,
 			Title:      t.Title,
-			Image:      m.TrackImage(&t).String(),
-			Location:   []string{m.TrackURL(&t).String()},
+			Image:      m.TrackImage(t).String(),
 			Identifier: []string{t.ETag}}
 		entries = append(entries, e)
 	}
@@ -44,16 +49,16 @@ func (m *Music) resolveArtistRef(id, res string, entries []spiff.Entry) ([]spiff
 	if err != nil {
 		return entries, err
 	}
-	artist, err := m.lookupArtist(uint(n))
+	artist, err := m.lookupArtist(n)
 	if err != nil {
 		return entries, err
 	}
 	var tracks []Track
 	switch res {
 	case "singles":
-		tracks = m.artistSingleTracks(artist.Name, nil)
+		tracks = m.artistSingleTracks(artist)
 	case "popular":
-		tracks = m.artistPopularTracks(artist.Name, nil)
+		tracks = m.artistPopularTracks(artist)
 	}
 	entries = m.addTrackEntries(tracks, entries)
 	return entries, nil
@@ -65,7 +70,7 @@ func (m *Music) resolveReleaseRef(id string, entries []spiff.Entry) ([]spiff.Ent
 	if err != nil {
 		return entries, err
 	}
-	release, err := m.lookupRelease(uint(n))
+	release, err := m.lookupRelease(n)
 	if err != nil {
 		return entries, err
 	}
@@ -80,11 +85,18 @@ func (m *Music) resolveTrackRef(id string, entries []spiff.Entry) ([]spiff.Entry
 	if err != nil {
 		return entries, err
 	}
-	t, err := m.lookupTrack(uint(n))
+	t, err := m.lookupTrack(n)
 	if err != nil {
 		return entries, err
 	}
 	entries = m.addTrackEntries([]Track{t}, entries)
+	return entries, nil
+}
+
+// /music/search/{q}
+func (m *Music) resolveSearchRef(q string, entries []spiff.Entry) ([]spiff.Entry, error) {
+	tracks := m.Search(q)
+	entries = m.addTrackEntries(tracks, entries)
 	return entries, nil
 }
 
@@ -94,6 +106,7 @@ func (m *Music) Resolve(plist *spiff.Playlist) (err error) {
 	artistsRegexp := regexp.MustCompile(`/music/artists/([\d]+)/([\w]+)`)
 	releasesRegexp := regexp.MustCompile(`/music/releases/([\d]+)/tracks`)
 	tracksRegexp := regexp.MustCompile(`/music/tracks/([\d]+)`)
+	searchRegexp := regexp.MustCompile(`/music/search/(.*)`)
 
 	for _, e := range plist.Spiff.Entries {
 		if e.Ref == "" {
@@ -129,9 +142,31 @@ func (m *Music) Resolve(plist *spiff.Playlist) (err error) {
 			}
 			continue
 		}
+
+		matches = searchRegexp.FindStringSubmatch(pathRef)
+		if matches != nil {
+			entries, err = m.resolveSearchRef(matches[1], entries)
+			if err != nil {
+				return err
+			}
+			continue
+		}
 	}
 
 	plist.Spiff.Entries = entries
 
+	return m.Refresh(plist)
+}
+
+func (m *Music) Refresh(plist *spiff.Playlist) (err error) {
+	for i := range plist.Spiff.Entries {
+		e := &plist.Spiff.Entries[i]
+		etag := e.Identifier[0]
+		track := m.TrackLookup(etag)
+		if track != nil {
+			m.refreshLocation(e, track)
+		} // else remove
+	}
+	plist.Expires = time.Now().Add(m.config.Music.Bucket.URLExpiration)
 	return nil
 }

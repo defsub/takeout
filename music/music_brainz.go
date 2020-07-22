@@ -2,17 +2,17 @@
 //
 // This file is part of Takeout.
 //
-// Takeout is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 2 of the License, or
-// (at your option) any later version.
+// Takeout is free software: you can redistribute it and/or modify it under the
+// terms of the GNU Affero General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option)
+// any later version.
 //
-// Takeout is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// Takeout is distributed in the hope that it will be useful, but WITHOUT ANY
+// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+// FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for
+// more details.
 //
-// You should have received a copy of the GNU General Public License
+// You should have received a copy of the GNU Affero General Public License
 // along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
 package music
@@ -20,12 +20,10 @@ package music
 import (
 	"fmt"
 	"github.com/defsub/takeout"
+	"github.com/defsub/takeout/client"
 	"github.com/michiwend/gomusicbrainz"
-	"net/http"
-	"net/url"
 	"strings"
 	"time"
-	"encoding/xml"
 )
 
 // MusicBrainz is used for:
@@ -40,24 +38,19 @@ import (
 // * getting the exact MBID for a release
 // * correcting track titles
 
-func sleep() {
-	time.Sleep(1 * time.Second)
-}
-
-func userAgent() string {
-	return takeout.AppName + "/" + takeout.Version + " ( " + takeout.Contact + " ) "
-}
-
 func newMusicBrainzClient() *gomusicbrainz.WS2Client {
-	client, _ := gomusicbrainz.NewWS2Client(
+	mbz, _ := gomusicbrainz.NewWS2Client(
 		"https://musicbrainz.org/ws/2",
 		takeout.AppName, takeout.Version, takeout.Contact)
-	return client
+	return mbz
 }
 
-func (m *Music) SearchArtistId(mbid string) (a *Artist, tags []ArtistTag) {
-	client := newMusicBrainzClient()
-	resp, _ := client.SearchArtist(fmt.Sprintf(`arid:"%s"`, mbid), -1, -1)
+// Obtain artist details using MusicBrainz artist ID.
+//
+// TODO replace with internal client
+func (m *Music) SearchArtistId(arid string) (a *Artist, tags []ArtistTag) {
+	mbz := newMusicBrainzClient()
+	resp, _ := mbz.SearchArtist(fmt.Sprintf(`arid:"%s"`, arid), -1, -1)
 	artists := resp.ResultsWithScore(100)
 	if len(artists) == 0 {
 		return
@@ -73,15 +66,20 @@ func (m *Music) SearchArtistId(mbid string) (a *Artist, tags []ArtistTag) {
 		at := ArtistTag{
 			Artist: a.Name,
 			Tag:    t.Name,
-			Count:  uint(t.Count)}
+			Count:  t.Count}
 		tags = append(tags, at)
 	}
 	return
 }
 
+// Search MusicBrainz for an artist by name. There can be duplicates
+// or unintended matches. For those cases it's best to override using
+// config with the specific MusicBrainz artist ID that is needed.
+//
+// TODO replace with internal client
 func (m *Music) SearchArtist(name string) (a *Artist, tags []ArtistTag) {
-	client := newMusicBrainzClient()
-	sleep()
+	client.RateLimit()
+	mbz := newMusicBrainzClient()
 
 	var query string
 	mbid, ok := m.config.Music.UserArtistID(name)
@@ -91,7 +89,7 @@ func (m *Music) SearchArtist(name string) (a *Artist, tags []ArtistTag) {
 	} else {
 		query = fmt.Sprintf(`artist:"%s"`, name)
 	}
-	resp, _ := client.SearchArtist(query, -1, -1)
+	resp, _ := mbz.SearchArtist(query, -1, -1)
 	score := 100 // change to widen matches below
 	artists := resp.ResultsWithScore(score)
 	if len(artists) == 0 {
@@ -121,60 +119,198 @@ func (m *Music) SearchArtist(name string) (a *Artist, tags []ArtistTag) {
 		at := ArtistTag{
 			Artist: a.Name,
 			Tag:    t.Name,
-			Count:  uint(t.Count)}
+			Count:  t.Count}
 		tags = append(tags, at)
 	}
 	return
 }
 
+type mbzArtist struct {
+	Name           string     `json:"name"`
+	SortName       string     `json:"sort-name"`
+	Disambiguation string     `json:"disambiguation"`
+	Type           string     `json:"type"`
+	Genres         []mbzGenre `json:"genres"`
+	Tags           []mbzTag   `json:"tags"`
+}
 
-func (m *Music) MusicBrainzRelease(a *Artist, mbid string) (*Release, error) {
-	sleep()
-	client := newMusicBrainzClient()
-	fmt.Printf("lookup %s %s\n", a.Name, mbid)
-	r, err := client.LookupRelease(gomusicbrainz.MBID(mbid), "release-groups")
-	if err != nil {
-		return nil, err
+type mbzArtistCredit struct {
+	Name   string    `json:name`
+	Join   string    `json:joinphrase`
+	Artist mbzArtist `json:"artist"`
+}
+
+type mbzWork struct {
+	Title     string        `json:"title"`
+	Relations []mbzRelation `json:"relations"`
+}
+
+type mbzRelation struct {
+	Type       string    `json:"type"`
+	Artist     mbzArtist `json:"artist"`
+	Attributes []string  `json:"attributes"`
+	Work       mbzWork   `json:"work"`
+}
+
+type mbzLabelInfo struct {
+	Label         mbzLabel `json:"label"`
+	CatalogNumber string   `json:"catalog-number"`
+}
+
+type mbzLabel struct {
+	Name     string `json:"name"`
+	SortName string `json:"sort-name"`
+}
+
+type mbzMedia struct {
+	Title      string     `json:"title"`
+	Format     string     `json:"format"`
+	Position   int        `json:"position"`
+	TrackCount int        `json:"track-count"`
+	Tracks     []mbzTrack `json:"tracks"`
+}
+
+func (m mbzMedia) video() bool {
+	switch m.Format {
+	case "DVD-Video", "Blu-ray", "HD-DVD", "VCD", "SVCD":
+		return true
 	}
-	release := &Release{
-		Artist: a.Name,
-		Name:   r.Title,
-		Date:   r.Date.Time,
-		REID:   string(r.ID),
-		RGID:   string(r.ReleaseGroup.ID),
-		Type:   r.ReleaseGroup.PrimaryType,
-		Asin:   r.Asin}
-	return release, err
+	return false
 }
 
-type releaseGroupListResult struct {
-	ReleaseGroupList struct {
-		gomusicbrainz.WS2ListResponse
-		ReleaseGroups []struct {
-			*gomusicbrainz.ReleaseGroup
-			Score int `xml:"http://musicbrainz.org/ns/ext#-2.0 score,attr"`
-		} `xml:"release-group"`
-	} `xml:"release-group-list"`
+type mbzRecording struct {
+	ID           string            `json:"id"`
+	Length       int               `json:"length"`
+	Title        string            `json:"title"`
+	Relations    []mbzRelation     `json:"relations"`
+	ArtistCredit []mbzArtistCredit `json:"artist-credit"`
 }
 
-func (m *Music) MusicBrainzReleaseGroups(a *Artist) ([]Release, error) {
+type mbzTrack struct {
+	Title        string            `json:"title"`
+	Position     int               `json:"position"`
+	ArtistCredit []mbzArtistCredit `json:"artist-credit"`
+	Recording    mbzRecording      `json:"recording"`
+}
+
+type mbzReleasesPage struct {
+	Releases []mbzRelease `json:"releases"`
+	Offset   int          `json:"release-offset"`
+	Count    int          `json:"release-count"`
+}
+
+type mbzCoverArtArchive struct {
+	Count    int  `json:"count"`
+	Front    bool `json:"front"`
+	Artwork  bool `json:"artwork"`
+	Back     bool `json:"back"`
+	Darkened bool `json:"darkened"`
+}
+
+type mbzRelease struct {
+	ID              string             `json:"id"`
+	Title           string             `json:"title"`
+	Date            string             `json:"date"`
+	Disambiguation  string             `json:"disambiguation"`
+	Country         string             `json:"country"`
+	Status          string             `json:"status"`
+	Asin            string             `json:"asin"`
+	Relations       []mbzRelation      `json:"relations"`
+	LabelInfo       []mbzLabelInfo     `json:"label-info"`
+	Media           []mbzMedia         `json:"media"`
+	ReleaseGroup    mbzReleaseGroup    `json:"release-group"`
+	CoverArtArchive mbzCoverArtArchive `json:"cover-art-archive"`
+	ArtistCredit    []mbzArtistCredit  `json:"artist-credit"`
+}
+
+func (r mbzRelease) title() string {
+	if r.Disambiguation != "" {
+		return fmt.Sprintf("%s (%s)", r.Title, r.Disambiguation)
+	} else {
+		return r.Title
+	}
+}
+
+func (r mbzRelease) totalTracks() int {
+	count := 0
+	for _, m := range r.Media {
+		if m.video() {
+			continue
+		}
+		count += m.TrackCount
+	}
+	return count
+}
+
+type mbzTag struct {
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+}
+
+type mbzGenre struct {
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+}
+
+type mbzRating struct {
+	Votes int     `json:"votes-count"`
+	Value float32 `json:"value"`
+}
+
+type mbzReleaseGroup struct {
+	ID               string            `json:"id"`
+	Title            string            `json:"title"`
+	Disambiguation   string            `json:"disambiguation"`
+	PrimaryType      string            `json:"primary-type"`
+	Rating           mbzRating         `json:"rating"`
+	FirstReleaseDate string            `json:"first-release-date"`
+	Tags             []mbzTag          `json:"tags"`
+	Genres           []mbzGenre        `json:"genres"`
+	Releases         []mbzRelease      `json:"releases"`
+	ArtistCredit     []mbzArtistCredit `json:"artist-credit"`
+}
+
+func (rg mbzReleaseGroup) firstReleaseDate() time.Time {
+	return parseDate(rg.FirstReleaseDate)
+}
+
+// Get all releases for an artist from MusicBrainz.
+func (m *Music) MusicBrainzArtistReleases(a *Artist) ([]Release, error) {
 	var releases []Release
 	limit, offset := 100, 0
 	for {
-		sleep()
-		result, _ := doArtistReleaseGroups(a.ARID, limit, offset)
-		//fmt.Printf("got %d %d %d\n", offset, result.ReleaseGroupList.Count, result.ReleaseGroupList.Offset)
-		for _, r := range result.ReleaseGroupList.ReleaseGroups {
-			//fmt.Printf("%s %s %s\n", r.ID, r.Title, r.FirstReleaseDate)
+		result, _ := doArtistReleases(a.ARID, limit, offset)
+		for _, r := range result.Releases {
+			disambiguation := r.Disambiguation
+			if disambiguation == "" {
+				disambiguation = r.ReleaseGroup.Disambiguation
+			}
+
+			var media []Media
+			for _, m := range r.Media {
+				media = append(media, Media{
+					REID:       string(r.ID),
+					Name:       m.Title,
+					Position:   m.Position,
+					Format:     m.Format,
+					TrackCount: m.TrackCount})
+			}
+
 			releases = append(releases, Release{
-				Artist: a.Name,
-				Name: r.Title,
-				RGID: string(r.ID),
-				Type: r.PrimaryType,
-				Date: r.FirstReleaseDate.Time})
+				Artist:         a.Name,
+				Name:           r.Title,
+				Disambiguation: disambiguation,
+				REID:           string(r.ID),
+				RGID:           string(r.ReleaseGroup.ID),
+				Type:           r.ReleaseGroup.PrimaryType,
+				Asin:           r.Asin,
+				TrackCount:     r.totalTracks(),
+				FrontCover:     r.CoverArtArchive.Front,
+				Media:          media,
+				Date:           r.ReleaseGroup.firstReleaseDate()})
 		}
-		offset += len(result.ReleaseGroupList.ReleaseGroups)
-		if offset >= result.ReleaseGroupList.Count {
+		offset += len(result.Releases)
+		if offset >= result.Count {
 			break
 		}
 	}
@@ -182,87 +318,41 @@ func (m *Music) MusicBrainzReleaseGroups(a *Artist) ([]Release, error) {
 	return releases, nil
 }
 
-// gomusicbrainz uses search which doesn't return relevant information
-// so this uses browse instead.
-func doArtistReleaseGroups(mbid string, limit int, offset int) (*releaseGroupListResult, error) {
-	url, _ := url.Parse(
-		fmt.Sprintf("http://musicbrainz.org/ws/2/release-group?artist=%s&limit=%d&offset=%d",
-			mbid, limit, offset))
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", url.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", userAgent())
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	var result releaseGroupListResult
-	decoder := xml.NewDecoder(resp.Body)
-	if err = decoder.Decode(&result); err != nil {
-		return nil, err
-	}
-
-	return &result, nil
+func doArtistReleases(arid string, limit int, offset int) (*mbzReleasesPage, error) {
+	var result mbzReleasesPage
+	inc := []string{"release-groups", "media"}
+	url := fmt.Sprintf("https://musicbrainz.org/ws/2/release?fmt=json&artist=%s&inc=%s&limit=%d&offset=%d",
+		arid, strings.Join(inc, "%2B"), limit, offset)
+	client.RateLimit()
+	err := client.GetJson(url, &result)
+	return &result, err
 }
 
-func (m *Music) MusicBrainzReleases(a *Artist, release string) []Release {
-	var releases []Release
-	results := doReleaseSearch(fmt.Sprintf(`arid:"%s" AND release:"%s"`, a.ARID, release))
-	for _, r := range results {
-		releases = append(releases, Release{
-			Artist: a.Name,
-			Name:   r.Title,
-			Date:   r.Date.Time,
-			REID:   string(r.ID),
-			RGID:   string(r.ReleaseGroup.ID),
-			Type:   r.ReleaseGroup.PrimaryType,
-			Asin:   r.Asin})
-	}
-	return releases
+func (m *Music) MusicBrainzReleaseCredits(reid string) (*mbzRelease, error) {
+	inc := []string{"aliases", "artist-credits", "labels",
+		"discids", "recordings", "artist-rels",
+		"release-groups", "genres", "tags", "ratings",
+		"recording-level-rels", "work-rels", "work-level-rels"}
+	url := fmt.Sprintf("https://musicbrainz.org/ws/2/release/%s?fmt=json&inc=%s",
+		reid, strings.Join(inc, "%2B"))
+	var result mbzRelease
+	client.RateLimit()
+	err := client.GetJson(url, &result)
+	return &result, err
 }
 
-func doReleaseSearch(query string) []*gomusicbrainz.Release {
-	var releases []*gomusicbrainz.Release
-	client := newMusicBrainzClient()
-	limit, offset := 100, 0
-	dup := 0
-	ids := make(map[string]string)
-	for {
-		sleep()
-		resp, err := client.SearchRelease(query, limit, offset)
-		if err != nil {
-			fmt.Printf("SearchRelease %s\n", err)
-			continue
-		}
-		//releases = append(releases, resp.Releases...)
-		for _, r := range resp.Releases {
-			mbid := string(r.ID)
-			_, duplicate := ids[mbid]
-			if !duplicate {
-				ids[mbid] = r.Title
-				releases = append(releases, r)
-			} else {
-				//fmt.Printf("dup %d/%d %s %s -> %s\n", i+offset, len(resp.Releases), mbid, r.Title, x)
-				dup = dup + 1
-			}
-		}
-		offset += len(resp.Releases)
-		if offset >= resp.Count {
-			//fmt.Printf("done %d %d %d\n", offset, len(resp.Releases), resp.Count)
-			break
+func (m *Music) MusicBrainzReleaseGroup(rgid string) (*mbzReleaseGroup, error) {
+	inc := []string{"releases", "media", "release-group-rels",
+		"genres", "tags", "ratings"}
+	url := fmt.Sprintf("https://musicbrainz.org/ws/2/release-group/%s?fmt=json&inc=%s",
+		rgid, strings.Join(inc, "%2B"))
+	var result mbzReleaseGroup
+	client.RateLimit()
+	err := client.GetJson(url, &result)
+	for _, r := range result.Releases {
+		if r.Title == "" {
+			r.Title = result.Title
 		}
 	}
-
-	//fmt.Printf("complete %d %d dups=%d\n", offset, len(releases), dup)
-	// for k, v := range ids {
-	// 	if strings.HasPrefix(v, "Babylon") || strings.HasPrefix(v, "Archive") || strings.HasPrefix(v, "Asylum") {
-	// 		fmt.Printf("%s %s\n", k, v)
-	// 	}
-	// }
-
-	return releases
+	return &result, err
 }

@@ -2,17 +2,17 @@
 //
 // This file is part of Takeout.
 //
-// Takeout is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 2 of the License, or
-// (at your option) any later version.
+// Takeout is free software: you can redistribute it and/or modify it under the
+// terms of the GNU Affero General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option)
+// any later version.
 //
-// Takeout is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// Takeout is distributed in the hope that it will be useful, but WITHOUT ANY
+// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+// FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for
+// more details.
 //
-// You should have received a copy of the GNU General Public License
+// You should have received a copy of the GNU Affero General Public License
 // along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
 package music
@@ -27,13 +27,14 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
-	"time"
 )
 
 func (m *Music) bucketConfig() config.MusicBucket {
 	return m.config.Music.Bucket
 }
 
+// Connect to the configured S3 bucket.
+// Tested: Wasabi
 func (m *Music) openBucket() error {
 	bucket := m.bucketConfig()
 	creds := credentials.NewStaticCredentials(
@@ -48,6 +49,7 @@ func (m *Music) openBucket() error {
 	return err
 }
 
+// Asynchronously obtain all tracks from the bucket.
 func (m *Music) SyncFromBucket() (trackCh chan *Track, err error) {
 	trackCh = make(chan *Track)
 
@@ -105,21 +107,50 @@ func matchPath(path string, trackCh chan *Track, doMatch func(t *Track, music ch
 	if matches != nil {
 		var t Track
 		t.Artist = matches[1]
-		t.Release = matchRelease(matches[2])
+		release, date := matchRelease(matches[2])
+		if release != "" && date != "" {
+			t.Release = release
+			t.Date = date
+		} else {
+			t.Release = release
+		}
 		if matchTrack(matches[3], &t) {
 			doMatch(&t, trackCh)
 		}
 	}
 }
 
-var releaseRegexp = regexp.MustCompile(`(.+)\s+\(([\d]+)\)\s*$`)
-
-func matchRelease(release string) string {
+var releaseRegexp = regexp.MustCompile(`(.+?)\s*(\(([\d]+)\))?\s*$`)
+// 1|1|Airlane|Music/Gary Numan/The Pleasure Principle (1998)/01-Airlane.flac
+// 1|1|Airlane|Music/Gary Numan/The Pleasure Principle (2009)/1-01-Airlane.flac
+//
+// The Pleasure Principle
+// 1: The Pleasure Principle
+//
+// The Pleasure Principle (2000)
+// 1: The Pleasure Principle
+// 2: (2000)
+// 3: 2000
+//
+// The Pleasure Principle (Live)
+// 1: The Pleasure Principle (Live)
+//
+// The Pleasure Principle (Live) (2000)
+// 1: The Pleasure Principle (Live)
+// 2: (2000)
+// 3: 2000
+func matchRelease(release string) (string, string) {
+	var name, date string
 	matches := releaseRegexp.FindStringSubmatch(release)
 	if matches != nil {
-		release = matches[1]
+		if len(matches) == 2 {
+			name = matches[1]
+		} else if len(matches) == 4 {
+			name = matches[1]
+			date = matches[3]
+		}
 	}
-	return release
+	return name, date
 }
 
 var trackRegexp = regexp.MustCompile(`(?:([\d]+)-)?([\d]+)-(.*)\.(mp3|flac|ogg|m4a)$`)
@@ -131,8 +162,8 @@ func matchTrack(file string, t *Track) bool {
 	}
 	disc, _ := strconv.Atoi(matches[1])
 	track, _ := strconv.Atoi(matches[2])
-	t.DiscNum = uint(disc)
-	t.TrackNum = uint(track)
+	t.DiscNum = disc
+	t.TrackNum = track
 	t.Title = matches[3]
 	if t.DiscNum == 0 {
 		t.DiscNum = 1
@@ -140,12 +171,12 @@ func matchTrack(file string, t *Track) bool {
 	return true
 }
 
+// Generate a presigned url which expires based on config settings.
 func (m *Music) bucketURL(t *Track) *url.URL {
-	// Generates a presigned url which expires in a day.
 	req, _ := m.s3.GetObjectRequest(&s3.GetObjectInput{
 		Bucket: aws.String(m.config.Music.Bucket.BucketName),
 		Key: aws.String(t.Key)})
-	urlStr, _ := req.Presign(24 * time.Hour)
+	urlStr, _ := req.Presign(m.config.Music.Bucket.URLExpiration)
 	url, _ := url.Parse(urlStr)
 	return url
 }

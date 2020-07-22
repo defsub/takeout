@@ -18,31 +18,51 @@
 package music
 
 import (
-	"fmt"
+	"strconv"
+	"strings"
 	"time"
 )
 
-type DateRange struct {
-	after  time.Time
-	before time.Time
+func split(s string) []string {
+	if len(s) == 0 {
+		// TODO fix this
+		return make([]string, 0)
+	}
+	a := strings.Split(s, ",")
+	for i, _ := range a {
+		a[i] = strings.Trim(a[i], " ")
+	}
+	return a
 }
 
-func NewDateRange(a, b time.Time) *DateRange {
-	return &DateRange{after: a, before: b}
+// Parse a date string to time in format yyyy-mm-dd, yyyy-mm, yyyy.
+func parseDate(date string) (t time.Time) {
+	if date == "" {
+		return t
+	}
+	var err error
+	// TODO is this done with a single call?
+	t, err = time.Parse("2006-1-2", date)
+	if err != nil {
+		t, err = time.Parse("2006-1", date)
+		if err != nil {
+			t, err = time.Parse("2006", date)
+			if err != nil {
+				t = time.Time{}
+			}
+		}
+	}
+	return t
 }
 
-func (d *DateRange) IsZero() bool {
-	return d.after.IsZero() && d.before.IsZero()
+func atoi(a string) int {
+	i, err := strconv.Atoi(a)
+	if err != nil {
+		i = 0
+	}
+	return i
 }
 
-func (d *DateRange) AfterDate() string {
-	return ymd(d.after)
-}
-
-func (d *DateRange) BeforeDate() string {
-	return ymd(d.before)
-}
-
-func ymd(t time.Time) string {
-	return fmt.Sprintf("%04d-%02d-%02d", t.Year(), t.Month(), t.Day())
+func itoa(i int) string {
+	return strconv.Itoa(i)
 }
