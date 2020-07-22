@@ -2,13 +2,15 @@
 
 Takeout is media service that indexes organized media files in S3 buckets using
 MusicBrainz and Last.fm to make media available for streaming using a web
-interface and VLC.
+interface and VLC. Media is browsed using the Takeout server and streamed
+directly from S3 using pre-signed time-based URLs.
 
 ## Features
 
-* Powerful search and playlists using [Bleve](https://blevesearch.com/). See [SEARCH.md](README.md).
+* Powerful search and playlists using [Bleve](https://blevesearch.com/). See [SEARCH.md](SEARCH.md).
 * Metadata from [MusicBrainz](https://musicbrainz.org) and [Last.fm](https://last.fm/)
 * Album covers from the [Cover Art Archive](https://coverartarchive.org/)
+* Media streaming directly from S3 using pre-signed time-based URLs
 * Recently released
 * Recently added
 * Similar releases
@@ -20,16 +22,18 @@ interface and VLC.
 * Web and json views
 * Web playback using HTML5 audio - Chrome, Safari & Firefox tested on desktop & mobile
 * [XSPF ("spiff")](https://xspf.org/) and JSPF playlists
-* Written in Go, using [SQLite3](https://sqlite.org/index.html) and [Bleve](https://blevesearch.com/)
+* Written in [Go](https://golang.org/), using [SQLite3](https://sqlite.org/index.html) and [Bleve](https://blevesearch.com/)
 
 ## Quick Start
 
 * Tag your media with [Picard](https://picard.musicbrainz.org/) (highly recommeded)
-* Put your organized media in a S3 bucket (Wasabi, Minio, AWS)
-* Optionally setup a virtual server (Linode, EC2, Compute Engine)
-* Optionally setup a TLS front-end (Nginx, [Let's Encrypt](https://letsencrypt.org/))
-* Install Go
-* Install Takeout
+* Put your organized media in a S3 bucket ([Wasabi](https://wasabi.com/), [Minio](https://min.io/), [AWS](https://aws.amazon.com/))
+* Optionally setup a virtual server ([Linode](https://www.linode.com/), [EC2](https://aws.amazon.com/), [Compute Engine](https://cloud.google.com/compute))
+* Optionally setup a TLS front-end ([Nginx](http://nginx.org/), [Let's Encrypt](https://letsencrypt.org/))
+* Install [Go](https://golang.org/)
+* Install [Takeout](https://github.com/defsub/takeout/)
+  * Pull the source, binaries are not currently available
 * Create your [takeout.ini](CONFIG.md)
 * Sync your data - go run cmd/sync/sync.go
+  * Databases may need ~100MB and Bleve index ~1GB, depending on media library
 * Run the server - go run cmd/serve/serve.go
