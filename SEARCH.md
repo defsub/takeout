@@ -61,7 +61,7 @@ And even more specific:
 
 80s alternative tracks released as singles:
 
-	+genre:"alternative" +type:single +date:>="1980-01-01" +date:<="1989-01-01"
+	+genre:"alternative" +type:single +date:>="1980-01-01" +date:<="1989-12-31"
 
 Tracks with flute and violin played by anyone:
 
@@ -73,7 +73,5 @@ Tracks longer than 15 minutes (60*15=900):
 
 # Bleve
 
-Please see Bleve documentation for further information on query syntax. Takeout
-is using:
-
-	https://blevesearch.com/docs/Query-String-Query/
+Please see [Bleve](https://blevesearch.com/) documentation for further information on query syntax. Takeout
+is using [Query String](https://blevesearch.com/docs/Query-String-Query/).

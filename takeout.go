@@ -20,6 +20,6 @@ package takeout
 // https://musicbrainz.org/doc/XML_Web_Service/Rate_Limiting#Provide_meaningful_User-Agent_strings
 const (
 	AppName = "Takeout"
-	Version = "0.1"
+	Version = "0.2"
 	Contact = "https://github.com/defsub/takeout"
 )
