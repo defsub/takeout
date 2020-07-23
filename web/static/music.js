@@ -93,8 +93,7 @@ Takeout.music = (function() {
     };
 
     const refreshPlaylist = function() {
-	fetch("/api/playlist", {
-	}).
+	fetch("/api/playlist", {credentials: 'include'}).
 	    then(response => {
 		var j = response.json();
 		console.log(j);
@@ -250,6 +249,7 @@ Takeout.music = (function() {
     const doPatch = function(body, cb) {
 	console.log(JSON.stringify(body));
 	fetch("/api/playlist", {
+	    credentials: 'include',
 	    method: "PATCH",
 	    body: JSON.stringify(body),
 	    headers: {
@@ -319,7 +319,7 @@ Takeout.music = (function() {
 
     const load = function(url, scroll = true) {
 	console.log("load " + url);
-	fetch(url).
+	fetch(url, {credentials: 'include'}).
     	    then(resp => {
     		return resp.text();
     	    }).

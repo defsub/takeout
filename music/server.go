@@ -201,6 +201,7 @@ func (handler *MusicHandler) loginHandler(w http.ResponseWriter, r *http.Request
 		if err == nil {
 			http.SetCookie(w, &cookie)
 			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+			return
 		}
 	}
 
