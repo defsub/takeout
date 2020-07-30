@@ -305,7 +305,7 @@ func (m *Music) artistSingleTracks(a Artist) []Track {
 		Joins("inner join releases on tracks.artist = releases.artist" +
 		" and tracks.title = releases.name and releases.type = 'Single'").
 		Order("releases.date").
-		Group("tracks.artist, tracks.release, tracks.title").
+		Group("tracks.artist, tracks.title").
 		Find(&tracks)
 	return tracks
 }
@@ -316,7 +316,7 @@ func (m *Music) artistPopularTracks(a Artist) []Track {
 		Joins("inner join popular on tracks.artist = popular.artist" +
  		" and tracks.title = popular.title").
 		Order("popular.rank").
-		Group("tracks.artist, tracks.release, tracks.title").
+		Group("tracks.artist, tracks.title").
 		Find(&tracks)
 	return tracks
 }

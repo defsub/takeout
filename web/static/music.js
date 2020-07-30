@@ -20,6 +20,7 @@ var Takeout = Takeout || {};
 Takeout.music = (function() {
     let playlist = [];
     let playing = false;
+    let userPlay = false;
 
     const clearTracks = function() {
 	playlist = [];
@@ -64,7 +65,6 @@ Takeout.music = (function() {
 	    audioSource().setAttribute("src", track['url']);
 	    updateTitle(track);
 	    audioTag().load();
-	    //play();
 	    document.getElementById("playing").style.display = "block";
 	} else {
 	    document.getElementById("playing").style.display = "none";
@@ -185,6 +185,7 @@ Takeout.music = (function() {
 	const audio = audioTag();
 	if (audio.getAttribute("data-ended") == null) {
 	    audio.addEventListener("canplay", function() {
+		console.log("canplay");
 		play();
 	    });
 	    audio.addEventListener("timeupdate", function() {
@@ -300,10 +301,19 @@ Takeout.music = (function() {
 	    });
     }
 
+    const playClick = function() {
+	if (userPlay == false) {
+	    userPlay = true;
+	    play();
+	    pause();
+	}
+    };
+
     const checkLinks = function() {
 	const refs = document.querySelectorAll("[data-playlist]");
 	refs.forEach(e => {
 	    e.onclick = function() {
+		playClick();
 		let cmd = e.getAttribute("data-playlist");
 		let ref = e.getAttribute("data-ref");
 		if (cmd == "add-ref") {
