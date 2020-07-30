@@ -15,19 +15,44 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
-package main
+package log
 
 import (
 	"log"
-
-	"github.com/defsub/takeout/config"
-	"github.com/defsub/takeout/music"
+	"os"
 )
 
-func main() {
-	config, err := config.GetConfig()
+type Logger interface {
+	Fatalf(format string, v ...interface{})
+	Fatalln(v ...interface{})
+	Printf(format string, v ...interface{})
+	Println(v ...interface{})
+}
+
+var logger = defaultLogger()
+
+func defaultLogger() Logger {
+	return log.New(os.Stdout, "", log.LstdFlags)
+}
+
+func CheckError(err error) {
 	if err != nil {
-		log.Fatalln(err)
+		logger.Fatalln(err)
 	}
-	music.Serve(config)
+}
+
+func Fatalf(format string, v ...interface{}) {
+	logger.Fatalf(format, v...)
+}
+
+func Fatalln(v ...interface{}) {
+	logger.Fatalln(v...)
+}
+
+func Printf(format string, v ...interface{}) {
+	logger.Printf(format, v...)
+}
+
+func Println(v ...interface{}) {
+	logger.Println(v...)
 }

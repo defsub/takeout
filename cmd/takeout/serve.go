@@ -15,11 +15,30 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
-package takeout
+package main
 
-// https://musicbrainz.org/doc/XML_Web_Service/Rate_Limiting#Provide_meaningful_User-Agent_strings
-const (
-	AppName = "Takeout"
-	Version = "0.3"
-	Contact = "https://github.com/defsub/takeout"
+import (
+	"github.com/defsub/takeout/music"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
+
+var serveCmd = &cobra.Command{
+	Use:   "serve",
+	Short: "serve music metadata",
+	Long:  `TODO`,
+	Run: func(cmd *cobra.Command, args []string) {
+		serve()
+	},
+}
+
+func serve() {
+	music.Serve(getConfig())
+}
+
+func init() {
+	serveCmd.Flags().StringVarP(&configFile, "config", "c", "takeout.ini", "config file")
+	serveCmd.Flags().String("listen", "127.0.0.1:3000", "Address to listen on")
+	rootCmd.AddCommand(serveCmd)
+	viper.BindPFlag("Listen", serveCmd.Flags().Lookup("listen"))
+}

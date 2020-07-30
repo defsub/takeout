@@ -11,10 +11,8 @@ directly from S3 using pre-signed time-based URLs.
 * Metadata from [MusicBrainz](https://musicbrainz.org) and [Last.fm](https://last.fm/)
 * Album covers from the [Cover Art Archive](https://coverartarchive.org/)
 * Media streaming directly from S3 using pre-signed time-based URLs
-* Recently released
-* Recently added
-* Similar releases
-* Similar artists
+* Recently added and released
+* Similar artists and releases
 * Popular tracks
 * Artist singles
 * User-based access control using cookies and [scrypt](https://pkg.go.dev/golang.org/x/crypto/scrypt?tab=doc)
@@ -31,9 +29,14 @@ directly from S3 using pre-signed time-based URLs.
 * Optionally setup a virtual server ([Linode](https://www.linode.com/), [EC2](https://aws.amazon.com/), [Compute Engine](https://cloud.google.com/compute))
 * Optionally setup a TLS front-end ([Nginx](http://nginx.org/), [Let's Encrypt](https://letsencrypt.org/))
 * Install [Go](https://golang.org/)
-* Install [Takeout](https://github.com/defsub/takeout/)
-  * Pull the source, binaries are not currently available
+* Build [Takeout](https://github.com/defsub/takeout/)
+  * git clone https://github.com/defsub/takeout.git
+  * cd takeout/cmd/takeout
+  * go build
+  * ./takeout
 * Create your [takeout.ini](CONFIG.md)
-* Sync your data - go run cmd/sync/sync.go
-  * Databases may need ~100MB and Bleve index ~1GB, depending on media library
-* Run the server - go run cmd/serve/serve.go
+* Sync your data
+  * ./takeout sync
+* Databases may need ~100MB and Bleve index ~1GB, depending on the media library
+* Run the server
+  * ./takeout serve

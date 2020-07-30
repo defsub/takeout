@@ -64,7 +64,7 @@ Takeout.music = (function() {
 	    audioSource().setAttribute("src", track['url']);
 	    updateTitle(track);
 	    audioTag().load();
-	    play();
+	    //play();
 	    document.getElementById("playing").style.display = "block";
 	} else {
 	    document.getElementById("playing").style.display = "none";
@@ -81,23 +81,23 @@ Takeout.music = (function() {
 	if (clear) {
 	    clearTracks();
 	}
-	spiff.track.forEach(t => {
-	    appendTrack({
-		creator: t.creator,
-		album: t.album,
-		title: t.title,
-		image: t.image,
-		url: t.location[0]
+	if (spiff.track != null) {
+	    spiff.track.forEach(t => {
+		appendTrack({
+		    creator: t.creator,
+		    album: t.album,
+		    title: t.title,
+		    image: t.image,
+		    url: t.location[0]
+		});
 	    });
-	});
+	}
     };
 
     const refreshPlaylist = function() {
 	fetch("/api/playlist", {credentials: 'include'}).
 	    then(response => {
-		var j = response.json();
-		console.log(j);
-		return j;
+		return response.json();
 	    }).
 	    then(data => {
 		addTracks(data.playlist);
@@ -109,6 +109,8 @@ Takeout.music = (function() {
 	e = document.getElementById("playlist");
 
 	let html = '<a onclick="playNext();"><h2>Playlist</h2></a>';
+	html = html.concat('<img class="np-control" src="/static/shuffle-white-24dp.svg" onclick="doShuffle();">');
+	html = html.concat('<img class="np-control" src="/static/clear-white-24dp.svg" onclick="doClear();">');
 	let i = 0;
 	playlist.forEach(t => {
 	    html = html.concat('<div class="parent">',
@@ -176,18 +178,28 @@ Takeout.music = (function() {
     };
 
     const audioEnded = function() {
-	console.log("ended");
 	playNext();
     };
 
     const registerEvents = function() {
 	const audio = audioTag();
 	if (audio.getAttribute("data-ended") == null) {
+	    audio.addEventListener("canplay", function() {
+		play();
+	    });
 	    audio.addEventListener("timeupdate", function() {
 		audioProgress();
 	    });
 	    audio.addEventListener("ended", function() {
 		audioEnded();
+	    });
+	    audio.addEventListener("pause", function() {
+		playing = false;
+		updateControls();
+	    });
+	    audio.addEventListener("play", function() {
+		playing = true;
+		updateControls();
 	    });
 	    audio.setAttribute("data-ended", "true");
 	}
@@ -202,6 +214,32 @@ Takeout.music = (function() {
 
 	document.getElementById("np-next").addEventListener("click", function() {
 	    playNext();
+	});
+    };
+
+    const shuffle = function() {
+	let moves = [];
+	let tracks = playlist.length;
+	for (let i = 0; i < tracks; i++) {
+	    let t = ~~(Math.random() * tracks);
+	    if (t == 0) {
+		continue;
+	    }
+	    moves.push({op: "move", from: "/playlist/track/"+t, path: "/playlist/track/0"});
+	    moves.push({op: "move", from: "/playlist/track/1", path: "/playlist/track/"+t});
+	}
+	doPatch(moves, function() {
+	    updatePlaylist();
+	});
+    };
+
+    const clear = function() {
+	clearTracks();
+	let body = [
+	    { op: "replace", path: "/playlist/track", value: []}
+	];
+	doPatch(body, function() {
+	    updatePlaylist();
 	});
     };
 
@@ -247,7 +285,7 @@ Takeout.music = (function() {
     };
 
     const doPatch = function(body, cb) {
-	console.log(JSON.stringify(body));
+	//console.log(JSON.stringify(body));
 	fetch("/api/playlist", {
 	    credentials: 'include',
 	    method: "PATCH",
@@ -273,7 +311,11 @@ Takeout.music = (function() {
 		} else if (cmd == "append-ref") {
 		    appendRef(ref);
 		} else if (cmd == "prepend-ref") {
-		    prependRef(ref);
+		    if (playlist.length == 0) {
+			addRef(ref);
+		    } else {
+			prependRef(ref);
+		    }
 		}
 	    };
 	});
@@ -306,19 +348,14 @@ Takeout.music = (function() {
     };
 
     const play = function() {
-	playing = true;
 	audioTag().play();
-	updateControls();
     };
 
     const pause = function() {
-	playing = false;
 	audioTag().pause();
-	updateControls();
     };
 
     const load = function(url, scroll = true) {
-	console.log("load " + url);
 	fetch(url, {credentials: 'include'}).
     	    then(resp => {
     		return resp.text();
@@ -335,7 +372,6 @@ Takeout.music = (function() {
     };
 
     const forward = function(url) {
-	console.log("push " + url);
 	let state = {url: url, title: "", time: Date.now()};
 	history.pushState(state, state["title"]);
 	return load(url);
@@ -345,7 +381,6 @@ Takeout.music = (function() {
 	if (state != null) {
 	    let url = state["url"];
 	    if (url != null) {
-		console.log("pop url " + url);
 		if (url != null) {
 		    load(url, false);
 		}
@@ -357,7 +392,6 @@ Takeout.music = (function() {
 	document.getElementById("f").onsubmit = function() {
 	    let q = document.getElementById("q").value;
 	    forward("/v?q=" + encodeURIComponent(q));
-	    console.log("/v?q=" + encodeURIComponent(q));
 	    return false;
 	};
     };
@@ -393,6 +427,8 @@ Takeout.music = (function() {
 	init: init,
 	toggle: toggle,
 	remove: remove,
+	shuffle: shuffle,
+	clear: clear,
 	playNext: playNext
     };
 })();
@@ -411,5 +447,15 @@ function playNext() {
 
 function remove(i) {
     Takeout.music.remove(i);
+    return false;
+}
+
+function doClear() {
+    Takeout.music.clear();
+    return false;
+}
+
+function doShuffle() {
+    Takeout.music.shuffle();
     return false;
 }

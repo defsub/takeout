@@ -41,6 +41,16 @@ func (m *Music) closeDB() {
 	m.db.Close()
 }
 
+func (m *Music) lastModified() time.Time {
+	var tracks []Track
+	m.db.Order("last_modified desc").Limit(1).Find(&tracks)
+	if len(tracks) == 1 {
+		return tracks[0].LastModified
+	} else {
+		return time.Time{}
+	}
+}
+
 func (m *Music) deleteTracks() {
 	m.db.Unscoped().Model(&Track{}).Delete(&Track{})
 }
@@ -131,6 +141,12 @@ func (m *Music) updateTrackReleaseTitles(t Track) error {
 	return m.db.Model(t).
 		Update("media_title", t.MediaTitle).
 		Update("release_title", t.ReleaseTitle).Error
+}
+
+func (m *Music) tracksAddedSince(t time.Time) []Track {
+	var tracks []Track
+	m.db.Where("last_modified > ?", t).Find(&tracks)
+	return tracks
 }
 
 // Find all tracks without a corresponding release - same artist,

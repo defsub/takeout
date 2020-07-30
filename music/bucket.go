@@ -27,6 +27,7 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
+	"time"
 )
 
 func (m *Music) bucketConfig() config.MusicBucket {
@@ -50,7 +51,7 @@ func (m *Music) openBucket() error {
 }
 
 // Asynchronously obtain all tracks from the bucket.
-func (m *Music) SyncFromBucket() (trackCh chan *Track, err error) {
+func (m *Music) syncFromBucket(lastSync time.Time) (trackCh chan *Track, err error) {
 	trackCh = make(chan *Track)
 
 	go func() {
@@ -71,7 +72,10 @@ func (m *Music) SyncFromBucket() (trackCh chan *Track, err error) {
 				break
 			}
 			for _, obj := range resp.Contents {
-				checkObject(obj, trackCh)
+				if obj.LastModified != nil &&
+					obj.LastModified.After(lastSync) {
+					checkObject(obj, trackCh)
+				}
 			}
 
 			if !*resp.IsTruncated {

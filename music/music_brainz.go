@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/defsub/takeout"
 	"github.com/defsub/takeout/client"
+	"github.com/defsub/takeout/log"
 	"github.com/michiwend/gomusicbrainz"
 	"strings"
 	"time"
@@ -85,7 +86,7 @@ func (m *Music) SearchArtist(name string) (a *Artist, tags []ArtistTag) {
 	mbid, ok := m.config.Music.UserArtistID(name)
 	if ok {
 		query = fmt.Sprintf(`arid:"%s"`, mbid)
-		fmt.Printf("%s using %s\n", name, mbid)
+		log.Printf("%s using %s\n", name, mbid)
 	} else {
 		query = fmt.Sprintf(`artist:"%s"`, name)
 	}

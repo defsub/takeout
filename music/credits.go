@@ -19,6 +19,7 @@ package music
 
 import (
 	"fmt"
+	"github.com/defsub/takeout/log"
 	"github.com/defsub/takeout/search"
 	"strings"
 )
@@ -152,7 +153,7 @@ func relationCredits(c search.FieldMap, relations []mbzRelation) search.FieldMap
 					"publishing", "translator", "vocal arranger":
 					// ignore these
 				default:
-					fmt.Printf("** ignore performance work relation '%s'\n", wr.Type)
+					log.Printf("** ignore performance work relation '%s'\n", wr.Type)
 				}
 			}
 		} else if "instrument" == r.Type {

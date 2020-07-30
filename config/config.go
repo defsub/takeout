@@ -81,11 +81,11 @@ type SearchConfig struct {
 }
 
 type Config struct {
-	Auth        AuthConfig
-	Music       MusicConfig
-	LastFM      LastFMAPIConfig
-	BindAddress string
-	Search      SearchConfig
+	Auth   AuthConfig
+	Music  MusicConfig
+	LastFM LastFMAPIConfig
+	Listen string
+	Search SearchConfig
 }
 
 func (mc *MusicConfig) UserArtistID(name string) (string, bool) {
@@ -133,13 +133,12 @@ func configDefaults() {
 	viper.SetDefault("LastFM.Key", "77033164cfcda2acc4c58681dcba3cf8")
 	viper.SetDefault("LastFM.Secret", "8f43410e8e81c33d4542738ee84dc39b")
 
-	viper.SetDefault("BindAddress", "127.0.0.1:3000")
-
 	viper.SetDefault("Search.BlevePath", ".")
 }
 
 func readConfig() (*Config, error) {
 	var config Config
+
 	err := viper.ReadInConfig()
 	if err == nil {
 		err = viper.Unmarshal(&config)
@@ -160,9 +159,19 @@ func TestConfig() (*Config, error) {
 	return readConfig()
 }
 
+func SetConfigFile(path string) {
+	viper.SetConfigFile(path)
+}
+
+func AddConfigPath(path string) {
+	viper.AddConfigPath(path)
+}
+
+func SetConfigName(name string) {
+	viper.SetConfigName(name)
+}
+
 func GetConfig() (*Config, error) {
-	viper.SetConfigName("takeout")
-	viper.AddConfigPath(".")
 	configDefaults()
 	return readConfig()
 }

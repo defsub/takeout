@@ -12,7 +12,6 @@
 
 * Reindexing - remove or update index?
 * Resulting ordering other than Bleve default?
-* Index original date of track
 
 # Sync
 
@@ -36,7 +35,6 @@
 
 # General
 
-* Add logging instead of fmt.Printf
 * Add users with UI or command line tool
 * Change passwords
 * Improved web UI

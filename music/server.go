@@ -23,16 +23,17 @@ import (
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/encoding/xspf"
+	"github.com/defsub/takeout/log"
 	"github.com/defsub/takeout/spiff"
 	"html/template"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func (handler *MusicHandler) doit(w http.ResponseWriter, r *http.Request) {
@@ -89,9 +90,7 @@ func parseTemplates(templ *template.Template, dir string) *template.Template {
 		return err
 	})
 
-	if err != nil {
-		fmt.Printf("%s\n", err)
-	}
+	log.CheckError(err)
 
 	return templ
 }
@@ -298,6 +297,7 @@ func (handler *MusicHandler) viewHandler(w http.ResponseWriter, r *http.Request)
 		view = music.SearchView(strings.TrimSpace(v))
 		temp = "search.html"
 	} else {
+		view = time.Now().Unix()
 		temp = "index.html"
 	}
 
@@ -308,13 +308,13 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-type", "application/json")
 
 	if !handler.authorized(w, r) {
-		fmt.Printf("not auth\n")
+		log.Printf("not auth\n")
 		return
 	}
 
 	music := NewMusic(handler.config)
 	if music.Open() != nil {
-		fmt.Printf("bummer\n")
+		log.Printf("bummer\n")
 		http.Error(w, "bummer", http.StatusInternalServerError)
 		return
 	}
@@ -347,6 +347,9 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 		}
 
 		if dirty {
+			if plist.Entries == nil {
+				plist.Entries = []spiff.Entry{}
+			}
 			up.Playlist, _ = plist.Marshal()
 			music.updatePlaylist(up)
 		}
@@ -389,6 +392,6 @@ func Serve(config *config.Config) {
 	http.HandleFunc("/v", handler.viewHandler)
 	http.HandleFunc("/login", handler.loginHandler)
 	http.HandleFunc("/api/", handler.apiHandler)
-	log.Printf("running...\n")
-	http.ListenAndServe(config.BindAddress, nil)
+	log.Printf("listening on %s\n", config.Listen)
+	http.ListenAndServe(config.Listen, nil)
 }
