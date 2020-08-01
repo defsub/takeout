@@ -94,13 +94,14 @@ Note: only sqlite3 has been tested
 
 ### Server
 
-* BindAddress - Address and port to listen on (default 127.0.0.1:3000)
+* Server.Listen - Address and port to listen on (default 127.0.0.1:3000)
+* Server.WebDir - Directory with web static files and templates
 
 Note: use Nginx or other frontend with TLS (and Let's Encrypt)
 
 ### Search Index
 
-* Search.BlevePath - Directory used to store index (default .)
+* Search.BleveDir - Directory used to store index (default .)
 
 ## Examples
 

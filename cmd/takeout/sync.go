@@ -32,13 +32,18 @@ var syncCmd = &cobra.Command{
 }
 
 var syncOptions = music.NewSyncOptions()
+var syncAll bool
 
 func sync() {
 	m := music.NewMusic(getConfig())
 	m.Open()
 	defer m.Close()
 
-	syncOptions.Since = m.LastModified()
+	if syncAll {
+		syncOptions.Since = time.Time{}
+	} else {
+		syncOptions.Since = m.LastModified()
+	}
 	m.Sync(syncOptions)
 }
 
@@ -49,5 +54,6 @@ func init() {
 	syncCmd.Flags().BoolVarP(&syncOptions.Popular, "popular", "p", true, "sync popular")
 	syncCmd.Flags().BoolVarP(&syncOptions.Similar, "similar", "s", true, "sync similar")
 	syncCmd.Flags().BoolVarP(&syncOptions.Index, "index", "i", true, "sync index")
+	syncCmd.Flags().BoolVarP(&syncAll, "all", "a", false, "(re)sync all tracks instead of modified/new tracks")
 	rootCmd.AddCommand(syncCmd)
 }

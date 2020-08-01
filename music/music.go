@@ -159,7 +159,7 @@ func (m *Music) syncBucketTracksSince(lastSync time.Time) (err error) {
 		return err
 	}
 	for t := range trackCh {
-		log.Printf("sync: %s / %s / %s\n", t.Artist, t.Release, t.Title)
+		log.Printf("sync: %s/%s/ %s\n", t.Artist, t.Release, t.Title)
 		t.Artist = fixName(t.Artist)
 		t.Release = fixName(t.Release)
 		t.Title = fixName(t.Title)
@@ -635,7 +635,19 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 	for k, _ := range singles {
 		fields, ok := newIndex[k]
 		if ok {
-			fields["type"] = "single"
+			addField(fields, "type", "single")
+		}
+	}
+
+	// update type field with popular
+	popular := make(map[string]bool)
+	for _, t := range m.releasePopular(release) {
+		popular[t.Key] = true
+	}
+	for k, _ := range popular {
+		fields, ok := newIndex[k]
+		if ok {
+			addField(fields, "type", "popular")
 		}
 	}
 
@@ -644,19 +656,8 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 		tracks := m.tracksFor([]string{k})
 		date := m.trackFirstReleaseDate(&tracks[0])
 		s := fmt.Sprintf("%4d-%02d-%02d", date.Year(), date.Month(), date.Day())
-		v["date"] = s
+		addField(v, "date", s)
 	}
-
-	// matched := 0
-	// for k, v := range newIndex {
-	// 	pos, _ := v["position"].(int)
-	// 	track := tracks[pos-1]
-	// 	if k == track.Title {
-	// 		matched++
-	// 		//log.Printf("matched %+v\n\n", v)
-	// 	}
-	// }
-	// log.Printf("matched %d vs %d\n", matched, len(tracks))
 
 	return newIndex, nil
 }

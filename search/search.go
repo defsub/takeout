@@ -37,7 +37,7 @@ func NewSearch(config *config.Config) *Search {
 
 func (s *Search) Open(name string) error {
 	mapping := bleve.NewIndexMapping()
-	path := fmt.Sprintf("%s/%s.bleve", s.config.Search.BlevePath, name)
+	path := fmt.Sprintf("%s/%s.bleve", s.config.Search.BleveDir, name)
 	index, err := bleve.New(path, mapping)
 	if err == bleve.ErrorIndexPathExists {
 		index, err = bleve.Open(path)

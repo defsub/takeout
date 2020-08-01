@@ -18,27 +18,40 @@
 package main
 
 import (
-	"github.com/defsub/takeout/music"
+	"github.com/defsub/takeout/auth"
+	"github.com/defsub/takeout/log"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
-var serveCmd = &cobra.Command{
-	Use:   "serve",
-	Short: "serve music metadata",
+var userCmd = &cobra.Command{
+	Use:   "user",
+	Short: "user admin",
 	Long:  `TODO`,
 	Run: func(cmd *cobra.Command, args []string) {
-		serve()
+		doit()
 	},
 }
 
-func serve() {
-	music.Serve(getConfig())
+var user string
+var pass string
+var add bool
+
+func doit() {
+	a := auth.NewAuth(getConfig())
+	err := a.Open()
+	log.CheckError(err)
+	defer a.Close()
+
+	if add && user != "" && pass != "" {
+		err := a.AddUser(user, pass)
+		log.CheckError(err)
+	}
 }
 
 func init() {
-	serveCmd.Flags().StringVarP(&configFile, "config", "c", "takeout.ini", "config file")
-	serveCmd.Flags().String("listen", "127.0.0.1:3000", "Address to listen on")
-	rootCmd.AddCommand(serveCmd)
-	viper.BindPFlag("Server.Listen", serveCmd.Flags().Lookup("listen"))
+	userCmd.Flags().StringVarP(&configFile, "config", "c", "takeout.ini", "config file")
+	userCmd.Flags().StringVarP(&user, "user", "u", "", "user")
+	userCmd.Flags().StringVarP(&pass, "pass", "p", "", "pass")
+	syncCmd.Flags().BoolVarP(&add, "add", "a", true, "add")
+	rootCmd.AddCommand(userCmd)
 }

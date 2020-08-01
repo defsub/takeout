@@ -77,15 +77,20 @@ type AuthConfig struct {
 }
 
 type SearchConfig struct {
-	BlevePath string
+	BleveDir string
+}
+
+type ServerConfig struct {
+	Listen string
+	WebDir string
 }
 
 type Config struct {
 	Auth   AuthConfig
 	Music  MusicConfig
 	LastFM LastFMAPIConfig
-	Listen string
 	Search SearchConfig
+	Server ServerConfig
 }
 
 func (mc *MusicConfig) UserArtistID(name string) (string, bool) {
@@ -133,7 +138,9 @@ func configDefaults() {
 	viper.SetDefault("LastFM.Key", "77033164cfcda2acc4c58681dcba3cf8")
 	viper.SetDefault("LastFM.Secret", "8f43410e8e81c33d4542738ee84dc39b")
 
-	viper.SetDefault("Search.BlevePath", ".")
+	viper.SetDefault("Search.BleveDir", ".")
+
+	viper.SetDefault("Server.WebDir", "web")
 }
 
 func readConfig() (*Config, error) {

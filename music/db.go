@@ -467,6 +467,16 @@ func (m *Music) releaseSingles(release Release) []Track {
 	return tracks
 }
 
+func (m *Music) releasePopular(release Release) []Track {
+	var tracks []Track
+	m.db.Where("re_id = ? and" +
+		" exists (select popular.title from popular where" +
+		" tracks.artist = popular.artist and tracks.title = popular.title)",
+		release.REID).
+		Order("disc_num, track_num").Find(&tracks)
+	return tracks
+}
+
 // Lookup a release given the internal record ID.
 func (m *Music) lookupRelease(id int) (Release, error) {
 	var release Release

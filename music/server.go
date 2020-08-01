@@ -176,7 +176,8 @@ func (handler *MusicHandler) render(music *Music, temp string, view interface{},
 		},
 	}
 
-	var templates = parseTemplates(template.New("").Funcs(funcMap), "web/template")
+	var templates = parseTemplates(template.New("").Funcs(funcMap),
+		fmt.Sprintf("%s/template", music.config.Server.WebDir))
 
 	err := templates.ExecuteTemplate(w, temp, view)
 	if err != nil {
@@ -385,13 +386,13 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 
 func Serve(config *config.Config) {
 	handler := &MusicHandler{config: config}
-	fs := http.FileServer(http.Dir("web/static"))
+	fs := http.FileServer(http.Dir(fmt.Sprintf("%s/static", config.Server.WebDir)))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 	http.HandleFunc("/tracks", handler.doTracks)
 	http.HandleFunc("/", handler.viewHandler)
 	http.HandleFunc("/v", handler.viewHandler)
 	http.HandleFunc("/login", handler.loginHandler)
 	http.HandleFunc("/api/", handler.apiHandler)
-	log.Printf("listening on %s\n", config.Listen)
-	http.ListenAndServe(config.Listen, nil)
+	log.Printf("listening on %s\n", config.Server.Listen)
+	http.ListenAndServe(config.Server.Listen, nil)
 }
