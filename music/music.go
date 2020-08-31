@@ -159,7 +159,7 @@ func (m *Music) syncBucketTracksSince(lastSync time.Time) (err error) {
 		return err
 	}
 	for t := range trackCh {
-		log.Printf("sync: %s/%s/ %s\n", t.Artist, t.Release, t.Title)
+		log.Printf("sync: %s/%s/%s\n", t.Artist, t.Release, t.Title)
 		t.Artist = fixName(t.Artist)
 		t.Release = fixName(t.Release)
 		t.Title = fixName(t.Title)
@@ -433,10 +433,9 @@ func (m *Music) syncPopularFor(artists []Artist) error {
 		log.Printf("popular for %s\n", a.Name)
 		popular := m.lastfmArtistTopTracks(&a)
 		for _, p := range popular {
-			err := m.createPopular(&p)
-			if err != nil {
-				return err
-			}
+			// TODO how to check for specific error?
+			// - UNIQUE constraint failed
+			m.createPopular(&p)
 		}
 	}
 	return nil
@@ -452,10 +451,9 @@ func (m *Music) syncSimilarFor(artists []Artist) error {
 		log.Printf("similar for %s\n", a.Name)
 		similar := m.lastfmSimilarArtists(&a)
 		for _, s := range similar {
-			err := m.createSimilar(&s)
-			if err != nil {
-				return err
-			}
+			// TODO how to check for specific error?
+			// - UNIQUE constraint failed
+			m.createSimilar(&s)
 		}
 	}
 	return nil

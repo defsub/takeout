@@ -98,10 +98,11 @@ type Track struct {
 	TrackNum     int `spiff:"tracknum"`
 	DiscNum      int
 	Title        string `spiff:"title"`
-	Key          string
+	Key          string // TODO - unique constraint
 	Size         int64
 	ETag         string
 	LastModified time.Time
+	// TODO remove Location, only needed for old spiff
 	Location     []string `gorm:"-" spiff:"location"`
 	TrackCount   int
 	REID         string
@@ -112,19 +113,7 @@ type Track struct {
 
 type UserPlaylist struct {
 	gorm.Model
-	User     string
+	User     string `gorm:"unique_index:idx_playlist"`
+	Name     string `gorm:"unique_index:idx_playlist"`
 	Playlist []byte
 }
-
-// type Criteria struct {
-// 	Name     string
-// 	Artists  string
-// 	Releases string
-// 	Titles   string
-// 	Tags     string
-// 	After    string
-// 	Before   string
-// 	Singles  bool
-// 	Popular  bool
-// 	Shuffle  bool
-// }

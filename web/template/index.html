@@ -36,28 +36,28 @@
 	  <source id="audio-source" src=""></source>
 	</audio>
 	<div class="footer" style="display: block;">
-	  <table class="full-width">
-	    <tr>
+	  <table class="full-width playing">
+	    <tr class="playing">
 	      <td class="np-cover" onclick="toggle();">
 		<img class="mini-cover" name="np-cover"/>
 	      </td>
-	      <td>
+	      <td class="playing">
 		<div class="np-track" onclick="toggle();">
 		  <div class="np-title" name="np-title"></div>
 		  <div class="np-artist" name="np-artist"></div>
 		</div>
 	      </td>
-	      <td class="np-control">
-		<img id="np-playpause" class="np-control" src="">
+	      <td class="np-control playing">
+		<img id="np-playpause" class="np-control playing" src="">
 	      </td>
-	      <td class="np-control">
-		<img id="np-next" class="np-control" src="">
+	      <td class="np-control playing">
+		<img id="np-next" class="np-control playing" src="">
 	      </td>
 	    </tr>
 	  </table>
-	  <table class="full-width">
-	    <tr>
-	      <td>
+	  <table class="full-width playing">
+	    <tr class="playing">
+	      <td class="playing">
 		<progress id="np-progress" style="height: 8px;" class="full-width"></progress>
 	      </td>
 	    </tr>

@@ -21,13 +21,7 @@ import (
 	"github.com/defsub/takeout/spiff"
 	"regexp"
 	"strconv"
-	"time"
 )
-
-func (m *Music) refreshLocation(entry *spiff.Entry, t *Track) {
-	entry.Location = []string{m.TrackURL(t).String()}
-}
-
 
 func (m *Music) addTrackEntries(tracks []Track, entries []spiff.Entry) []spiff.Entry {
 	for _, t := range tracks {
@@ -36,6 +30,7 @@ func (m *Music) addTrackEntries(tracks []Track, entries []spiff.Entry) []spiff.E
 			Album:      t.ReleaseTitle,
 			Title:      t.Title,
 			Image:      m.TrackImage(t).String(),
+			Location:   []string{trackLocation(t)},
 			Identifier: []string{t.ETag}}
 		entries = append(entries, e)
 	}
@@ -155,18 +150,5 @@ func (m *Music) Resolve(plist *spiff.Playlist) (err error) {
 
 	plist.Spiff.Entries = entries
 
-	return m.Refresh(plist)
-}
-
-func (m *Music) Refresh(plist *spiff.Playlist) (err error) {
-	for i := range plist.Spiff.Entries {
-		e := &plist.Spiff.Entries[i]
-		etag := e.Identifier[0]
-		track := m.TrackLookup(etag)
-		if track != nil {
-			m.refreshLocation(e, track)
-		} // else remove
-	}
-	plist.Expires = time.Now().Add(m.config.Music.Bucket.URLExpiration)
-	return nil
+	return nil;//m.Refresh(plist)
 }

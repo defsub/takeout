@@ -52,6 +52,6 @@ func init() {
 	userCmd.Flags().StringVarP(&configFile, "config", "c", "takeout.ini", "config file")
 	userCmd.Flags().StringVarP(&user, "user", "u", "", "user")
 	userCmd.Flags().StringVarP(&pass, "pass", "p", "", "pass")
-	syncCmd.Flags().BoolVarP(&add, "add", "a", true, "add")
+	userCmd.Flags().BoolVarP(&add, "add", "a", true, "add")
 	rootCmd.AddCommand(userCmd)
 }

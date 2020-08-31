@@ -107,7 +107,7 @@ func (handler *MusicHandler) render(music *Music, temp string, view interface{},
 				link = fmt.Sprintf("/v?artist=%d", o.(Artist).ID)
 			case Track:
 				t := o.(Track)
-				link = music.TrackURL(&t).String()
+				link = trackLocation(t)
 			}
 			return link
 		},
@@ -305,6 +305,13 @@ func (handler *MusicHandler) viewHandler(w http.ResponseWriter, r *http.Request)
 	handler.render(music, temp, view, w, r)
 }
 
+type location struct {
+	Url          string    `json:"url"`
+	Size         int64     `json:"size"`
+	ETag         string    `json:"etag"`
+	LastModified time.Time `json:"lastModified"`
+}
+
 func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
 
@@ -332,19 +339,22 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 		}
 
 		var plist *spiff.Playlist
+		var err error
 		dirty := false
 		if r.Method == "PATCH" {
+			// 200, 204
+
 			patch, _ := ioutil.ReadAll(r.Body)
-			up.Playlist, _ = spiff.Patch(up.Playlist, patch)
+			up.Playlist, err = spiff.Patch(up.Playlist, patch)
+			if err != nil {
+				http.Error(w, "bummer", http.StatusInternalServerError)
+				return
+			}
 			plist, _ = spiff.Unmarshal(up.Playlist)
 			music.Resolve(plist)
 			dirty = true
 		} else if r.Method == "GET" {
 			plist, _ = spiff.Unmarshal(up.Playlist)
-			if plist.Expired() {
-				music.Refresh(plist)
-				dirty = true
-			}
 		}
 
 		if dirty {
@@ -356,12 +366,12 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 		}
 
 		w.Write(up.Playlist)
-
 	} else {
 		var view interface{}
 
 		artistRegexp := regexp.MustCompile(`/api/artists/([\d]+)`)
 		releaseRegexp := regexp.MustCompile(`/api/releases/([\d]+)`)
+		locationRegexp := regexp.MustCompile(`/api/tracks/([\d]+)/location`)
 
 		matches := artistRegexp.FindStringSubmatch(path)
 		if matches != nil {
@@ -376,6 +386,20 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 				id, _ := strconv.Atoi(v)
 				release, _ := music.lookupRelease(id)
 				view = music.ReleaseView(release)
+			} else {
+				matches = locationRegexp.FindStringSubmatch(path)
+				if matches != nil {
+					v := matches[1]
+					id, _ := strconv.Atoi(v)
+					track, _ := music.lookupTrack(id)
+					url := music.TrackURL(&track)
+					view = location{
+						Url:          url.String(),
+						Size:         track.Size,
+						ETag:         track.ETag,
+						LastModified: track.LastModified,
+					}
+				}
 			}
 		}
 

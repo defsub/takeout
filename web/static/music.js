@@ -15,15 +15,20 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
+"use strict";
+
 var Takeout = Takeout || {};
 
 Takeout.music = (function() {
     let playlist = [];
+    let playIndex = -1;
+    let playPos = 0;
     let playing = false;
     let userPlay = false;
 
     const clearTracks = function() {
 	playlist = [];
+	playIndex = -1;
     };
 
     const appendTrack = function(track) {
@@ -35,8 +40,19 @@ Takeout.music = (function() {
     };
 
     const nextTrack = function() {
-	let next = playlist.shift();
-	return next || {};
+	let next = {}
+	if (playIndex < 0) {
+	    playIndex = 0;
+	} else {
+	    playIndex++;
+	}
+	if (playIndex >= playlist.length) {
+	    playIndex = -1;
+	} else {
+	    next = playlist[playIndex];
+	}
+	playPos = 0;
+	return next;
     };
 
     const trackData = function(e) {
@@ -45,7 +61,7 @@ Takeout.music = (function() {
     	    'album': e.getAttribute("data-album"),
     	    'title': e.getAttribute("data-title"),
     	    'image': e.getAttribute("data-image"),
-    	    'url': e.getAttribute("data-url")
+    	    'location': e.getAttribute("data-location")
     	};
     };
 
@@ -55,17 +71,40 @@ Takeout.music = (function() {
 	audioTag().setAttribute("title", t1);
     };
 
+    const playResume = function() {
+	if (playlist.length == 0) {
+	    return;
+	}
+	if (playIndex < 0 || playIndex >= playlist.length) {
+	    playIndex = 0;
+	    playPos = 0;
+	}
+	playNow(playlist[playIndex], playPos);
+	updatePlaylist();
+	saveState(playIndex);
+    }
+
+    const playFirst = function() {
+	playIndex = -1;
+	playPos = 0;
+	playNext();
+    }
+
     const playNext = function() {
 	playNow(nextTrack());
-	remove(0);
+	updatePlaylist();
+	saveState(playIndex);
     };
 
-    const playNow = function(track) {
-	if (track['url'] != null) {
-	    audioSource().setAttribute("src", track['url']);
-	    updateTitle(track);
-	    audioTag().load();
-	    document.getElementById("playing").style.display = "block";
+    const playNow = function(track, position = 0) {
+	if (track['location'] != null) {
+	    fetchLocation(track, function(url) {
+		audioSource().setAttribute("src", url);
+		updateTitle(track);
+		audioTag().currentTime = position;
+		audioTag().load();
+		document.getElementById("playing").style.display = "block";
+	    })
 	} else {
 	    document.getElementById("playing").style.display = "none";
 	    document.getElementById("playlist").style.display = "none";
@@ -88,32 +127,45 @@ Takeout.music = (function() {
 		    album: t.album,
 		    title: t.title,
 		    image: t.image,
-		    url: t.location[0]
+		    location: t.location[0]
 		});
 	    });
 	}
     };
 
-    const refreshPlaylist = function() {
+    const fetchLocation = function(track, doit) {
+	fetch(track['location'], {credentials: 'include'}).
+	    then(response => {
+		return response.json();
+	    }).
+	    then(data => {
+		return data['url'];
+	    }).
+	    then(doit);
+    };
+
+    const fetchPlaylist = function() {
 	fetch("/api/playlist", {credentials: 'include'}).
 	    then(response => {
 		return response.json();
 	    }).
 	    then(data => {
 		addTracks(data.playlist);
+		playIndex = data.index;
+		playPos = data.position;
 		updatePlaylist();
 	    });
     };
 
     const updatePlaylist = function() {
-	e = document.getElementById("playlist");
-
-	let html = '<a onclick="playNext();"><h2>Playlist</h2></a>';
+	let e = document.getElementById("playlist");
+	let index = playIndex;
+	let html = '<a onclick="playResume();"><h2>Playlist #' + index + '</h2></a>';
 	html = html.concat('<img class="np-control" src="/static/shuffle-white-24dp.svg" onclick="doShuffle();">');
 	html = html.concat('<img class="np-control" src="/static/clear-white-24dp.svg" onclick="doClear();">');
 	let i = 0;
 	playlist.forEach(t => {
-	    html = html.concat('<div class="parent">',
+	    html = html.concat((i == index) ? '<div class="parent playing">' : '<div class="parent">',
 			       '<div>',
 			       '<img class="np-cover" src="', t["image"], '">',
 			       '</div>',
@@ -173,6 +225,7 @@ Takeout.music = (function() {
 	const audio = audioTag();
 	//document.getElementById("np-time").innerHTML = formatTime(audio.currentTime);
 	//document.getElementById("np-duration").innerHTML = "-" + formatTime(audio.duration - audio.currentTime);
+	playPos = audio.currentTime;
 	let p = (audio.currentTime / audio.duration);
 	document.getElementById("np-progress").setAttribute("value", p);
     };
@@ -185,7 +238,6 @@ Takeout.music = (function() {
 	const audio = audioTag();
 	if (audio.getAttribute("data-ended") == null) {
 	    audio.addEventListener("canplay", function() {
-		console.log("canplay");
 		play();
 	    });
 	    audio.addEventListener("timeupdate", function() {
@@ -219,19 +271,19 @@ Takeout.music = (function() {
     };
 
     const shuffle = function() {
-	let moves = [];
+	playIndex = -1;
+	playPos = 0;
+	let ops = statePatch(playIndex, playPos);
 	let tracks = playlist.length;
 	for (let i = 0; i < tracks; i++) {
 	    let t = ~~(Math.random() * tracks);
 	    if (t == 0) {
 		continue;
 	    }
-	    moves.push({op: "move", from: "/playlist/track/"+t, path: "/playlist/track/0"});
-	    moves.push({op: "move", from: "/playlist/track/1", path: "/playlist/track/"+t});
+	    ops.push({op: "move", from: "/playlist/track/"+t, path: "/playlist/track/0"});
+	    ops.push({op: "move", from: "/playlist/track/1", path: "/playlist/track/"+t});
 	}
-	doPatch(moves, function() {
-	    updatePlaylist();
-	});
+	doPatch(ops);
     };
 
     const clear = function() {
@@ -239,18 +291,26 @@ Takeout.music = (function() {
 	let body = [
 	    { op: "replace", path: "/playlist/track", value: []}
 	];
-	doPatch(body, function() {
-	    updatePlaylist();
-	});
+	doPatch(body);
     };
 
     const remove = function(index) {
 	let body = [
 	    { op: "remove", path: "/playlist/track/" + index }
 	];
-	doPatch(body, function() {
-	    updatePlaylist();
-	});
+	doPatch(body);
+    };
+
+    const statePatch = function(index, position) {
+	let body = [
+	    { op: "replace", path: "/index", value: index },
+	    { op: "replace", path: "/position", value: position }
+	];
+	return body;
+    };
+
+    const saveState = function(index, position = 0) {
+	doPatch(statePatch(index, position), false);
     };
 
     const prependRef = function(ref) {
@@ -276,18 +336,15 @@ Takeout.music = (function() {
 	    value: { "$ref": ref }
 	});
 
-	doPatch(body, function() {
+	doPatch(body).then(() => {
 	    if (clear) {
-		playNext();
-	    } else {
-		updatePlaylist();
+		playFirst();
 	    }
 	});
     };
 
-    const doPatch = function(body, cb) {
-	//console.log(JSON.stringify(body));
-	fetch("/api/playlist", {
+    const doPatch = function(body, apply = true) {
+	return fetch("/api/playlist", {
 	    credentials: 'include',
 	    method: "PATCH",
 	    body: JSON.stringify(body),
@@ -296,9 +353,18 @@ Takeout.music = (function() {
 	    }}).
 	    then(response => response.json()).
 	    then(data => {
-		addTracks(data.playlist);
-		cb();
+		if (apply) {
+		    applyPatch(data)
+		}
 	    });
+    }
+
+    const applyPatch = function(data) {
+	//console.log(JSON.stringify(data));
+	addTracks(data.playlist);
+	playIndex = data.index;
+	playPos = data.position;
+	updatePlaylist();
     }
 
     const playClick = function() {
@@ -333,6 +399,7 @@ Takeout.music = (function() {
 	const plays = document.querySelectorAll("[data-play]");
 	plays.forEach(e => {
 	    e.onclick = function() {
+		playClick();
 		let cmd = e.getAttribute("data-play");
 		if (cmd == "now") {
 		    let track = trackData(e);
@@ -344,6 +411,8 @@ Takeout.music = (function() {
 	const links = document.querySelectorAll("[data-link]");
 	links.forEach(e => {
 	    e.onclick = function() {
+		playClick();
+		// TODO hide playlist?
 		forward(e.getAttribute("data-link"));
 	    };
 	});
@@ -363,6 +432,7 @@ Takeout.music = (function() {
 
     const pause = function() {
 	audioTag().pause();
+	saveState(playIndex, playPos);
     };
 
     const load = function(url, scroll = true) {
@@ -417,16 +487,16 @@ Takeout.music = (function() {
 	    registerEvents();
 	    setupSearch();
 	    forward("/v?music=1");
-	    refreshPlaylist();
+	    fetchPlaylist();
 	};
     };
 
-
     const toggle = function() {
+	playClick();
 	if (document.getElementById("playlist").style.display == "none") {
 	    document.getElementById("main").style.display = "none";
 	    document.getElementById("playlist").style.display = "block";
-	    refreshPlaylist();
+	    fetchPlaylist();
 	} else {
 	    document.getElementById("playlist").style.display = "none";
 	    document.getElementById("main").style.display = "block";
@@ -439,7 +509,8 @@ Takeout.music = (function() {
 	remove: remove,
 	shuffle: shuffle,
 	clear: clear,
-	playNext: playNext
+	playNext: playNext,
+	playResume: playResume
     };
 })();
 
@@ -452,6 +523,11 @@ function toggle() {
 
 function playNext() {
     Takeout.music.playNext();
+    return false;
+}
+
+function playResume() {
+    Takeout.music.playResume();
     return false;
 }
 

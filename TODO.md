@@ -13,10 +13,6 @@
 * Reindexing - remove or update index?
 * Resulting ordering other than Bleve default?
 
-# Sync
-
-* Add command line options
-
 # Music
 
 * Artist browsing

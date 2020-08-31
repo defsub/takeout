@@ -20,6 +20,7 @@ package main
 import (
 	"github.com/defsub/takeout/music"
 	"github.com/spf13/cobra"
+	"time"
 )
 
 var syncCmd = &cobra.Command{
@@ -33,6 +34,7 @@ var syncCmd = &cobra.Command{
 
 var syncOptions = music.NewSyncOptions()
 var syncAll bool
+var syncBack time.Duration
 
 func sync() {
 	m := music.NewMusic(getConfig())
@@ -41,6 +43,8 @@ func sync() {
 
 	if syncAll {
 		syncOptions.Since = time.Time{}
+	} else if syncBack > 0 {
+		syncOptions.Since = time.Now().Add(-1*syncBack)
 	} else {
 		syncOptions.Since = m.LastModified()
 	}
@@ -49,6 +53,7 @@ func sync() {
 
 func init() {
 	syncCmd.Flags().StringVarP(&configFile, "config", "c", "takeout.ini", "config file")
+	syncCmd.Flags().DurationVarP(&syncBack, "back", "b", 0, "Back duration")
 	syncCmd.Flags().BoolVarP(&syncOptions.Tracks, "tracks", "t", true, "sync tracks")
 	syncCmd.Flags().BoolVarP(&syncOptions.Releases, "releases", "r", true, "sync releases")
 	syncCmd.Flags().BoolVarP(&syncOptions.Popular, "popular", "p", true, "sync popular")

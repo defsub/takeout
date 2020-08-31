@@ -54,6 +54,7 @@ h3 {
 .track-artist {
     font-size: small;
     opacity: 0.5;
+    background-color: inherit;
 }
 
 .track-time {
@@ -63,6 +64,7 @@ h3 {
 
 .track-title {
     font-size: medium;
+    background-color: inherit;
 }
 
 .track-num {
@@ -113,20 +115,24 @@ h3 {
 
 .np-track {
     padding-left: 5px;
+    background-color: inherit;
 }
 
 .np-control {
     width: 36px;
     cursor: pointer;
+    background-color: inherit;
 }
 
 .np-title {
     font-size: medium;
+    background-color: inherit;
 }
 
 .np-artist {
     font-size: small;
     opacity: 0.5;
+    background-color: inherit;
 }
 
 .np-time {
@@ -165,21 +171,25 @@ body {
     left: 0;
     bottom: 0;
     width: 100%;
+    background-color: inherit;
 }
 
 .left {
     /* top right bottom left */
     margin: 0.5em auto 0.5em 0.5em;
+    background-color: inherit;
 }
 
 .middle {
     /* top right bottom left */
     margin: 0.5em 0.5em 0.5em 0.5em;
+    background-color: inherit;
 }
 
 .right {
     /* top right bottom left */
     margin: 0.5em 0.5em 0.5em auto;
+    background-color: inherit;
 }
 
 .separator {
@@ -190,6 +200,7 @@ body {
     display: flex;
     overflow: hidden;
     align-items: center;
+    background-color: inherit;
 }
 
 .parent2 {
@@ -197,12 +208,14 @@ body {
     overflow: hidden;
     flex-direction: column;
     justify-content: space-between;
+    background-color: inherit;
 }
 
 .parent3 {
     display: flex;
     flex-direction: column;
     align-items: center;
+    background-color: inherit;
 }
 
 .parent4 {
@@ -210,6 +223,7 @@ body {
     overflow: hidden;
     align-items: center;
     justify-content: space-between;
+    background-color: inherit;
 }
 
 .search-results {
@@ -224,4 +238,8 @@ body {
     border-radius: 5px 5px 5px 5px;
     padding: 5px;
     outline: none;
+}
+
+.playing {
+    background-color: #333;
 }

@@ -35,7 +35,7 @@ func userAgent() string {
 	return takeout.AppName + "/" + takeout.Version + " ( " + takeout.Contact + " ) "
 }
 
-func doGet(urlStr string) (*http.Response, error) {
+func doGet(headers map[string]string, urlStr string) (*http.Response, error) {
 	fmt.Printf("doGet %s\n", urlStr)
 	url, _ := url.Parse(urlStr)
 	client := &http.Client{}
@@ -44,6 +44,11 @@ func doGet(urlStr string) (*http.Response, error) {
 		return nil, err
 	}
 	req.Header.Set("User-Agent", userAgent())
+	if headers != nil {
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -52,7 +57,11 @@ func doGet(urlStr string) (*http.Response, error) {
 }
 
 func GetJson(url string, result interface{}) error {
-	resp, err := doGet(url)
+	return GetJsonWith(nil, url, result)
+}
+
+func GetJsonWith(headers map[string]string, url string, result interface{}) error {
+	resp, err := doGet(headers, url)
 	if err != nil {
 		return nil
 	}
@@ -65,7 +74,7 @@ func GetJson(url string, result interface{}) error {
 }
 
 func GetXML(url string, result interface{}) error {
-	resp, err := doGet(url)
+	resp, err := doGet(nil, url)
 	if err != nil {
 		return nil
 	}

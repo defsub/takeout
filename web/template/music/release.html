@@ -27,7 +27,7 @@
 		 data-album="{{.ReleaseTitle}}"
 		 data-title="{{.Title}}"
 		 data-image="{{.|coverSmall}}"
-		 data-url="{{.|link}}">
+		 data-location="{{.|link}}">
 		{{ .Title }}
 	      </a>
 	    </div>
@@ -46,6 +46,45 @@
       {{ end }}
     </div>
   </div>
+  {{ if .Singles }}
+  <div>
+    <h2>Singles</h2>
+    <div>
+      {{ range .Singles }}
+      <div class="parent">
+	<div class="track-num">
+	  {{ .TrackNum }}.
+	</div>
+	<div class="left" style="cursor: pointer;">
+	  <div class="parent2">
+	    <div class="track-title">
+	      <a data-playlist="append-ref"
+		 data-ref="{{.|ref}}"
+		 data-play="now"
+		 data-creator="{{.Artist}}"
+		 data-album="{{.ReleaseTitle}}"
+		 data-title="{{.Title}}"
+		 data-image="{{.|coverSmall}}"
+		 data-location="{{.|link}}">
+		{{ .Title }}
+	      </a>
+	    </div>
+	    <div class="track-artist">
+	      {{ .ReleaseTitle }}
+	    </div>
+	  </div>
+	</div>
+	<div class="separator"></div>
+	<div class="right">
+	  <a data-playlist="append-ref" data-ref="{{.|ref}}">
+	    <img src="/static/playlist_add-white-24dp.svg">
+	  </a>
+	</div>
+      </div>
+      {{ end }}
+    </div>
+  </div>
+  {{ end }}
   <div style="clear: both; padding-top: 5px;"/>
   {{ if .Similar }}
   <h2>Similar Releases</h2>

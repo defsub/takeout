@@ -19,7 +19,6 @@ package spiff
 
 import (
 	"encoding/json"
-	"time"
 )
 
 // See the following specifications:
@@ -28,7 +27,8 @@ import (
 
 type Playlist struct {
 	Spiff    `json:"playlist"`
-	Expires  time.Time `json:"expires"`
+	Index    int     `json:"index"`
+	Position float64 `json:"position"`
 }
 
 type Spiff struct {
@@ -47,7 +47,7 @@ type Entry struct {
 }
 
 func NewPlaylist() *Playlist {
-	return &Playlist{Spiff{"", []Entry{}}, time.Now()}
+	return &Playlist{Spiff{"", []Entry{}}, -1, 0}
 }
 
 func Unmarshal(data []byte) (*Playlist, error) {
@@ -59,8 +59,4 @@ func Unmarshal(data []byte) (*Playlist, error) {
 func (playlist *Playlist) Marshal() ([]byte, error) {
 	data, err := json.Marshal(playlist)
 	return data, err
-}
-
-func (playlist *Playlist) Expired() bool {
-	return playlist.Expires.Before(time.Now())
 }

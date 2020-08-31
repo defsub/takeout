@@ -17,6 +17,10 @@
 
 package music
 
+import (
+	"fmt"
+)
+
 type HomeView struct {
 	Added    []Release
 	Released []Release
@@ -48,6 +52,8 @@ type ReleaseView struct {
 	Artist  Artist
 	Release Release
 	Tracks  []Track
+	Singles []Track
+	Popular []Track
 	Similar []Release
 }
 
@@ -117,6 +123,8 @@ func (m *Music) ReleaseView(release Release) *ReleaseView {
 	view.Release = release
 	view.Artist = *m.artist(release.Artist)
 	view.Tracks = m.releaseTracks(release)
+	view.Singles = m.releaseSingles(release)
+	view.Popular = m.releasePopular(release)
 	view.Similar = m.similarReleases(&view.Artist, release)
 	return view
 }
@@ -126,9 +134,12 @@ func (m *Music) SearchView(query string) *SearchView {
 	artists, releases, _ := m.search(query)
 	view.Artists = artists
 	view.Releases = releases
-	// view.Tracks = tracks
 	view.Query = query
 	view.Tracks = m.Search(query)
 	view.Hits = len(view.Artists) + len(view.Releases) + len(view.Tracks)
 	return view
+}
+
+func trackLocation(t Track) string {
+	return fmt.Sprintf("/api/tracks/%d/location", t.ID)
 }
