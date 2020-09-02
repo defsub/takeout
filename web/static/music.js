@@ -82,13 +82,17 @@ Takeout.music = (function() {
 	playNow(playlist[playIndex], playPos);
 	updatePlaylist();
 	saveState(playIndex);
-    }
+    };
 
     const playFirst = function() {
-	playIndex = -1;
+	playEntry(0);
+    };
+
+    const playEntry = function(i) {
+	playIndex = i - 1;
 	playPos = 0;
 	playNext();
-    }
+    };
 
     const playNext = function() {
 	playNow(nextTrack());
@@ -98,7 +102,7 @@ Takeout.music = (function() {
 
     const playNow = function(track, position = 0) {
 	if (track['location'] != null) {
-	    fetchLocation(track, function(url) {
+	    fetchLocation(track).then(url => {
 		audioSource().setAttribute("src", url);
 		updateTitle(track);
 		audioTag().currentTime = position;
@@ -133,15 +137,14 @@ Takeout.music = (function() {
 	}
     };
 
-    const fetchLocation = function(track, doit) {
-	fetch(track['location'], {credentials: 'include'}).
+    const fetchLocation = function(track) {
+	return fetch(track['location'], {credentials: 'include'}).
 	    then(response => {
 		return response.json();
 	    }).
 	    then(data => {
 		return data['url'];
-	    }).
-	    then(doit);
+	    });
     };
 
     const fetchPlaylist = function() {
@@ -165,21 +168,24 @@ Takeout.music = (function() {
 	html = html.concat('<img class="np-control" src="/static/clear-white-24dp.svg" onclick="doClear();">');
 	let i = 0;
 	playlist.forEach(t => {
-	    html = html.concat((i == index) ? '<div class="parent playing">' : '<div class="parent">',
-			       '<div>',
-			       '<img class="np-cover" src="', t["image"], '">',
-			       '</div>',
-			       '<div class="left">',
-			       '<div class="parent2">',
-			       '<div class="track-title">', t["title"], '</div>',
-			       '<div class="track-artist">', t["creator"] + ' ~ ' + t['album'], '</div>',
-			       '</div>',
-			       '</div>',
-			       '<div class="separator"></div>',
-			       '<div class="right">',
-			       '<img class="np-control" src="/static/clear-white-24dp.svg" onclick="remove('+i+');">',
-			       '</div>',
-			       '</div>');
+	    html = html.concat(
+		(i == index) ?
+		    '<div class="parent playing">' :
+		    '<div onclick="playEntry(' + i + ');" class="parent clickable">',
+		'<div>',
+		'<img class="np-cover" src="', t["image"], '">',
+		'</div>',
+		'<div class="left">',
+		'<div class="parent2">',
+		'<div class="track-title">', t["title"], '</div>',
+		'<div class="track-artist">', t["creator"] + ' ~ ' + t['album'], '</div>',
+		'</div>',
+		'</div>',
+		'<div class="separator"></div>',
+		'<div class="right">',
+		'<img class="np-control" src="/static/clear-white-24dp.svg" onclick="remove('+i+');">',
+		'</div>',
+		'</div>');
 	    i++;
 	});
 	e.innerHTML = html;
@@ -310,7 +316,7 @@ Takeout.music = (function() {
     };
 
     const saveState = function(index, position = 0) {
-	doPatch(statePatch(index, position), false);
+	doPatch(statePatch(index, position));
     };
 
     const prependRef = function(ref) {
@@ -343,7 +349,7 @@ Takeout.music = (function() {
 	});
     };
 
-    const doPatch = function(body, apply = true) {
+    const doPatch = function(body) {
 	return fetch("/api/playlist", {
 	    credentials: 'include',
 	    method: "PATCH",
@@ -351,10 +357,18 @@ Takeout.music = (function() {
 	    headers: {
 		"Content-type": "application/json-patch+json"
 	    }}).
-	    then(response => response.json()).
-	    then(data => {
-		if (apply) {
-		    applyPatch(data)
+	    then(response => {
+		if (response.status == 200) {
+		    return response.json();
+		}
+		// could be 204 if only index/pos changed, no data or tracks
+		// changed
+		throw response.status;
+	    }).
+	    then(data => applyPatch(data)).
+	    catch(err => {
+		if (err != 204) {
+		    console.log("doPatch error " + err);
 		}
 	    });
     }
@@ -510,7 +524,8 @@ Takeout.music = (function() {
 	shuffle: shuffle,
 	clear: clear,
 	playNext: playNext,
-	playResume: playResume
+	playResume: playResume,
+	playEntry: playEntry
     };
 })();
 
@@ -528,6 +543,11 @@ function playNext() {
 
 function playResume() {
     Takeout.music.playResume();
+    return false;
+}
+
+function playEntry(i) {
+    Takeout.music.playEntry(i);
     return false;
 }
 

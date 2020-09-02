@@ -341,9 +341,9 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 		var plist *spiff.Playlist
 		var err error
 		dirty := false
-		if r.Method == "PATCH" {
-			// 200, 204
+		before := up.Playlist
 
+		if r.Method == "PATCH" {
 			patch, _ := ioutil.ReadAll(r.Body)
 			up.Playlist, err = spiff.Patch(up.Playlist, patch)
 			if err != nil {
@@ -353,8 +353,6 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 			plist, _ = spiff.Unmarshal(up.Playlist)
 			music.Resolve(plist)
 			dirty = true
-		} else if r.Method == "GET" {
-			plist, _ = spiff.Unmarshal(up.Playlist)
 		}
 
 		if dirty {
@@ -363,9 +361,19 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 			}
 			up.Playlist, _ = plist.Marshal()
 			music.updatePlaylist(up)
-		}
 
-		w.Write(up.Playlist)
+			v, _ := spiff.Compare(before, up.Playlist)
+			if v {
+				// entries didn't change, only metadata
+				w.WriteHeader(http.StatusNoContent)
+			} else {
+				w.WriteHeader(http.StatusOK)
+				w.Write(up.Playlist)
+			}
+		} else {
+			w.WriteHeader(http.StatusOK)
+			w.Write(up.Playlist)
+		}
 	} else {
 		var view interface{}
 

@@ -18,6 +18,7 @@
 package spiff
 
 import (
+	"encoding/json"
 	jsonpatch "github.com/evanphx/json-patch"
 )
 
@@ -32,4 +33,36 @@ func Patch(data []byte, patch []byte) ([]byte, error) {
 	}
 	data, err = jp.Apply(data)
 	return data, err
+}
+
+func Compare(before, after []byte) (bool, error) {
+	var p1, p2 Playlist
+	var err error
+
+	// TODO this doesn't seem very efficient. Need to compare only the
+	// playlist tracks to see if they changed. First need to unmarshal
+	// both, then remarshal just the tracks, then compare.
+
+	err = json.Unmarshal(before, &p1)
+	if err != nil {
+		return false, err
+	}
+	err = json.Unmarshal(after, &p2)
+	if err != nil {
+		return false, err
+	}
+
+	s1, err := json.Marshal(p1.Spiff)
+	if err != nil {
+		return false, err
+	}
+	s2, err := json.Marshal(p2.Spiff)
+	if err != nil {
+		return false, err
+	}
+
+	// And finally compare
+	v := jsonpatch.Equal(s1, s2)
+
+	return v, nil
 }

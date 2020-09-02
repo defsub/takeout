@@ -243,3 +243,7 @@ body {
 .playing {
     background-color: #333;
 }
+
+.clickable {
+    cursor: pointer;
+}
