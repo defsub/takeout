@@ -45,6 +45,7 @@ type SyncOptions struct {
 	Popular  bool
 	Similar  bool
 	Index    bool
+	Artist   string
 }
 
 func NewSyncOptions() SyncOptions {
@@ -107,7 +108,12 @@ func (m *Music) Sync(options SyncOptions) {
 			log.CheckError(m.syncBucketTracksSince(options.Since))
 			log.CheckError(m.syncArtists())
 		}
-		artists := m.trackArtistsSince(options.Since)
+		var artists []Artist
+		if options.Artist != "" {
+			artists = []Artist{*m.artist(options.Artist)}
+		} else {
+			artists = m.trackArtistsSince(options.Since)
+		}
 		if options.Releases {
 			log.CheckError(m.syncReleasesFor(artists))
 			log.CheckError(m.fixTrackReleases())
@@ -197,13 +203,23 @@ func (m *Music) syncReleases() error {
 
 func (m *Music) syncReleasesFor(artists []Artist) error {
 	for _, a := range artists {
+		var releases []Release
 		log.Printf("releases for %s\n", a.Name)
 		if a.Name == "Various Artists" {
-			// skipping!
-			continue
+			// various artists has many thousands of releases so
+			// instead of getting all releases, search for them by
+			// name and then get releases
+			names := m.artistTrackReleases(a.Name)
+			for _, name := range names {
+				result, _ := m.MusicBrainzSearchReleaseGroup(a.ARID, name)
+				for _, rg := range result.ReleaseGroups {
+					r, _ := m.MusicBrainzReleases(&a, rg.ID)
+					releases = append(releases, r...)
+				}
+			}
+		} else {
+			releases, _ = m.MusicBrainzArtistReleases(&a)
 		}
-
-		releases, _ := m.MusicBrainzArtistReleases(&a)
 		for _, r := range releases {
 			r.Name = fixName(r.Name)
 			for i, _ := range r.Media {
@@ -277,6 +293,7 @@ func fixName(name string) string {
 //   Weezer Blue Album
 //   Weezer [Blue Album]
 func (m *Music) assignTrackReleases() error {
+	notfound := make(map[string]int)
 	tracks := m.tracksWithoutAssignedRelease()
 	// TODO this could be more efficient
 	for _, t := range tracks {
@@ -303,7 +320,11 @@ func (m *Music) assignTrackReleases() error {
 				}
 			}
 			if !assigned {
-				log.Printf("release not found for %s/%s/%d\n", t.Artist, t.Release, t.TrackCount)
+				v := fmt.Sprintf("%/%s/%d", t.Artist, t.Release, t.TrackCount)
+				notfound[v] += 1
+				if notfound[v] == 1 {
+					log.Printf("release not found for %s\n", v)
+				}
 			}
 		} else {
 			err := m.assignTrackRelease(&t, r)
@@ -330,10 +351,6 @@ func (m *Music) fixTrackReleases() error {
 
 		_, ok := fixReleases[t.Release]
 		if ok {
-			continue
-		}
-
-		if artist.Name == "Various Artists" {
 			continue
 		}
 
@@ -599,7 +616,7 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 		return nil, err
 	}
 
-	re := regexp.MustCompile(`^(\d+)-(\d+)-(.*)$`)
+	re := regexp.MustCompile(`^(\d+)-(\d+)`)
 	newIndex := make(search.IndexMap)
 	for k, v := range index {
 		matches := re.FindStringSubmatch(k)
@@ -609,19 +626,17 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 		}
 		discNum := atoi(matches[1])
 		trackNum := atoi(matches[2])
-		title := matches[3]
 		matched := false
 		for _, t := range tracks {
 			if t.DiscNum == discNum &&
-				t.TrackNum == trackNum &&
-				t.Title == title {
+				t.TrackNum == trackNum {
 				// use track key
 				newIndex[t.Key] = v
 				matched = true
 			}
 		}
 		if !matched {
-			//log.Printf("no match %s\n", k)
+			log.Printf("no match %s\n", k)
 		}
 	}
 
@@ -687,10 +702,6 @@ func (m *Music) syncIndexFor(artists []Artist) error {
 
 	for _, a := range artists {
 		log.Printf("index for %s\n", a.Name)
-		if a.Name == "Various Artists" {
-			// skipping!
-			continue
-		}
 		index, err := m.artistIndex(&a)
 		if err != nil {
 			return err

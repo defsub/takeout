@@ -137,6 +137,16 @@ func (m *Music) updateTrackRelease(artist, oldName, newName string,
 	return
 }
 
+func (m *Music) artistTrackReleases(artist string) []string {
+	var tracks []Track
+	m.db.Select("distinct(release)").Where("artist = ?", artist).Find(&tracks)
+	var releases []string
+	for _, t := range tracks {
+		releases = append(releases, t.Release)
+	}
+	return releases
+}
+
 func (m *Music) updateTrackReleaseTitles(t Track) error {
 	return m.db.Model(t).
 		Update("media_title", t.MediaTitle).

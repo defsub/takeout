@@ -10,7 +10,16 @@
     </div>
   </div>
   <div>
-    <h2>Tracks</h2>
+    <div class="parent">
+      <div class="left">
+	<h2>Tracks</h2>
+      </div>
+      <div class="right">
+	<a data-playlist="append-ref" data-ref="{{.Release|ref}}">
+	  <img src="/static/playlist_add-white-24dp.svg"/>
+	</a>
+      </div>
+    </div>
     <div>
       {{ range .Tracks }}
       <div class="parent">

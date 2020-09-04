@@ -66,9 +66,14 @@ Takeout.music = (function() {
     };
 
     const updateTitle = function(track) {
-	const t1 = track["creator"] + " ~ " + track["title"];
-	document.getElementsByTagName("title")[0].innerText = t1;
-	audioTag().setAttribute("title", t1);
+	if (track["creator"] !== undefined && track["title"] !== undefined) {
+	    let title = track["creator"] + " ~ " + track["title"];
+	    document.getElementsByTagName("title")[0].innerText = "Takeout: " + title;
+	    audioTag().setAttribute("title", title);
+	} else {
+	    document.getElementsByTagName("title")[0].innerText = "Takeout";
+	    audioTag().setAttribute("title", "");
+	}
     };
 
     const playResume = function() {
@@ -100,12 +105,11 @@ Takeout.music = (function() {
 	saveState(playIndex);
     };
 
-    const playNow = function(track, position = 0) {
+    const playNow = function(track) {
 	if (track['location'] != null) {
 	    fetchLocation(track).then(url => {
 		audioSource().setAttribute("src", url);
 		updateTitle(track);
-		audioTag().currentTime = position;
 		audioTag().load();
 		document.getElementById("playing").style.display = "block";
 	    })
@@ -114,7 +118,7 @@ Takeout.music = (function() {
 	    document.getElementById("playlist").style.display = "none";
 	    document.getElementById("main").style.display = "block";
 	    audioSource().setAttribute("src", "");
-	    updateTitle("Takeout");
+	    updateTitle(track);
 	    pause();
 	}
 	updateNowPlaying(track);
@@ -163,7 +167,7 @@ Takeout.music = (function() {
     const updatePlaylist = function() {
 	let e = document.getElementById("playlist");
 	let index = playIndex;
-	let html = '<a onclick="playResume();"><h2>Playlist #' + index + '</h2></a>';
+	let html = '<a onclick="playResume();"><h2>Playlist</h2></a>';
 	html = html.concat('<img class="np-control" src="/static/shuffle-white-24dp.svg" onclick="doShuffle();">');
 	html = html.concat('<img class="np-control" src="/static/clear-white-24dp.svg" onclick="doClear();">');
 	let i = 0;
@@ -233,7 +237,8 @@ Takeout.music = (function() {
 	//document.getElementById("np-duration").innerHTML = "-" + formatTime(audio.duration - audio.currentTime);
 	playPos = audio.currentTime;
 	let p = (audio.currentTime / audio.duration);
-	document.getElementById("np-progress").setAttribute("value", p);
+	//document.getElementById("np-progress").setAttribute("value", p);
+	document.getElementById("progress").style.width = p*100 + "%";
     };
 
     const audioEnded = function() {
@@ -242,10 +247,35 @@ Takeout.music = (function() {
 
     const registerEvents = function() {
 	const audio = audioTag();
+	/*
+	  audio loading events:
+	  1. loadstart
+	  2. durationchange
+	  3. loadedmetadata
+	  4. loadeddata
+	  5. progress
+	  6. canplay
+	  7. canplaythrough
+	*/
 	if (audio.getAttribute("data-ended") == null) {
+	    // loading events
+	    audio.addEventListener("loadstart", function() {
+		// indeterminate
+		//document.getElementById("np-progress").removeAttribute("value");
+		//document.getElementById("np-time").innerHTML = "";
+		//document.getElementById("np-duration").innerHTML = "--:--";
+		document.getElementById("progress").style.width = "0%";
+	    });
+	    audio.addEventListener("durationchange", function() {
+	    });
+	    audio.addEventListener("loadeddata", function() {
+		document.getElementById("progress").style.width = "0%";
+		audioTag().currentTime = playPos;
+	    });
 	    audio.addEventListener("canplay", function() {
 		play();
 	    });
+	    // playback events
 	    audio.addEventListener("timeupdate", function() {
 		audioProgress();
 	    });
@@ -273,6 +303,13 @@ Takeout.music = (function() {
 
 	document.getElementById("np-next").addEventListener("click", function() {
 	    playNext();
+	});
+
+	document.getElementById("progressbar").addEventListener("click", function(e) {
+	    if (playing) {
+		// seek
+		audioTag().currentTime = e.pageX/window.innerWidth * audioTag().duration;
+	    }
 	});
     };
 
@@ -417,6 +454,7 @@ Takeout.music = (function() {
 		let cmd = e.getAttribute("data-play");
 		if (cmd == "now") {
 		    let track = trackData(e);
+		    playPos = 0;
 		    playNow(track);
 		}
 	    };

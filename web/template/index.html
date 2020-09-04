@@ -9,13 +9,13 @@
   <body>
     <div id="top">
       <div class="parent4">
+	<div>
+	  <a data-link="{{home}}" class="takeout">Takeout</a>
+	</div>
 	<div class="parent">
 	  <div>
 	    <img class="np-control" onclick="toggle();" src="/static/list-white-36dp.svg">
 	  </div>
-	</div>
-	<div>
-	  <a data-link="{{home}}" class="takeout">Takeout</a>
 	</div>
       </div>
       <div style="display: flex; justify-content: center;">
@@ -45,6 +45,7 @@
 		<div class="np-track" onclick="toggle();">
 		  <div class="np-title" name="np-title"></div>
 		  <div class="np-artist" name="np-artist"></div>
+		  <div class="np-duration" id="np-duration"></div>
 		</div>
 	      </td>
 	      <td class="np-control playing">
@@ -55,13 +56,11 @@
 	      </td>
 	    </tr>
 	  </table>
-	  <table class="full-width playing">
-	    <tr class="playing">
-	      <td class="playing">
-		<progress id="np-progress" style="height: 8px;" class="full-width"></progress>
-	      </td>
-	    </tr>
-	  </table>
+	  <div style="padding: 2px;">
+	    <div id="progressbar">
+	      <div id="progress"></div>
+	    </div>
+	  </div>
 	</div>
       </div>
   </body>

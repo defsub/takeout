@@ -275,6 +275,36 @@ func (rg mbzReleaseGroup) firstReleaseDate() time.Time {
 	return parseDate(rg.FirstReleaseDate)
 }
 
+func release(a *Artist, r mbzRelease) Release {
+	disambiguation := r.Disambiguation
+	if disambiguation == "" {
+		disambiguation = r.ReleaseGroup.Disambiguation
+	}
+
+	var media []Media
+	for _, m := range r.Media {
+		media = append(media, Media{
+			REID:       string(r.ID),
+			Name:       m.Title,
+			Position:   m.Position,
+			Format:     m.Format,
+			TrackCount: m.TrackCount})
+	}
+
+	return Release{
+		Artist:         a.Name,
+		Name:           r.Title,
+		Disambiguation: disambiguation,
+		REID:           string(r.ID),
+		RGID:           string(r.ReleaseGroup.ID),
+		Type:           r.ReleaseGroup.PrimaryType,
+		Asin:           r.Asin,
+		TrackCount:     r.totalTracks(),
+		FrontCover:     r.CoverArtArchive.Front,
+		Media:          media,
+		Date:           r.ReleaseGroup.firstReleaseDate()}
+}
+
 // Get all releases for an artist from MusicBrainz.
 func (m *Music) MusicBrainzArtistReleases(a *Artist) ([]Release, error) {
 	var releases []Release
@@ -282,33 +312,7 @@ func (m *Music) MusicBrainzArtistReleases(a *Artist) ([]Release, error) {
 	for {
 		result, _ := doArtistReleases(a.ARID, limit, offset)
 		for _, r := range result.Releases {
-			disambiguation := r.Disambiguation
-			if disambiguation == "" {
-				disambiguation = r.ReleaseGroup.Disambiguation
-			}
-
-			var media []Media
-			for _, m := range r.Media {
-				media = append(media, Media{
-					REID:       string(r.ID),
-					Name:       m.Title,
-					Position:   m.Position,
-					Format:     m.Format,
-					TrackCount: m.TrackCount})
-			}
-
-			releases = append(releases, Release{
-				Artist:         a.Name,
-				Name:           r.Title,
-				Disambiguation: disambiguation,
-				REID:           string(r.ID),
-				RGID:           string(r.ReleaseGroup.ID),
-				Type:           r.ReleaseGroup.PrimaryType,
-				Asin:           r.Asin,
-				TrackCount:     r.totalTracks(),
-				FrontCover:     r.CoverArtArchive.Front,
-				Media:          media,
-				Date:           r.ReleaseGroup.firstReleaseDate()})
+			releases = append(releases, release(a, r))
 		}
 		offset += len(result.Releases)
 		if offset >= result.Count {
@@ -355,5 +359,35 @@ func (m *Music) MusicBrainzReleaseGroup(rgid string) (*mbzReleaseGroup, error) {
 			r.Title = result.Title
 		}
 	}
+	return &result, err
+}
+
+func (m *Music) MusicBrainzReleases(a *Artist, rgid string) ([]Release, error) {
+	var releases []Release
+	rg, err := m.MusicBrainzReleaseGroup(rgid)
+	if err != nil {
+		return releases, err
+	}
+	for _, r := range rg.Releases {
+		r.ReleaseGroup = *rg
+		releases = append(releases, release(a, r))
+	}
+	return releases, nil
+}
+
+type mbzSearchResult struct {
+	Created       string            `json:"created"`
+	Count         int               `json:"count"`
+	Offset        int               `json:"offset"`
+	ReleaseGroups []mbzReleaseGroup `json:"release-groups"`
+}
+
+func (m *Music) MusicBrainzSearchReleaseGroup(arid string, name string) (*mbzSearchResult, error) {
+	url := fmt.Sprintf(
+		`https://musicbrainz.org/ws/2/release-group/?fmt=json&query=arid:%s+AND+release:"%s"`,
+		arid, strings.Replace(name, " ", "+", -1))
+	var result mbzSearchResult
+	client.RateLimit()
+	err := client.GetJson(url, &result)
 	return &result, err
 }

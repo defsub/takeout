@@ -87,7 +87,7 @@ func (m *Music) creditsIndex(reid string) (search.IndexMap, error) {
 			for _, a := range t.ArtistCredit {
 				addField(trackFields, "artist", a.Name)
 			}
-			key := fmt.Sprintf("%d-%d-%s", m.Position, t.Position, t.Recording.Title)
+			key := fmt.Sprintf("%d-%d", m.Position, t.Position)
 			index[key] = trackFields
 		}
 	}
@@ -125,10 +125,12 @@ func addField(c search.FieldMap, key string, value interface{}) search.FieldMap 
 		k := strings.Replace(k, " ", "_", -1)
 		switch value.(type) {
 		case string:
+			svalue := value.(string)
+			svalue = fixName(svalue)
 			if v, ok := c[k]; ok {
-				c[k] = v.(string) + ", " + value.(string)
+				c[k] = v.(string) + ", " + svalue
 			} else {
-				c[k] = value
+				c[k] = svalue
 			}
 		default:
 			c[k] = value
