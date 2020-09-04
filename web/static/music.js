@@ -175,11 +175,11 @@ Takeout.music = (function() {
 	    html = html.concat(
 		(i == index) ?
 		    '<div class="parent playing">' :
-		    '<div onclick="playEntry(' + i + ');" class="parent clickable">',
+		    '<div class="parent">',
 		'<div>',
-		'<img class="np-cover" src="', t["image"], '">',
+		'<img onclick="playEntry(' + i + ');" class="np-cover clickable" src="', t["image"], '">',
 		'</div>',
-		'<div class="left">',
+		'<div class="left clickable" onclick="playEntry(' + i + ');">',
 		'<div class="parent2">',
 		'<div class="track-title">', t["title"], '</div>',
 		'<div class="track-artist">', t["creator"] + ' ~ ' + t['album'], '</div>',
@@ -187,7 +187,7 @@ Takeout.music = (function() {
 		'</div>',
 		'<div class="separator"></div>',
 		'<div class="right">',
-		'<img class="np-control" src="/static/clear-white-24dp.svg" onclick="remove('+i+');">',
+		'<img class="np-control clickable" src="/static/clear-white-24dp.svg" onclick="remove('+i+');">',
 		'</div>',
 		'</div>');
 	    i++;
