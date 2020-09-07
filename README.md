@@ -5,7 +5,7 @@ MusicBrainz and Last.fm to make media available for streaming using a web
 interface and VLC. Media is browsed using the Takeout server and streamed
 directly from S3 using pre-signed time-based URLs.
 
-Screens running in Chrome running on an Android phone:
+Screens running on Chrome 85 for Android 10:
 
 <p align="center">
 <img src="https://github.com/defsub/defsub.github.io/blob/master/takeout/screens/2020-09-07/Screenshot_20200907-082736.png" width="200">
