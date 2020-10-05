@@ -33,7 +33,7 @@ func (m *Music) openDB() (err error) {
 	}
 	m.db.LogMode(m.config.Music.DB.LogMode)
 	m.db.AutoMigrate(&Artist{}, &ArtistTag{}, &Media{}, &Popular{},
-		&Similar{}, &Release{}, &Track{}, &UserPlaylist{})
+		&Similar{}, &Release{}, &Track{}, &Playlist{})
 	return
 }
 
@@ -331,6 +331,14 @@ func (m *Music) artistPopularTracks(a Artist) []Track {
 	return tracks
 }
 
+func (m *Music) artistTracks(a Artist) []Track {
+	var tracks []Track
+	m.db.Where("artist = ?", a.Name).
+		Order("release, date, disc_number, track_num").
+		Find(&tracks)
+	return tracks
+}
+
 // All artist names ordered by sortName from MusicBrainz.
 func (m *Music) artists() []Artist {
 	var artists []Artist
@@ -560,16 +568,47 @@ func (m *Music) search(query string) ([]Artist, []Release, []Track) {
 	return artists, releases, tracks
 }
 
-func (m *Music) lookupPlaylist(user *auth.User) *UserPlaylist {
-	up := &UserPlaylist{User: user.Name}
+// Lookup a playlist.
+func (m *Music) lookupPlaylist(user *auth.User, id int) *UserPlaylist {
+	p := &Playlist{User: user.Name, ID: id}
+	if m.db.Find(p, p).RecordNotFound() {
+		return nil
+	}
+	return p
+}
+
+// Save a playlist. This will create or update.
+func (m *Music) updatePlaylist(user *auth.User, p *Playlist) error {
+	up := lookupPlaylistName(user, name)
+	if up == nil {
+		up := &UserPlaylist{
+			Name: name,
+			User: user.Name,
+			Playlist: p.Playlist,
+		}
+		return m.db.Create(up).Error
+	} else {
+		up.Playlist = p.Playlist
+		return m.db.Save(up).Error
+	}
+}
+
+
+// Lookup a named user playlist.
+func (m *Music) lookupPlaylistName(user *auth.User, name string) *UserPlaylist {
+	up := &UserPlaylist{User: user.Name, Name: name}
 	if m.db.Find(up, up).RecordNotFound() {
 		return nil
 	}
 	return up
 }
 
-func (m *Music) updatePlaylist(up *UserPlaylist) error {
-	return m.db.Save(up).Error
+// Obtain all saved user playlists.
+func (m *Music) playlists(user *auth.User) []UserPlaylist {
+	var playlists []userPlaylist
+	m.db.Where(`user = ? and name is not null and name != ""`, user.Name).
+		Find(&playlists)
+	return playlists
 }
 
 func (m *Music) createArtist(a *Artist) error {

@@ -25,6 +25,7 @@ Takeout.music = (function() {
     let playPos = 0;
     let playing = false;
     let userPlay = false;
+    let current = {};
 
     const clearTracks = function() {
 	playlist = [];
@@ -68,7 +69,7 @@ Takeout.music = (function() {
     const updateTitle = function(track) {
 	if (track["creator"] !== undefined && track["title"] !== undefined) {
 	    let title = track["creator"] + " ~ " + track["title"];
-	    document.getElementsByTagName("title")[0].innerText = "Takeout: " + title;
+	    document.getElementsByTagName("title")[0].innerText = title;
 	    audioTag().setAttribute("title", title);
 	} else {
 	    document.getElementsByTagName("title")[0].innerText = "Takeout";
@@ -105,11 +106,22 @@ Takeout.music = (function() {
 	saveState(playIndex);
     };
 
-    const playNow = function(track) {
+    const playPrev = function() {
+	if (playPos > 15) {
+	    playPos = 0;
+	    audioTag().currentTime = playPos;
+	} else {
+	    playIndex -= 2;
+	    playNext();
+	}
+    };
+
+    const playNow = async function(track) {
 	if (track['location'] != null) {
-	    fetchLocation(track).then(url => {
+	    await fetchLocation(track).then(url => {
 		audioSource().setAttribute("src", url);
 		updateTitle(track);
+		current = track;
 		audioTag().load();
 		document.getElementById("playing").style.display = "block";
 	    })
@@ -119,6 +131,7 @@ Takeout.music = (function() {
 	    document.getElementById("main").style.display = "block";
 	    audioSource().setAttribute("src", "");
 	    updateTitle(track);
+	    current = {};
 	    pause();
 	}
 	updateNowPlaying(track);
@@ -147,7 +160,7 @@ Takeout.music = (function() {
 		return response.json();
 	    }).
 	    then(data => {
-		return data['url'];
+		return data['Url'];
 	    });
     };
 
@@ -310,6 +323,32 @@ Takeout.music = (function() {
 		// seek
 		audioTag().currentTime = e.pageX/window.innerWidth * audioTag().duration;
 	    }
+	});
+
+	document.addEventListener("keyup", function(e) {
+	    let q = document.getElementById("q");
+	    if (document.activeElement == q) {
+		return true;
+	    }
+	    if (event.key == ' ') {
+		if (playing) {
+		    pause();
+		} else if (current['title'] !== undefined) {
+		    play();
+		}
+		return false;
+	    } else if (event.key == "ArrowLeft") {
+		playPrev();
+		return false;
+	    } else if (event.key == "ArrowRight") {
+		playNext();
+		return false;
+	    } else if (event.key >= '1' && event.key <= '9') {
+		let i = parseInt(event.key);
+		playEntry(i-1);
+		return false;
+	    }
+	    return true;
 	});
     };
 
