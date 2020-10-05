@@ -187,7 +187,7 @@ func (handler *MusicHandler) apiList(w http.ResponseWriter, r *http.Request, mus
 		music.updateList(&list)
 		w.WriteHeader(http.StatusNoContent)
 	} else if r.Method == "DELETE" {
-		err = music.DeleteList(&list)
+		err = music.deleteList(&list)
 		if err != nil {
 			http.Error(w, "bummer", http.StatusInternalServerError)
 			return

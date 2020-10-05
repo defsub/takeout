@@ -77,9 +77,9 @@ func (handler *MusicHandler) doit(w http.ResponseWriter, r *http.Request) {
 
 func (handler *MusicHandler) doSpiff(music *Music, title string, tracks []Track,
 	w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-type", xspf.JsonContentType)
+	w.Header().Set("Content-type", xspf.XMLContentType)
 
-	encoder := xspf.NewJsonEncoder(w)
+	encoder := xspf.NewXMLEncoder(w)
 	encoder.Header(title)
 	for _, t := range tracks {
 		t.Location = []string{music.TrackURL(&t).String()}
