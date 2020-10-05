@@ -19,6 +19,7 @@ package music
 
 import (
 	"encoding/json"
+	"github.com/defsub/takeout/log"
 	"github.com/defsub/takeout/spiff"
 	"io/ioutil"
 	"net/http"
@@ -90,19 +91,108 @@ func (handler *MusicHandler) apiLogin(w http.ResponseWriter, r *http.Request) {
 	enc.Encode(result)
 }
 
-// GET /api/music/lists/ > []{ Ref, ID, Artist, Album, Tracks, Size (MB), Minutes }
-// GET /api/music/lists/1 > spiff.Playlist{}
-// PATCH /api/music/lists/1 < json+path > 204
+// GET /api/lists/ > []List
+// 200: success
 //
-// POST /api/playlists < reference{} > {}
-// 204: success, no content
+// POST /api/lists/ < List{}
+// 201: created
+// 400: bad request
 // 500: error
-func (handler *MusicHandler) apiPlaylists(w http.ResponseWriter, r *http.Request, music *Music) {
-	up := music.lookupPlaylist(handler.user)
-	if up == nil {
-		data, _ := spiff.NewPlaylist().Marshal()
-		up = &UserPlaylist{User: handler.user.Name, Playlist: data}
-		music.createPlaylist(up)
+func (handler *MusicHandler) apiLists(w http.ResponseWriter, r *http.Request, music *Music) {
+	if r.Method == "GET" {
+		lists := music.lists(handler.user)
+		enc := json.NewEncoder(w)
+		enc.Encode(lists)
+	} else if r.Method == "POST" {
+		var l List
+		body, _ := ioutil.ReadAll(r.Body)
+		err := json.Unmarshal(body, &l)
+		if err != nil {
+			http.Error(w, "bummer", http.StatusInternalServerError)
+			return
+		}
+		if l.Name == "" || l.Ref == "" {
+			http.Error(w, "bummer", http.StatusBadRequest)
+			return
+		}
+		l.User = handler.user.Name
+		if l.Ref == "/api/playlist" {
+			// copy playlist
+			p := music.lookupPlaylist(handler.user)
+			if p != nil {
+				l.Playlist = p.Playlist
+			}
+		}
+		err = music.createList(&l)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, "bummer", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		enc := json.NewEncoder(w)
+		enc.Encode(l)
+	}
+}
+
+// GET /api/lists/1 > spiff.Playlist{}
+// 200: success
+// 404: not found
+//
+// PATCH /api/lists/1 < json+patch > 204
+// 204: no content
+// 404: not found
+// 500: error
+//
+// DELETE /api/lists/1
+// 204: success, no content
+// 404: not found
+// 500: error
+func (handler *MusicHandler) apiList(w http.ResponseWriter, r *http.Request, music *Music, id int) {
+	list, err := music.lookupList(handler.user, id)
+	if err != nil {
+		http.Error(w, "bummer", http.StatusNotFound)
+		return
+	}
+
+	if r.Method == "GET" {
+		if len(list.Playlist) == 0 {
+			plist := spiff.NewPlaylist()
+			plist.Spiff.Title = list.Name
+			plist.Entries = []spiff.Entry{{Ref: list.Ref}}
+			music.Resolve(plist)
+			if plist.Entries == nil {
+				plist.Entries = []spiff.Entry{}
+			}
+			list.Playlist, _ = plist.Marshal()
+			music.updateList(&list)
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(list.Playlist)
+	} else if r.Method == "PATCH" {
+		patch, _ := ioutil.ReadAll(r.Body)
+		list.Playlist, err = spiff.Patch(list.Playlist, patch)
+		if err != nil {
+			http.Error(w, "bummer", http.StatusInternalServerError)
+			return
+		}
+		// unmarshal & resovle
+		plist, _ := spiff.Unmarshal(list.Playlist)
+		music.Resolve(plist)
+		if plist.Entries == nil {
+			plist.Entries = []spiff.Entry{}
+		}
+		// marshal & persist
+		list.Playlist, _ = plist.Marshal()
+		music.updateList(&list)
+		w.WriteHeader(http.StatusNoContent)
+	} else if r.Method == "DELETE" {
+		err = music.DeleteList(&list)
+		if err != nil {
+			http.Error(w, "bummer", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
@@ -112,29 +202,29 @@ func (handler *MusicHandler) apiPlaylists(w http.ResponseWriter, r *http.Request
 //
 // PATCH /api/playlist < json+patch > spiff.Playlist{}
 // 200: success
-// 204: no change
+// 204: no change to track entries
 // 500: error
 func (handler *MusicHandler) apiPlaylist(w http.ResponseWriter, r *http.Request, music *Music) {
-	up := music.currentPlaylist(handler.user)
-	if up == nil {
+	p := music.lookupPlaylist(handler.user)
+	if p == nil {
 		data, _ := spiff.NewPlaylist().Marshal()
-		up = &UserPlaylist{User: handler.user.Name, Playlist: data}
-		music.createPlaylist(up)
+		p = &Playlist{User: handler.user.Name, Playlist: data}
+		music.createPlaylist(p)
 	}
 
 	var plist *spiff.Playlist
 	var err error
 	dirty := false
-	before := up.Playlist
+	before := p.Playlist
 
 	if r.Method == "PATCH" {
 		patch, _ := ioutil.ReadAll(r.Body)
-		up.Playlist, err = spiff.Patch(up.Playlist, patch)
+		p.Playlist, err = spiff.Patch(p.Playlist, patch)
 		if err != nil {
 			http.Error(w, "bummer", http.StatusInternalServerError)
 			return
 		}
-		plist, _ = spiff.Unmarshal(up.Playlist)
+		plist, _ = spiff.Unmarshal(p.Playlist)
 		music.Resolve(plist)
 		dirty = true
 	}
@@ -143,20 +233,20 @@ func (handler *MusicHandler) apiPlaylist(w http.ResponseWriter, r *http.Request,
 		if plist.Entries == nil {
 			plist.Entries = []spiff.Entry{}
 		}
-		up.Playlist, _ = plist.Marshal()
-		music.updatePlaylist(up)
+		p.Playlist, _ = plist.Marshal()
+		music.updatePlaylist(p)
 
-		v, _ := spiff.Compare(before, up.Playlist)
+		v, _ := spiff.Compare(before, p.Playlist)
 		if v {
 			// entries didn't change, only metadata
 			w.WriteHeader(http.StatusNoContent)
 		} else {
 			w.WriteHeader(http.StatusOK)
-			w.Write(up.Playlist)
+			w.Write(p.Playlist)
 		}
 	} else {
 		w.WriteHeader(http.StatusOK)
-		w.Write(up.Playlist)
+		w.Write(p.Playlist)
 	}
 }
 
@@ -165,12 +255,6 @@ func (handler *MusicHandler) apiView(w http.ResponseWriter, r *http.Request, vie
 	enc.Encode(view)
 }
 
-// Download playlists, albums, artists
-//
-// POST /api/playlists < { ref: "/music/releases/1/tracks", name: "name" }
-// POST /api/playlists < { ref: "/music/artists/1/[popular,singles,tracks]", name: "name" }
-// POST /api/playlists < { ref: "/music/playlist", name: "name" }
-
 // POST /api/login -> see apiLogin
 // GET,PATCH /api/playlist -> see apiPlaylist
 //
@@ -178,24 +262,14 @@ func (handler *MusicHandler) apiView(w http.ResponseWriter, r *http.Request, vie
 // GET /api/artists > ArtistsView{}
 // GET /api/artists/1 > ArtistView{}
 // GET /api/releases/1 > ReleaseView{}
-// GET /api/playlists
-// GET /api/playlists/1 > xxx{}
+// GET,POST /api/lists
+// GET,PATH /api/lists/1 >
 // GET /api/tracks/1/location -> location{}
 // 200: success
 // 500: error
 
 func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
-
-	/*
-		GET /api/playlist
-		PATCH /api/playlist
-
-		POST /api/playlists { name: 'xyz', user: cookie } (create & update)
-		DELETE /api/playlists/1 - delete
-		GET /api/playlists - all playlists, select * from user_playlists where user='boyns'
-
-	*/
 
 	if r.URL.Path == "/api/login" {
 		handler.apiLogin(w, r)
@@ -213,8 +287,8 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 		switch r.URL.Path {
 		case "/api/playlist":
 			handler.apiPlaylist(w, r, music)
-		case "/api/playlists":
-			handler.apiPlaylists(w, r, music)
+		case "/api/lists":
+			handler.apiLists(w, r, music)
 		case "/api/home":
 			handler.apiView(w, r, music.HomeView())
 		case "/api/artists":
@@ -253,10 +327,9 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 					// /api/releases/1
 					release, _ := music.lookupRelease(id)
 					handler.apiView(w, r, music.ReleaseView(release))
-				case "playlists":
-					// /api/playlists/1
-					release, _ := music.lookupRelease(id)
-					handler.apiView(w, r, music.ReleaseView(release))
+				case "lists":
+					// /api/lists/1
+					handler.apiList(w, r, music, id)
 				default:
 					http.Error(w, "bummer", http.StatusNotFound)
 				}
