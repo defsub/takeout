@@ -111,9 +111,16 @@ type Track struct {
 	ReleaseTitle string `spiff:"album"`
 }
 
-type UserPlaylist struct {
+type Playlist struct {
 	gorm.Model
 	User     string `gorm:"unique_index:idx_playlist"`
-	Name     string `gorm:"unique_index:idx_playlist"`
 	Playlist []byte
+}
+
+type List struct {
+	gorm.Model
+	User     string `gorm:"unique_index:idx_list" json:"-"`
+	Name     string `gorm:"unique_index:idx_list"`
+	Ref      string
+	Playlist []byte `json:"-"`
 }

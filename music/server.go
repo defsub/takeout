@@ -18,28 +18,46 @@
 package music
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/encoding/xspf"
 	"github.com/defsub/takeout/log"
-	"github.com/defsub/takeout/spiff"
 	"html/template"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
 )
 
-func (handler *MusicHandler) doit(w http.ResponseWriter, r *http.Request) {
+type MusicHandler struct {
+	config *config.Config
+	user   *auth.User
+}
+
+func (handler *MusicHandler) NewMusic(w http.ResponseWriter, r *http.Request) *Music {
 	music := NewMusic(handler.config)
 	if music.Open() != nil {
 		http.Error(w, "bummer", http.StatusInternalServerError)
+		return nil
+	}
+	return music
+}
+
+func (handler *MusicHandler) NewAuth() *auth.Auth {
+	a := auth.NewAuth(handler.config)
+	if a.Open() != nil {
+		return nil
+	}
+	return a
+}
+
+func (handler *MusicHandler) doit(w http.ResponseWriter, r *http.Request) {
+	music := handler.NewMusic(w, r)
+	if music == nil {
 		return
 	}
 	defer music.Close()
@@ -72,11 +90,6 @@ func (handler *MusicHandler) doSpiff(music *Music, title string, tracks []Track,
 
 func (handler *MusicHandler) doTracks(w http.ResponseWriter, r *http.Request) {
 	handler.doit(w, r)
-}
-
-type MusicHandler struct {
-	config *config.Config
-	user   *auth.User
 }
 
 func parseTemplates(templ *template.Template, dir string) *template.Template {
@@ -185,19 +198,21 @@ func (handler *MusicHandler) render(music *Music, temp string, view interface{},
 	}
 }
 
-func (handler *MusicHandler) loginHandler(w http.ResponseWriter, r *http.Request) {
-	a := auth.NewAuth(handler.config)
-	if a.Open() != nil {
-		http.Error(w, "bummer", http.StatusInternalServerError)
-		return
+func (handler *MusicHandler) doLogin(user, pass string) (http.Cookie, error) {
+	a := handler.NewAuth()
+	if a == nil {
+		return http.Cookie{}, errors.New("noauth")
 	}
 	defer a.Close()
+	return a.Login(user, pass)
+}
 
+func (handler *MusicHandler) loginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseForm()
 		user := r.Form.Get("user")
 		pass := r.Form.Get("pass")
-		cookie, err := a.Login(user, pass)
+		cookie, err := handler.doLogin(user, pass)
 		if err == nil {
 			http.SetCookie(w, &cookie)
 			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
@@ -209,8 +224,8 @@ func (handler *MusicHandler) loginHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (handler *MusicHandler) authorized(w http.ResponseWriter, r *http.Request) bool {
-	a := auth.NewAuth(handler.config)
-	if a.Open() != nil {
+	a := handler.NewAuth()
+	if a == nil {
 		http.Error(w, "bummer", http.StatusInternalServerError)
 		return false
 	}
@@ -255,9 +270,8 @@ func (handler *MusicHandler) viewHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	music := NewMusic(handler.config)
-	if music.Open() != nil {
-		http.Error(w, "bummer", http.StatusInternalServerError)
+	music := handler.NewMusic(w, r)
+	if music == nil {
 		return
 	}
 	defer music.Close()
@@ -303,117 +317,6 @@ func (handler *MusicHandler) viewHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	handler.render(music, temp, view, w, r)
-}
-
-type location struct {
-	Url          string    `json:"url"`
-	Size         int64     `json:"size"`
-	ETag         string    `json:"etag"`
-	LastModified time.Time `json:"lastModified"`
-}
-
-func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-type", "application/json")
-
-	if !handler.authorized(w, r) {
-		log.Printf("not auth\n")
-		return
-	}
-
-	music := NewMusic(handler.config)
-	if music.Open() != nil {
-		log.Printf("bummer\n")
-		http.Error(w, "bummer", http.StatusInternalServerError)
-		return
-	}
-	defer music.Close()
-
-	path := r.URL.Path
-
-	if path == "/api/playlist" {
-		up := music.lookupPlaylist(handler.user)
-		if up == nil {
-			data, _ := spiff.NewPlaylist().Marshal()
-			up = &UserPlaylist{User: handler.user.Name, Playlist: data}
-			music.createPlaylist(up)
-		}
-
-		var plist *spiff.Playlist
-		var err error
-		dirty := false
-		before := up.Playlist
-
-		if r.Method == "PATCH" {
-			patch, _ := ioutil.ReadAll(r.Body)
-			up.Playlist, err = spiff.Patch(up.Playlist, patch)
-			if err != nil {
-				http.Error(w, "bummer", http.StatusInternalServerError)
-				return
-			}
-			plist, _ = spiff.Unmarshal(up.Playlist)
-			music.Resolve(plist)
-			dirty = true
-		}
-
-		if dirty {
-			if plist.Entries == nil {
-				plist.Entries = []spiff.Entry{}
-			}
-			up.Playlist, _ = plist.Marshal()
-			music.updatePlaylist(up)
-
-			v, _ := spiff.Compare(before, up.Playlist)
-			if v {
-				// entries didn't change, only metadata
-				w.WriteHeader(http.StatusNoContent)
-			} else {
-				w.WriteHeader(http.StatusOK)
-				w.Write(up.Playlist)
-			}
-		} else {
-			w.WriteHeader(http.StatusOK)
-			w.Write(up.Playlist)
-		}
-	} else {
-		var view interface{}
-
-		artistRegexp := regexp.MustCompile(`/api/artists/([\d]+)`)
-		releaseRegexp := regexp.MustCompile(`/api/releases/([\d]+)`)
-		locationRegexp := regexp.MustCompile(`/api/tracks/([\d]+)/location`)
-
-		matches := artistRegexp.FindStringSubmatch(path)
-		if matches != nil {
-			v := matches[1]
-			id, _ := strconv.Atoi(v)
-			artist, _ := music.lookupArtist(id)
-			view = music.ArtistView(artist)
-		} else {
-			matches = releaseRegexp.FindStringSubmatch(path)
-			if matches != nil {
-				v := matches[1]
-				id, _ := strconv.Atoi(v)
-				release, _ := music.lookupRelease(id)
-				view = music.ReleaseView(release)
-			} else {
-				matches = locationRegexp.FindStringSubmatch(path)
-				if matches != nil {
-					v := matches[1]
-					id, _ := strconv.Atoi(v)
-					track, _ := music.lookupTrack(id)
-					url := music.TrackURL(&track)
-					view = location{
-						Url:          url.String(),
-						Size:         track.Size,
-						ETag:         track.ETag,
-						LastModified: track.LastModified,
-					}
-				}
-			}
-		}
-
-		enc := json.NewEncoder(w)
-		enc.Encode(view)
-	}
 }
 
 func Serve(config *config.Config) {

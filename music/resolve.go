@@ -39,6 +39,7 @@ func (m *Music) addTrackEntries(tracks []Track, entries []spiff.Entry) []spiff.E
 
 // /music/artists/{id}/{singles}
 // /music/artists/{id}/{popular}
+// /music/artists/{id}/{tracks}
 func (m *Music) resolveArtistRef(id, res string, entries []spiff.Entry) ([]spiff.Entry, error) {
 	n, err := strconv.Atoi(id)
 	if err != nil {
@@ -54,6 +55,8 @@ func (m *Music) resolveArtistRef(id, res string, entries []spiff.Entry) ([]spiff
 		tracks = m.artistSingleTracks(artist)
 	case "popular":
 		tracks = m.artistPopularTracks(artist)
+	case "tracks":
+		tracks = m.artistTracks(artist)
 	}
 	entries = m.addTrackEntries(tracks, entries)
 	return entries, nil
@@ -150,5 +153,5 @@ func (m *Music) Resolve(plist *spiff.Playlist) (err error) {
 
 	plist.Spiff.Entries = entries
 
-	return nil;//m.Refresh(plist)
+	return nil;
 }

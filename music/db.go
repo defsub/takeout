@@ -32,8 +32,8 @@ func (m *Music) openDB() (err error) {
 		return
 	}
 	m.db.LogMode(m.config.Music.DB.LogMode)
-	m.db.AutoMigrate(&Artist{}, &ArtistTag{}, &Media{}, &Popular{},
-		&Similar{}, &Release{}, &Track{}, &UserPlaylist{})
+	m.db.AutoMigrate(&Artist{}, &ArtistTag{}, &List{}, &Media{}, &Playlist{},
+		&Popular{}, &Similar{}, &Release{}, &Track{})
 	return
 }
 
@@ -331,6 +331,14 @@ func (m *Music) artistPopularTracks(a Artist) []Track {
 	return tracks
 }
 
+func (m *Music) artistTracks(a Artist) []Track {
+	var tracks []Track
+	m.db.Where("artist = ?", a.Name).
+		Order("release, date, disc_num, track_num").
+		Find(&tracks)
+	return tracks
+}
+
 // All artist names ordered by sortName from MusicBrainz.
 func (m *Music) artists() []Artist {
 	var artists []Artist
@@ -560,16 +568,46 @@ func (m *Music) search(query string) ([]Artist, []Release, []Track) {
 	return artists, releases, tracks
 }
 
-func (m *Music) lookupPlaylist(user *auth.User) *UserPlaylist {
-	up := &UserPlaylist{User: user.Name}
-	if m.db.Find(up, up).RecordNotFound() {
+// Lookup user playlist.
+func (m *Music) lookupPlaylist(user *auth.User) *Playlist {
+	p := &Playlist{User: user.Name}
+	if m.db.Find(p, p).RecordNotFound() {
 		return nil
 	}
-	return up
+	return p
 }
 
-func (m *Music) updatePlaylist(up *UserPlaylist) error {
-	return m.db.Save(up).Error
+// Save a playlist.
+func (m *Music) updatePlaylist(p *Playlist) error {
+	return m.db.Save(p).Error
+}
+
+// Obtain user music lists.
+func (m *Music) lists(user *auth.User) []List {
+	var lists []List
+	m.db.Where("user = ?", user.Name).Find(&lists)
+	return lists
+}
+
+// Obtain user music list by id.
+func (m *Music) lookupList(user *auth.User, id int) (List, error) {
+	var l List
+	if m.db.First(&l, id).RecordNotFound() {
+		return List{}, errors.New("list not found")
+	}
+	if l.User != user.Name {
+		return List{}, errors.New("wrong list user")
+	}
+	return l, nil
+}
+
+// Update a list.
+func (m *Music) updateList(l *List) error {
+	return m.db.Save(l).Error
+}
+
+func (m *Music) deleteList(l *List) error {
+	return m.db.Unscoped().Delete(l).Error
 }
 
 func (m *Music) createArtist(a *Artist) error {
@@ -596,6 +634,10 @@ func (m *Music) createArtistTag(t *ArtistTag) error {
 	return m.db.Create(t).Error
 }
 
-func (m *Music) createPlaylist(up *UserPlaylist) error {
-	return m.db.Create(up).Error
+func (m *Music) createPlaylist(p *Playlist) error {
+	return m.db.Create(p).Error
+}
+
+func (m *Music) createList(l *List) error {
+	return m.db.Create(l).Error
 }
