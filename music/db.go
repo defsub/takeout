@@ -32,7 +32,7 @@ func (m *Music) openDB() (err error) {
 		return
 	}
 	m.db.LogMode(m.config.Music.DB.LogMode)
-	m.db.AutoMigrate(&Artist{}, &ArtistTag{}, &List{}, &Media{}, &Playlist{},
+	m.db.AutoMigrate(&Artist{}, &ArtistTag{}, &Channel{}, &Media{}, &Playlist{},
 		&Popular{}, &Similar{}, &Release{}, &Track{})
 	return
 }
@@ -582,32 +582,32 @@ func (m *Music) updatePlaylist(p *Playlist) error {
 	return m.db.Save(p).Error
 }
 
-// Obtain user music lists.
-func (m *Music) lists(user *auth.User) []List {
-	var lists []List
-	m.db.Where("user = ?", user.Name).Find(&lists)
-	return lists
+// Obtain user channels.
+func (m *Music) channels(user *auth.User) []Channel {
+	var channels []Channel
+	m.db.Where("user = ?", user.Name).Find(&channels)
+	return channels
 }
 
-// Obtain user music list by id.
-func (m *Music) lookupList(user *auth.User, id int) (List, error) {
-	var l List
-	if m.db.First(&l, id).RecordNotFound() {
-		return List{}, errors.New("list not found")
+// Obtain user channel by id.
+func (m *Music) lookupChannel(user *auth.User, id int) (Channel, error) {
+	var c Channel
+	if m.db.First(&c, id).RecordNotFound() {
+		return Channel{}, errors.New("channel not found")
 	}
-	if l.User != user.Name {
-		return List{}, errors.New("wrong list user")
+	if c.User != user.Name {
+		return Channel{}, errors.New("wrong channel user")
 	}
-	return l, nil
+	return c, nil
 }
 
-// Update a list.
-func (m *Music) updateList(l *List) error {
-	return m.db.Save(l).Error
+// Update a channel.
+func (m *Music) updateChannel(c *Channel) error {
+	return m.db.Save(c).Error
 }
 
-func (m *Music) deleteList(l *List) error {
-	return m.db.Unscoped().Delete(l).Error
+func (m *Music) deleteChannel(c *Channel) error {
+	return m.db.Unscoped().Delete(c).Error
 }
 
 func (m *Music) createArtist(a *Artist) error {
@@ -638,6 +638,6 @@ func (m *Music) createPlaylist(p *Playlist) error {
 	return m.db.Create(p).Error
 }
 
-func (m *Music) createList(l *List) error {
-	return m.db.Create(l).Error
+func (m *Music) createChannel(c *Channel) error {
+	return m.db.Create(c).Error
 }

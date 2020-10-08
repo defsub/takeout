@@ -117,10 +117,10 @@ type Playlist struct {
 	Playlist []byte
 }
 
-type List struct {
+type Channel struct {
 	gorm.Model
-	User     string `gorm:"unique_index:idx_list" json:"-"`
-	Name     string `gorm:"unique_index:idx_list"`
+	User     string `gorm:"unique_index:idx_channel" json:"-"`
+	Name     string `gorm:"unique_index:idx_channel"`
 	Ref      string
 	Playlist []byte `json:"-"`
 }
