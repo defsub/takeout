@@ -311,6 +311,10 @@ func (handler *MusicHandler) viewHandler(w http.ResponseWriter, r *http.Request)
 		// /v?q={pattern}
 		view = music.SearchView(strings.TrimSpace(v))
 		temp = "search.html"
+	} else if v := r.URL.Query().Get("channels"); v != "" {
+		// /v?channels=x
+		view = music.ChannelsView(handler.user)
+		temp = "channels.html"
 	} else {
 		view = time.Now().Unix()
 		temp = "index.html"

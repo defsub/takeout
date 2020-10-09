@@ -118,9 +118,9 @@ func (handler *MusicHandler) recvChannel(w http.ResponseWriter, r *http.Request,
 // 500: error
 func (handler *MusicHandler) apiChannels(w http.ResponseWriter, r *http.Request, music *Music) {
 	if r.Method == "GET" {
-		channels := music.channels(handler.user)
+		view := music.ChannelsView(handler.user)
 		enc := json.NewEncoder(w)
-		enc.Encode(channels)
+		enc.Encode(view)
 	} else if r.Method == "POST" {
 		var c Channel
 		err := handler.recvChannel(w, r, &c, music)

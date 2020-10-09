@@ -19,6 +19,7 @@ package music
 
 import (
 	"fmt"
+	"github.com/defsub/takeout/auth"
 )
 
 type HomeView struct {
@@ -39,13 +40,13 @@ type ArtistView struct {
 }
 
 type PopularView struct {
-	Artist   Artist
-	Popular  []Track
+	Artist  Artist
+	Popular []Track
 }
 
 type SinglesView struct {
-	Artist   Artist
-	Singles  []Track
+	Artist  Artist
+	Singles []Track
 }
 
 type ReleaseView struct {
@@ -63,6 +64,10 @@ type SearchView struct {
 	Tracks   []Track
 	Query    string
 	Hits     int
+}
+
+type ChannelsView struct {
+	Channels []Channel
 }
 
 func (m *Music) HomeView() *HomeView {
@@ -137,6 +142,12 @@ func (m *Music) SearchView(query string) *SearchView {
 	view.Query = query
 	view.Tracks = m.Search(query)
 	view.Hits = len(view.Artists) + len(view.Releases) + len(view.Tracks)
+	return view
+}
+
+func (m *Music) ChannelsView(user *auth.User) *ChannelsView {
+	view := &ChannelsView{}
+	view.Channels = m.channels(user)
 	return view
 }
 
