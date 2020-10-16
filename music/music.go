@@ -31,6 +31,10 @@ import (
 	"time"
 )
 
+const (
+	TakeoutUser = "takeout"
+)
+
 type Music struct {
 	config     *config.Config
 	db         *gorm.DB
@@ -713,15 +717,32 @@ func (m *Music) syncIndexFor(artists []Artist) error {
 	return nil
 }
 
-func (m *Music) Search(q string) []Track {
+func (m *Music) Search(q string, limit ...int) []Track {
 	s := search.NewSearch(m.config)
 	s.Open("music")
 	defer s.Close()
 
-	keys, err := s.Search(q)
+	l := m.config.Music.SearchLimit
+	if len(limit) == 1 {
+		l = limit[0]
+	}
+
+	keys, err := s.Search(q, l)
 	if err != nil {
 		return nil
 	}
 
-	return m.tracksFor(keys)
+	// split potentially large # of result keys into chunks to query
+	chunkSize := 100
+	var tracks []Track
+	for i := 0; i < len(keys); i += chunkSize {
+		end := i + chunkSize
+		if end > len(keys) {
+			end = len(keys)
+		}
+		chunk := keys[i:end]
+		tracks = append(tracks, m.tracksFor(chunk)...)
+	}
+
+	return tracks
 }

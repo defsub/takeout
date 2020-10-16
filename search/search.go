@@ -56,10 +56,10 @@ func (s *Search) Close() {
 }
 
 // see https://blevesearch.com/docs/Query-String-Query/
-func (s *Search) Search(q string) ([]string, error) {
+func (s *Search) Search(q string, limit int) ([]string, error) {
 	query := bleve.NewQueryStringQuery(q)
 	searchRequest := bleve.NewSearchRequest(query)
-	searchRequest.Size = 100
+	searchRequest.Size = limit
 	searchResult, err := s.index.Search(searchRequest)
 	if err != nil {
 		return nil, err

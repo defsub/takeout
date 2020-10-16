@@ -18,7 +18,10 @@
 package music
 
 import (
+	"github.com/defsub/takeout/auth"
+	"github.com/defsub/takeout/log"
 	"github.com/defsub/takeout/spiff"
+	"net/url"
 	"regexp"
 	"strconv"
 )
@@ -37,9 +40,12 @@ func (m *Music) addTrackEntries(tracks []Track, entries []spiff.Entry) []spiff.E
 	return entries
 }
 
-// /music/artists/{id}/{singles}
-// /music/artists/{id}/{popular}
-// /music/artists/{id}/{tracks}
+// /music/artists/{id}/singles
+// /music/artists/{id}/popular
+// /music/artists/{id}/tracks
+// /music/artists/{id}/mix
+// /music/artists/{id}/radio
+// /music/artists/{id}/deep
 func (m *Music) resolveArtistRef(id, res string, entries []spiff.Entry) ([]spiff.Entry, error) {
 	n, err := strconv.Atoi(id)
 	if err != nil {
@@ -57,6 +63,14 @@ func (m *Music) resolveArtistRef(id, res string, entries []spiff.Entry) ([]spiff
 		tracks = m.artistPopularTracks(artist)
 	case "tracks":
 		tracks = m.artistTracks(artist)
+	case "shuffle":
+		tracks = m.artistShuffle(artist, m.config.Music.RadioLimit)
+	case "mix":
+		tracks = m.artistMix(artist,
+			m.config.Music.ArtistRadioDepth,
+			m.config.Music.ArtistRadioBreadth)
+	case "deep":
+		tracks = m.artistDeep(artist, m.config.Music.RadioLimit)
 	}
 	entries = m.addTrackEntries(tracks, entries)
 	return entries, nil
@@ -91,20 +105,66 @@ func (m *Music) resolveTrackRef(id string, entries []spiff.Entry) ([]spiff.Entry
 	return entries, nil
 }
 
-// /music/search/{q}
-func (m *Music) resolveSearchRef(q string, entries []spiff.Entry) ([]spiff.Entry, error) {
-	tracks := m.Search(q)
+// /music/search?q={q}[&radio=1]
+func (m *Music) resolveSearchRef(uri string, entries []spiff.Entry) ([]spiff.Entry, error) {
+	u, err := url.Parse(uri)
+	if err != nil {
+		log.Println(err)
+		return entries, err
+	}
+
+	q := u.Query().Get("q")
+	radio := u.Query().Get("radio")
+
+	var tracks []Track
+	if q != "" {
+		limit := m.config.Music.SearchLimit
+		if radio != "" {
+			limit = m.config.Music.RadioSearchLimit
+		}
+		tracks = m.Search(q, limit)
+	}
+
+	if radio != "" {
+		tracks = shuffle(tracks)
+		if len(tracks) > m.config.Music.RadioLimit {
+			tracks = tracks[:m.config.Music.RadioLimit]
+		}
+	}
+
 	entries = m.addTrackEntries(tracks, entries)
 	return entries, nil
 }
 
-func (m *Music) Resolve(plist *spiff.Playlist) (err error) {
+// /music/radio/{id}
+func (m *Music) resolveRadioRef(id string, entries []spiff.Entry, user *auth.User) ([]spiff.Entry, error) {
+	n, err := strconv.Atoi(id)
+	if err != nil {
+		return entries, err
+	}
+	s, err := m.lookupStation(n)
+	if err != nil {
+		return entries, err
+	}
+	if !s.visible(user) {
+		return entries, err
+	}
+
+	m.stationRefresh(&s, user)
+	plist, _ := spiff.Unmarshal(s.Playlist)
+	entries = append(entries, plist.Spiff.Entries...)
+
+	return entries, nil
+}
+
+func (m *Music) Resolve(user *auth.User, plist *spiff.Playlist) (err error) {
 	var entries []spiff.Entry
 
 	artistsRegexp := regexp.MustCompile(`/music/artists/([\d]+)/([\w]+)`)
 	releasesRegexp := regexp.MustCompile(`/music/releases/([\d]+)/tracks`)
 	tracksRegexp := regexp.MustCompile(`/music/tracks/([\d]+)`)
-	searchRegexp := regexp.MustCompile(`/music/search/(.*)`)
+	searchRegexp := regexp.MustCompile(`/music/search.*`)
+	radioRegexp := regexp.MustCompile(`/music/radio/([\d]+)`)
 
 	for _, e := range plist.Spiff.Entries {
 		if e.Ref == "" {
@@ -141,9 +201,17 @@ func (m *Music) Resolve(plist *spiff.Playlist) (err error) {
 			continue
 		}
 
-		matches = searchRegexp.FindStringSubmatch(pathRef)
+		if searchRegexp.MatchString(pathRef) {
+			entries, err = m.resolveSearchRef(pathRef, entries)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		matches = radioRegexp.FindStringSubmatch(pathRef)
 		if matches != nil {
-			entries, err = m.resolveSearchRef(matches[1], entries)
+			entries, err = m.resolveRadioRef(matches[1], entries, user)
 			if err != nil {
 				return err
 			}
@@ -153,5 +221,5 @@ func (m *Music) Resolve(plist *spiff.Playlist) (err error) {
 
 	plist.Spiff.Entries = entries
 
-	return nil;
+	return nil
 }
