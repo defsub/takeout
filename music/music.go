@@ -24,7 +24,7 @@ import (
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/log"
 	"github.com/defsub/takeout/search"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 	"net/url"
 	"regexp"
 	"strings"

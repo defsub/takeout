@@ -156,6 +156,7 @@ func configDefaults() {
 		"latin",
 		"metal",
 		"pop rock",
+		"post-rock",
 		"progressive rock",
 		"new wave",
 		"rock",

@@ -20,25 +20,44 @@ package music
 import (
 	"errors"
 	"github.com/defsub/takeout/auth"
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+	"gorm.io/driver/sqlite"
 	"strconv"
 	"time"
 )
 
 func (m *Music) openDB() (err error) {
-	m.db, err = gorm.Open(m.config.Music.DB.Driver, m.config.Music.DB.Source)
+	var glog logger.Interface
+	if m.config.Music.DB.LogMode == false {
+		glog = logger.Discard
+	} else {
+		glog = logger.Default
+	}
+	cfg := &gorm.Config{
+		Logger: glog,
+	}
+
+	if m.config.Music.DB.Driver == "sqlite3" {
+		m.db, err = gorm.Open(sqlite.Open(m.config.Music.DB.Source), cfg)
+	} else {
+		err = errors.New("driver not supported")
+	}
+
 	if err != nil {
 		return
 	}
-	m.db.LogMode(m.config.Music.DB.LogMode)
+
 	m.db.AutoMigrate(&Artist{}, &ArtistTag{}, &Media{}, &Playlist{},
 		&Popular{}, &Similar{}, &Station{}, &Release{}, &Track{})
 	return
 }
 
 func (m *Music) closeDB() {
-	m.db.Close()
+	conn, err := m.db.DB()
+	if err != nil {
+		defer conn.Close()
+	}
 }
 
 func (m *Music) lastModified() time.Time {
@@ -62,7 +81,7 @@ func (m *Music) createTrack(track *Track) error {
 // Find an artist by name.
 func (m *Music) artist(artist string) (a *Artist) {
 	a = &Artist{Name: artist}
-	if m.db.Find(a, a).RecordNotFound() {
+	if err := m.db.Find(a, a).Error; err != nil {
 		return nil
 	}
 	return a
@@ -468,17 +487,19 @@ func (m *Music) recentlyReleased() []Release {
 // REID or RGID from MusicBrainz. This is useful for covers.
 func (m *Music) assignedRelease(t *Track) (*Release, error) {
 	var release Release
-	if m.db.Where("re_id = ?", t.REID).First(&release).RecordNotFound() {
-		if m.db.Where("rg_id = ?", t.RGID).First(&release).RecordNotFound() {
+	err := m.db.Where("re_id = ?", t.REID).First(&release).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		err = m.db.Where("rg_id = ?", t.RGID).First(&release).Error
+		if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("release not found")
 		}
 	}
-	return &release, nil
+	return &release, err
 }
 
 // func (m *Music) releaseGroup(rgid string) (*Release, error) {
 // 	var release Release
-// 	if m.db.Where("rg_id = ?", rgid).First(&release).RecordNotFound() {
+// 	if m.db.Where("rg_id = ?", rgid).First(&release).ErrRecordNotFound() {
 // 		return nil, errors.New("release group not found")
 // 	}
 // 	return &release, nil
@@ -487,10 +508,11 @@ func (m *Music) assignedRelease(t *Track) (*Release, error) {
 // Obtain a release using MusicBrainz REID.
 func (m *Music) release(reid string) (*Release, error) {
 	var release Release
-	if m.db.Where("re_id = ?", reid).First(&release).RecordNotFound() {
+	err := m.db.Where("re_id = ?", reid).First(&release).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errors.New("release group not found")
 	}
-	return &release, nil
+	return &release, err
 }
 
 // Obtain all the tracks for this release, ordered by disc and track
@@ -529,28 +551,31 @@ func (m *Music) releasePopular(release Release) []Track {
 // Lookup a release given the internal record ID.
 func (m *Music) lookupRelease(id int) (Release, error) {
 	var release Release
-	if m.db.First(&release, id).RecordNotFound() {
+	err := m.db.First(&release, id).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return Release{}, errors.New("release not found")
 	}
-	return release, nil
+	return release, err
 }
 
 // Lookup an artist given the internal record ID.
 func (m *Music) lookupArtist(id int) (Artist, error) {
 	var artist Artist
-	if m.db.First(&artist, id).RecordNotFound() {
+	err := m.db.First(&artist, id).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return Artist{}, errors.New("artist not found")
 	}
-	return artist, nil
+	return artist, err
 }
 
 // Lookup a track given the internal record ID.
 func (m *Music) lookupTrack(id int) (Track, error) {
 	var track Track
-	if m.db.First(&track, id).RecordNotFound() {
+	err := m.db.First(&track, id).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return Track{}, errors.New("track not found")
 	}
-	return track, nil
+	return track, err
 }
 
 // Lookup a track given the internal record ID.
@@ -566,10 +591,8 @@ func (m *Music) tracksFor(keys []string) []Track {
 // interal record ID can change.
 func (m *Music) lookupETag(etag string) (*Track, error) {
 	track := Track{ETag: etag}
-	if m.db.First(&track, &track).RecordNotFound() {
-		return nil, nil
-	}
-	return &track, nil
+	err := m.db.First(&track, &track).Error
+	return &track, err
 }
 
 // Simple sql search for artists, releases and tracks. Use config
@@ -600,7 +623,8 @@ func (m *Music) search(query string) ([]Artist, []Release, []Track) {
 // Lookup user playlist.
 func (m *Music) lookupPlaylist(user *auth.User) *Playlist {
 	p := &Playlist{User: user.Name}
-	if m.db.Find(p, p).RecordNotFound() {
+	err := m.db.Find(p, p).Error
+	if err != nil {
 		return nil
 	}
 	return p
@@ -625,10 +649,11 @@ func (m *Music) clearStationPlaylists() {
 // Obtain user station by id.
 func (m *Music) lookupStation(id int) (Station, error) {
 	var s Station
-	if m.db.First(&s, id).RecordNotFound() {
+	err := m.db.First(&s, id).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return Station{}, errors.New("station not found")
 	}
-	return s, nil
+	return s, err
 }
 
 // Update a station.

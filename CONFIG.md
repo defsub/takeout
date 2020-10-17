@@ -56,7 +56,7 @@ setup and configure Takeout.
 * Auth.DB.Source - Name of database (default auth.db)
 * Auth.DB.LogMode - Log SQL commands (default false)
 
-Note: only sqlite3 has been tested
+Note: only sqlite3 is supported
 
 ### Music Bucket
 
@@ -79,7 +79,7 @@ Note: client is AWS S3 Go client, only Wasabi has been tested
 * Music.DB.Source - Name of database (default music.db)
 * Music.DB.LogMore - Log SQL commands (default false)
 
-Note: only sqlite3 has been tested
+Note: only sqlite3 is supported
 
 ### Music Settings
 

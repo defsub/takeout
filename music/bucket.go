@@ -23,7 +23,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/defsub/takeout/config"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"net/url"
 	"regexp"
 	"strconv"
