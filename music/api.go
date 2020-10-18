@@ -232,7 +232,11 @@ func (handler *MusicHandler) apiPlaylist(w http.ResponseWriter, r *http.Request,
 	if p == nil {
 		data, _ := spiff.NewPlaylist().Marshal()
 		p = &Playlist{User: handler.user.Name, Playlist: data}
-		music.createPlaylist(p)
+		err := music.createPlaylist(p)
+		if err != nil {
+			http.Error(w, "bummer", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	var plist *spiff.Playlist

@@ -89,22 +89,31 @@ func (m *Music) LastModified() time.Time {
 func (m *Music) Sync(options SyncOptions) {
 	if options.Since.IsZero() {
 		if options.Tracks {
+			log.Printf("sync tracks\n")
 			log.CheckError(m.syncBucketTracks())
+			log.Printf("sync artists\n")
 			log.CheckError(m.syncArtists())
 		}
 		if options.Releases {
+			log.Printf("sync releases\n")
 			log.CheckError(m.syncReleases())
+			log.Printf("fix track releases\n")
 			log.CheckError(m.fixTrackReleases())
+			log.Printf("assign track releases\n")
 			log.CheckError(m.assignTrackReleases())
+			log.Printf("fix track release titles\n")
 			log.CheckError(m.fixTrackReleaseTitles())
 		}
 		if options.Popular {
+			log.Printf("sync popular\n")
 			log.CheckError(m.syncPopular())
 		}
 		if options.Similar {
+			log.Printf("sync similar\n")
 			log.CheckError(m.syncSimilar())
 		}
 		if options.Index {
+			log.Printf("sync index\n")
 			log.CheckError(m.syncIndex())
 		}
 	} else {
@@ -169,7 +178,7 @@ func (m *Music) syncBucketTracksSince(lastSync time.Time) (err error) {
 		return err
 	}
 	for t := range trackCh {
-		log.Printf("sync: %s/%s/%s\n", t.Artist, t.Release, t.Title)
+		//log.Printf("sync: %s/%s/%s\n", t.Artist, t.Release, t.Title)
 		t.Artist = fixName(t.Artist)
 		t.Release = fixName(t.Release)
 		t.Title = fixName(t.Title)

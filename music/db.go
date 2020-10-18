@@ -71,7 +71,7 @@ func (m *Music) lastModified() time.Time {
 }
 
 func (m *Music) deleteTracks() {
-	m.db.Unscoped().Model(&Track{}).Delete(&Track{})
+	m.db.Exec("delete from tracks")
 }
 
 func (m *Music) createTrack(track *Track) error {
@@ -79,12 +79,13 @@ func (m *Music) createTrack(track *Track) error {
 }
 
 // Find an artist by name.
-func (m *Music) artist(artist string) (a *Artist) {
-	a = &Artist{Name: artist}
-	if err := m.db.Find(a, a).Error; err != nil {
+func (m *Music) artist(artist string) *Artist {
+	var a Artist
+	err := m.db.Where("name = ?", artist).First(&a).Error
+	if err != nil {
 		return nil
 	}
-	return a
+	return &a
 }
 
 // Compute and update TrackCount for each track with total number of
@@ -622,12 +623,12 @@ func (m *Music) search(query string) ([]Artist, []Release, []Track) {
 
 // Lookup user playlist.
 func (m *Music) lookupPlaylist(user *auth.User) *Playlist {
-	p := &Playlist{User: user.Name}
-	err := m.db.Find(p, p).Error
+	var p Playlist
+	err := m.db.Where("user = ?", user.Name).First(&p).Error
 	if err != nil {
 		return nil
 	}
-	return p
+	return &p
 }
 
 // Save a playlist.

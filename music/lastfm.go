@@ -83,7 +83,6 @@ func (m *Music) lastfmArtistSearch(name string) *Artist {
 
 	var artist *Artist
 	for index, match := range result.ArtistMatches {
-		//log.Printf("%s %s\n", match.Name, match.Mbid)
 		if index == 0 {
 			artist = &Artist{Name: match.Name, ARID: match.Mbid}
 			break;
