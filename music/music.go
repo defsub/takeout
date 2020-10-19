@@ -661,7 +661,7 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 	for k, _ := range singles {
 		fields, ok := newIndex[k]
 		if ok {
-			addField(fields, "type", "single")
+			addField(fields, FieldType, TypeSingle)
 		}
 	}
 
@@ -673,7 +673,7 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 	for k, _ := range popular {
 		fields, ok := newIndex[k]
 		if ok {
-			addField(fields, "type", "popular")
+			addField(fields, FieldType, TypePopular)
 		}
 	}
 
@@ -682,7 +682,7 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 		tracks := m.tracksFor([]string{k})
 		date := m.trackFirstReleaseDate(&tracks[0])
 		s := fmt.Sprintf("%4d-%02d-%02d", date.Year(), date.Month(), date.Day())
-		addField(v, "date", s)
+		addField(v, FieldDate, s)
 	}
 
 	return newIndex, nil
@@ -708,9 +708,20 @@ func (m *Music) syncIndex() error {
 	return m.syncIndexFor(artists)
 }
 
-func (m *Music) syncIndexFor(artists []Artist) error {
+func (m *Music) newSearch() *search.Search {
 	s := search.NewSearch(m.config)
+	s.Keywords = []string{
+		FieldGenre,
+		FieldStatus,
+		FieldTag,
+		FieldType,
+	}
 	s.Open("music")
+	return s
+}
+
+func (m *Music) syncIndexFor(artists []Artist) error {
+	s := m.newSearch()
 	defer s.Close()
 
 	for _, a := range artists {
@@ -727,8 +738,7 @@ func (m *Music) syncIndexFor(artists []Artist) error {
 }
 
 func (m *Music) Search(q string, limit ...int) []Track {
-	s := search.NewSearch(m.config)
-	s.Open("music")
+	s := m.newSearch()
 	defer s.Close()
 
 	l := m.config.Music.SearchLimit

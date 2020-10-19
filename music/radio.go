@@ -53,7 +53,7 @@ func (m *Music) CreateStations() {
 			User:   TakeoutUser,
 			Shared: true,
 			Type:   typeArtist,
-			Name:   fmt.Sprintf("%s Shuffle", a.Name),
+			Name:   fmt.Sprintf("%s Singles", a.Name),
 			Ref:    fmt.Sprintf(`/music/artists/%d/shuffle`, a.ID)}
 		m.createStation(&station)
 
