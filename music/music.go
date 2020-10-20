@@ -33,6 +33,7 @@ import (
 
 const (
 	TakeoutUser = "takeout"
+	VariousArtists = "Various Artists"
 )
 
 type Music struct {
@@ -218,7 +219,7 @@ func (m *Music) syncReleasesFor(artists []Artist) error {
 	for _, a := range artists {
 		var releases []Release
 		log.Printf("releases for %s\n", a.Name)
-		if a.Name == "Various Artists" {
+		if a.Name == VariousArtists {
 			// various artists has many thousands of releases so
 			// instead of getting all releases, search for them by
 			// name and then get releases
@@ -333,7 +334,7 @@ func (m *Music) assignTrackReleases() error {
 				}
 			}
 			if !assigned {
-				v := fmt.Sprintf("%/%s/%d", t.Artist, t.Release, t.TrackCount)
+				v := fmt.Sprintf("%s/%s/%d", t.Artist, t.Release, t.TrackCount)
 				notfound[v] += 1
 				if notfound[v] == 1 {
 					log.Printf("release not found for %s\n", v)
@@ -368,9 +369,9 @@ func (m *Music) fixTrackReleases() error {
 		}
 
 		releases := m.artistReleasesLike(artist, t.Release, t.TrackCount)
-		for _, r := range releases {
-			log.Printf("check %s/%s/%d\n", r.Artist, r.Name, r.TrackCount)
-		}
+		// for _, r := range releases {
+		// 	log.Printf("check %s/%s/%d\n", r.Artist, r.Name, r.TrackCount)
+		// }
 
 		if len(releases) == 1 {
 			fixReleases[t.Release] = true
@@ -399,8 +400,8 @@ func (m *Music) fixTrackReleases() error {
 				}
 			}
 			if !matched {
-				log.Printf("unmatched %s/%s/%d\n",
-					t.Artist, t.Release, t.TrackCount)
+				// log.Printf("unmatched %s/%s/%d\n",
+				// 	t.Artist, t.Release, t.TrackCount)
 				fixReleases[t.Release] = false
 			}
 		}

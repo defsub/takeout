@@ -87,18 +87,30 @@ func (m *Music) creditsIndex(reid string) (search.IndexMap, error) {
 
 	// genres for artist and release group
 	for _, a := range rel.ArtistCredit {
+		if a.Name == VariousArtists {
+			// this has many genres and tags so don't add
+			continue
+		}
 		for _, g := range a.Artist.Genres {
-			addField(fields, FieldGenre, g.Name)
+			if g.Count > 0 {
+				addField(fields, FieldGenre, g.Name)
+			}
 		}
 		for _, t := range a.Artist.Tags {
-			addField(fields, FieldTag, t.Name)
+			if t.Count > 0 {
+				addField(fields, FieldTag, t.Name)
+			}
 		}
 	}
 	for _, g := range rel.ReleaseGroup.Genres {
-		addField(fields, FieldGenre, g.Name)
+		if g.Count > 0 {
+			addField(fields, FieldGenre, g.Name)
+		}
 	}
 	for _, t := range rel.ReleaseGroup.Tags {
-		addField(fields, FieldTag, t.Name)
+		if t.Count > 0 {
+			addField(fields, FieldTag, t.Name)
+		}
 	}
 
 	relationCredits(fields, rel.Relations)

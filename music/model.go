@@ -25,18 +25,18 @@ import (
 // Artist info from MusicBrainz.
 type Artist struct {
 	gorm.Model
-	Name     string `gorm:"unique_index:idx_artist_name"`
+	Name     string `gorm:"uniqueIndex:idx_artist_name"`
 	SortName string
-	ARID     string `gorm:"unique_index:idx_artist_arid"`
+	ARID     string `gorm:"uniqueIndex:idx_artist_arid"`
 }
 
 // Release info from MusicBrainz.
 type Release struct {
 	gorm.Model
-	Artist         string `gorm:"unique_index:idx_release"`
-	Name           string `gorm:"unique_index:idx_release"`
-	RGID           string //`gorm:"unique_index:idx_release"`
-	REID           string `gorm:"unique_index:idx_release"`
+	Artist         string `gorm:"uniqueIndex:idx_release"`
+	Name           string `gorm:"uniqueIndex:idx_release"`
+	RGID           string //`gorm:"uniqueIndex:idx_release"`
+	REID           string `gorm:"uniqueIndex:idx_release"`
 	Disambiguation string
 	Asin           string
 	Type           string
@@ -49,9 +49,9 @@ type Release struct {
 // Release Media from MusicBrainz.
 type Media struct {
 	gorm.Model
-	REID       string `gorm:"unique_index:idx_media"`
-	Name       string `gorm:"unique_index:idx_media"`
-	Position   int    `gorm:"unique_index:idx_media"`
+	REID       string `gorm:"uniqueIndex:idx_media"`
+	Name       string `gorm:"uniqueIndex:idx_media"`
+	Position   int    `gorm:"uniqueIndex:idx_media"`
 	Format     string
 	TrackCount int
 }
@@ -59,8 +59,8 @@ type Media struct {
 // Popular tracks for an artist from Last.fm.
 type Popular struct {
 	gorm.Model
-	Artist string `gorm:"unique_index:idx_popular"`
-	Title  string `gorm:"unique_index:idx_popular"`
+	Artist string `gorm:"uniqueIndex:idx_popular"`
+	Title  string `gorm:"uniqueIndex:idx_popular"`
 	Rank   int
 }
 
@@ -71,8 +71,8 @@ func (Popular) TableName() string {
 // Similar artist info from Last.fm
 type Similar struct {
 	gorm.Model
-	Artist string `gorm:"unique_index:idx_similar"`
-	ARID   string `gorm:"unique_index:idx_similar"`
+	Artist string `gorm:"uniqueIndex:idx_similar"`
+	ARID   string `gorm:"uniqueIndex:idx_similar"`
 	Rank   int
 }
 
@@ -83,8 +83,8 @@ func (Similar) TableName() string {
 // Artist tags from MusicBrainz.
 type ArtistTag struct {
 	gorm.Model
-	Artist string `gorm:"unique_index:idx_tag"`
-	Tag    string `gorm:"unique_index:idx_tag"`
+	Artist string `gorm:"uniqueIndex:idx_tag"`
+	Tag    string `gorm:"uniqueIndex:idx_tag"`
 	Count  int
 }
 
@@ -113,14 +113,14 @@ type Track struct {
 
 type Playlist struct {
 	gorm.Model
-	User     string `gorm:"unique_index:idx_playlist"`
+	User     string `gorm:"uniqueIndex:idx_playlist"`
 	Playlist []byte
 }
 
 type Station struct {
 	gorm.Model
-	User     string `gorm:"unique_index:idx_station"`
-	Name     string `gorm:"unique_index:idx_station"`
+	User     string `gorm:"uniqueIndex:idx_station"`
+	Name     string `gorm:"uniqueIndex:idx_station"`
 	Ref      string
 	Shared   bool
 	Type     string

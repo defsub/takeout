@@ -141,26 +141,42 @@ func configDefaults() {
 	viper.SetDefault("Music.RadioSearchLimit", "1000")
 	viper.SetDefault("Music.ArtistRadioBreadth", "25")
 	viper.SetDefault("Music.ArtistRadioDepth", "10")
+
+	// see https://musicbrainz.org/genres
 	viper.SetDefault("Music.RadioGenres", []string{
-		"alternative",
 		"alternative rock",
+		"alternative",
+		"ambient",
+		"big beat",
+		"blues rock",
+		"blues",
 		"classic rock",
+		"contemporary r&b",
 		"country rock",
+		"dance-pop",
 		"disco",
 		"electronic",
-		"krautrock",
 		"gothic rock",
 		"grunge",
+		"hard rock",
+		"heavy metal",
 		"hip hop",
+		"house",
+		"indie pop",
+		"indie rock",
 		"indie",
+		"krautrock",
 		"latin",
 		"metal",
-		"pop",
+		"new wave",
 		"pop rock",
+		"pop",
+		"post-punk",
 		"post-rock",
 		"progressive rock",
-		"new wave",
+		"r&b",
 		"rock",
+		"shoegaze",
 	})
 
 	viper.SetDefault("Music.Bucket.UseSSL", "true")
