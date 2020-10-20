@@ -24,6 +24,7 @@ Screens running on Chrome 85 for Android 10:
 * Similar artists and releases
 * Popular tracks
 * Artist singles
+* Radio stations based on genres, mixes, singles, and anything searchable
 * User-based access control using cookies and [scrypt](https://pkg.go.dev/golang.org/x/crypto/scrypt?tab=doc)
 * Server-based playlist (using [jsonpatch](http://jsonpatch.com/))
 * Web and json views

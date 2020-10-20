@@ -532,10 +532,11 @@ func (m *Music) releaseMedia(release Release) []Media {
 
 func (m *Music) releaseSingles(release Release) []Track {
 	var tracks []Track
-	m.db.Where("re_id = ? and" +
-		" exists (select name from releases where type = 'Single' and name = title)",
+	m.db.Where("tracks.re_id = ? and" +
+		" exists (select releases.name from releases where tracks.artist = releases.artist" +
+		" and releases.type = 'Single' and releases.name = tracks.title)",
 		release.REID).
-		Order("disc_num, track_num").Find(&tracks)
+		Order("tracks.disc_num, tracks.track_num").Find(&tracks)
 	return tracks
 }
 

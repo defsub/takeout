@@ -155,6 +155,7 @@ func configDefaults() {
 		"country rock",
 		"dance-pop",
 		"disco",
+		"dream pop",
 		"electronic",
 		"gothic rock",
 		"grunge",
