@@ -127,7 +127,7 @@ func (a *Auth) newCookie(session *Session) http.Cookie {
 		Value: session.Cookie,
 		MaxAge: session.maxAge(),
 		Path: "/",
-		Secure: true,
+		Secure: a.config.Auth.SecureCookies,
 		HttpOnly: true}
 }
 

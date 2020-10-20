@@ -24,6 +24,38 @@ import (
 	"strings"
 )
 
+const (
+	FieldArtist      = "artist"
+	FieldAsin        = "asin"
+	FieldDate        = "date"
+	FieldFirstDate   = "first_date"
+	FieldGenre       = "genre"
+	FieldLabel       = "label"
+	FieldLength      = "length"
+	FieldMedia       = "media"
+	FieldMediaTitle  = "media_title"
+	FieldRating      = "rating"
+	FieldRelease     = "release"
+	FieldReleaseDate = "release_date"
+	FieldStatus      = "status"
+	FieldTag         = "tag"
+	FieldTitle       = "title"
+	FieldTrack       = "track"
+	FieldType        = "type"
+
+	FieldBass      = "base"
+	FieldClarinet  = "clarinet"
+	FieldDrums     = "drums"
+	FieldFlute     = "flute"
+	FieldGuitar    = "guitar"
+	FieldPiano     = "piano"
+	FieldSaxophone = "saxophone"
+	FieldVocals    = "vocals"
+
+	TypePopular = "popular"
+	TypeSingle  = "single"
+)
+
 func (m *Music) creditsIndex(reid string) (search.IndexMap, error) {
 	rel, err := m.MusicBrainzReleaseCredits(reid)
 	if err != nil {
@@ -35,38 +67,50 @@ func (m *Music) creditsIndex(reid string) (search.IndexMap, error) {
 
 	// general fields
 	if rel.Disambiguation != "" {
-		addField(fields, "release", fmt.Sprintf("%s (%s)", rel.Title, rel.Disambiguation))
+		addField(fields, FieldRelease, fmt.Sprintf("%s (%s)", rel.Title, rel.Disambiguation))
 	} else {
-		addField(fields, "release", rel.Title)
+		addField(fields, FieldRelease, rel.Title)
 	}
-	addField(fields, "asin", rel.Asin)
-	addField(fields, "status", rel.Status)
+	addField(fields, FieldAsin, rel.Asin)
+	addField(fields, FieldStatus, rel.Status)
 	if rel.ReleaseGroup.Rating.Votes > 0 {
-		addField(fields, "rating", rel.ReleaseGroup.Rating.Value)
+		addField(fields, FieldRating, rel.ReleaseGroup.Rating.Value)
 	}
 	for _, l := range rel.LabelInfo {
-		addField(fields, "label", l.Label.Name)
+		addField(fields, FieldLabel, l.Label.Name)
 	}
 
 	// dates
-	addField(fields, "date", rel.Date) // refined later
-	addField(fields, "release_date", rel.Date)
-	addField(fields, "first_date", rel.ReleaseGroup.FirstReleaseDate)
+	addField(fields, FieldDate, rel.Date) // refined later
+	addField(fields, FieldReleaseDate, rel.Date)
+	addField(fields, FieldFirstDate, rel.ReleaseGroup.FirstReleaseDate)
 
 	// genres for artist and release group
 	for _, a := range rel.ArtistCredit {
+		if a.Name == VariousArtists {
+			// this has many genres and tags so don't add
+			continue
+		}
 		for _, g := range a.Artist.Genres {
-			addField(fields, "genre", g.Name)
+			if g.Count > 0 {
+				addField(fields, FieldGenre, g.Name)
+			}
 		}
 		for _, t := range a.Artist.Tags {
-			addField(fields, "tag", t.Name)
+			if t.Count > 0 {
+				addField(fields, FieldTag, t.Name)
+			}
 		}
 	}
 	for _, g := range rel.ReleaseGroup.Genres {
-		addField(fields, "genre", g.Name)
+		if g.Count > 0 {
+			addField(fields, FieldGenre, g.Name)
+		}
 	}
 	for _, t := range rel.ReleaseGroup.Tags {
-		addField(fields, "tag", t.Name)
+		if t.Count > 0 {
+			addField(fields, FieldTag, t.Name)
+		}
 	}
 
 	relationCredits(fields, rel.Relations)
@@ -74,18 +118,18 @@ func (m *Music) creditsIndex(reid string) (search.IndexMap, error) {
 	for _, m := range rel.Media {
 		for _, t := range m.Tracks {
 			trackFields := search.CloneFields(fields)
-			addField(trackFields, "media", m.Position)
+			addField(trackFields, FieldMedia, m.Position)
 			if m.Title != "" {
 				// include media specific title
 				// Eagles / The Long Run (Legacy)
-				addField(trackFields, "media_title", m.Title)
+				addField(trackFields, FieldMediaTitle, m.Title)
 			}
-			addField(trackFields, "track", t.Position)
-			addField(trackFields, "title", t.Recording.Title)
-			addField(trackFields, "length", t.Recording.Length / 1000)
+			addField(trackFields, FieldTrack, t.Position)
+			addField(trackFields, FieldTitle, t.Recording.Title)
+			addField(trackFields, FieldLength, t.Recording.Length/1000)
 			relationCredits(trackFields, t.Recording.Relations)
 			for _, a := range t.ArtistCredit {
-				addField(trackFields, "artist", a.Name)
+				addField(trackFields, FieldArtist, a.Name)
 			}
 			key := fmt.Sprintf("%d-%d", m.Position, t.Position)
 			index[key] = trackFields
@@ -104,20 +148,20 @@ func addField(c search.FieldMap, key string, value interface{}) search.FieldMap 
 	// bass = bass guitar, electric bass guitar
 	// vocals = lead vocals, backing vocals
 	alternates := []string{
-		"bass",
-		"clarinet",
-		"drums",
-		"flute",
-		"guitar",
-		"piano",
-		"saxophone",
-		"vocals",
+		FieldBass,
+		FieldClarinet,
+		FieldDrums,
+		FieldFlute,
+		FieldGuitar,
+		FieldPiano,
+		FieldSaxophone,
+		FieldVocals,
 	}
 	for _, alt := range alternates {
 		if strings.Contains(key, alt) {
 			keys = append(keys, alt)
 			// only match one; order matters
-			break;
+			break
 		}
 	}
 
@@ -128,11 +172,24 @@ func addField(c search.FieldMap, key string, value interface{}) search.FieldMap 
 			svalue := value.(string)
 			svalue = fixName(svalue)
 			if v, ok := c[k]; ok {
-				c[k] = v.(string) + ", " + svalue
+				switch v.(type) {
+				case string:
+					// string becomes array of 2 strings
+					c[k] = []string{v.(string), svalue}
+				case []string:
+					// array of 3+ strings
+					s := v.([]string)
+					s = append(s, svalue)
+					c[k] = s
+				default:
+					panic("bad field types")
+				}
 			} else {
+				// single string
 				c[k] = svalue
 			}
 		default:
+			// numeric, date, etc.
 			c[k] = value
 		}
 	}

@@ -18,15 +18,27 @@
 package search
 
 import (
-	"fmt"
 	"github.com/blevesearch/bleve"
+	"github.com/blevesearch/bleve/analysis/analyzer/keyword"
+	"github.com/blevesearch/bleve/mapping"
 	"testing"
 )
 
-func TestIndex(t *testing.T) {
+func buildMapping() mapping.IndexMapping {
+	keywordFieldMapping := bleve.NewTextFieldMapping()
+	keywordFieldMapping.Analyzer = keyword.Name
 
-	mapping := bleve.NewIndexMapping()
-	index, err := bleve.New("example.bleve", mapping)
+	musicMapping := bleve.NewDocumentMapping()
+	musicMapping.AddFieldMappingsAt("tags", keywordFieldMapping)
+
+	indexMapping := bleve.NewIndexMapping()
+	indexMapping.AddDocumentMapping("_default", musicMapping)
+
+	return indexMapping
+}
+
+func TestIndex(t *testing.T) {
+	index, err := bleve.New("example.bleve", buildMapping())
 	if err == bleve.ErrorIndexPathExists {
 		index, err = bleve.Open("example.bleve")
 		if err != nil {
@@ -35,38 +47,103 @@ func TestIndex(t *testing.T) {
 	}
 	defer index.Close()
 
-	m := make(map[string]string)
+	m := make(map[string]interface{})
 
 	m["artist"] = "Gary Numan"
 	m["release"] = "The Pleasure Principle"
 	m["title"] = "Films"
-	m["tags"] = "rock indie electronic"
-	m["instruments"] = "guitar drums piano"
+	m["tags"] = []string{"pop rock", "new wave", "indie", "electronic"}
+	m["instruments"] = []string{"guitar", "drums", "piano"}
 	m["keyboard"] = "Gary Numan"
 	m["piano"] = "Gary Numan"
 	m["bass guitar"] = "Ade"
 	m["drums/drum set"] = "Bill Smith"
 	m["mix"] = "jim smith, joe blow"
+	m["type"] = "music"
 
 	index.Index("Music/Gary Numan/The Pleasure Principle/01-Films.flac", m)
 }
 
-func TestSearch(t *testing.T) {
+func TestTagsSearch(t *testing.T) {
 	index, _ := bleve.Open("example.bleve")
-	query := bleve.NewQueryStringQuery(`+tags:rock`)
-	//query := bleve.NewQueryStringQuery(`ade`)
-	fmt.Printf("request\n")
+	defer index.Close()
+	query := bleve.NewQueryStringQuery(`+tags:"pop rock" +tags:"indie"`)
 	searchRequest := bleve.NewSearchRequest(query)
-	fmt.Printf("search\n")
 	searchResult, err := index.Search(searchRequest)
 	if err != nil {
-		panic(err)
+		t.Error(err)
 	}
-	fmt.Printf("%+v\n", searchResult)
-	for _, hit := range searchResult.Hits {
-		fmt.Printf("hit %+v %+v %+v\n", hit, hit.Index, hit.ID)
+	if len(searchResult.Hits) == 0 {
+		t.Error("no hits")
 	}
-	for _, f := range searchResult.Facets {
-		fmt.Printf("f %+v\n", f)
+}
+
+func TestTagsSearch2(t *testing.T) {
+	index, _ := bleve.Open("example.bleve")
+	defer index.Close()
+	query := bleve.NewQueryStringQuery(`+tags:"pop"`)
+	searchRequest := bleve.NewSearchRequest(query)
+	searchResult, err := index.Search(searchRequest)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(searchResult.Hits) != 0 {
+		t.Error("should be no hits")
+	}
+}
+
+func TestTagsSearch3(t *testing.T) {
+	index, _ := bleve.Open("example.bleve")
+	defer index.Close()
+	query := bleve.NewQueryStringQuery(`+tags:rock`)
+	searchRequest := bleve.NewSearchRequest(query)
+	searchResult, err := index.Search(searchRequest)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(searchResult.Hits) != 0 {
+		t.Error("should be no hits")
+	}
+}
+
+func TestArtistSearch(t *testing.T) {
+	index, _ := bleve.Open("example.bleve")
+	defer index.Close()
+	query := bleve.NewQueryStringQuery(`+artist:"numan"`)
+	searchRequest := bleve.NewSearchRequest(query)
+	searchResult, err := index.Search(searchRequest)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(searchResult.Hits) == 0 {
+		t.Error("no hits")
+	}
+}
+
+func TestTitleSearch(t *testing.T) {
+	index, _ := bleve.Open("example.bleve")
+	defer index.Close()
+	query := bleve.NewQueryStringQuery(`+title:"films"`)
+	searchRequest := bleve.NewSearchRequest(query)
+	searchResult, err := index.Search(searchRequest)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(searchResult.Hits) == 0 {
+		t.Error("no hits")
+	}
+}
+
+func TestQuery(t *testing.T) {
+	index, _ := bleve.Open("example.bleve")
+	defer index.Close()
+	query := bleve.NewQueryStringQuery(`+title:"films" +artist:numan +tags:"new wave" +piano:numan`)
+	searchRequest := bleve.NewSearchRequest(query)
+	searchResult, err := index.Search(searchRequest)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(searchResult.Hits) == 0 {
+		t.Error("no hits")
 	}
 }

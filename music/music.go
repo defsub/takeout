@@ -24,11 +24,16 @@ import (
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/log"
 	"github.com/defsub/takeout/search"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 	"net/url"
 	"regexp"
 	"strings"
 	"time"
+)
+
+const (
+	TakeoutUser = "takeout"
+	VariousArtists = "Various Artists"
 )
 
 type Music struct {
@@ -85,22 +90,31 @@ func (m *Music) LastModified() time.Time {
 func (m *Music) Sync(options SyncOptions) {
 	if options.Since.IsZero() {
 		if options.Tracks {
+			log.Printf("sync tracks\n")
 			log.CheckError(m.syncBucketTracks())
+			log.Printf("sync artists\n")
 			log.CheckError(m.syncArtists())
 		}
 		if options.Releases {
+			log.Printf("sync releases\n")
 			log.CheckError(m.syncReleases())
+			log.Printf("fix track releases\n")
 			log.CheckError(m.fixTrackReleases())
+			log.Printf("assign track releases\n")
 			log.CheckError(m.assignTrackReleases())
+			log.Printf("fix track release titles\n")
 			log.CheckError(m.fixTrackReleaseTitles())
 		}
 		if options.Popular {
+			log.Printf("sync popular\n")
 			log.CheckError(m.syncPopular())
 		}
 		if options.Similar {
+			log.Printf("sync similar\n")
 			log.CheckError(m.syncSimilar())
 		}
 		if options.Index {
+			log.Printf("sync index\n")
 			log.CheckError(m.syncIndex())
 		}
 	} else {
@@ -165,7 +179,7 @@ func (m *Music) syncBucketTracksSince(lastSync time.Time) (err error) {
 		return err
 	}
 	for t := range trackCh {
-		log.Printf("sync: %s/%s/%s\n", t.Artist, t.Release, t.Title)
+		//log.Printf("sync: %s/%s/%s\n", t.Artist, t.Release, t.Title)
 		t.Artist = fixName(t.Artist)
 		t.Release = fixName(t.Release)
 		t.Title = fixName(t.Title)
@@ -205,7 +219,7 @@ func (m *Music) syncReleasesFor(artists []Artist) error {
 	for _, a := range artists {
 		var releases []Release
 		log.Printf("releases for %s\n", a.Name)
-		if a.Name == "Various Artists" {
+		if a.Name == VariousArtists {
 			// various artists has many thousands of releases so
 			// instead of getting all releases, search for them by
 			// name and then get releases
@@ -320,7 +334,7 @@ func (m *Music) assignTrackReleases() error {
 				}
 			}
 			if !assigned {
-				v := fmt.Sprintf("%/%s/%d", t.Artist, t.Release, t.TrackCount)
+				v := fmt.Sprintf("%s/%s/%d", t.Artist, t.Release, t.TrackCount)
 				notfound[v] += 1
 				if notfound[v] == 1 {
 					log.Printf("release not found for %s\n", v)
@@ -355,9 +369,9 @@ func (m *Music) fixTrackReleases() error {
 		}
 
 		releases := m.artistReleasesLike(artist, t.Release, t.TrackCount)
-		for _, r := range releases {
-			log.Printf("check %s/%s/%d\n", r.Artist, r.Name, r.TrackCount)
-		}
+		// for _, r := range releases {
+		// 	log.Printf("check %s/%s/%d\n", r.Artist, r.Name, r.TrackCount)
+		// }
 
 		if len(releases) == 1 {
 			fixReleases[t.Release] = true
@@ -386,8 +400,8 @@ func (m *Music) fixTrackReleases() error {
 				}
 			}
 			if !matched {
-				log.Printf("unmatched %s/%s/%d\n",
-					t.Artist, t.Release, t.TrackCount)
+				// log.Printf("unmatched %s/%s/%d\n",
+				// 	t.Artist, t.Release, t.TrackCount)
 				fixReleases[t.Release] = false
 			}
 		}
@@ -648,7 +662,7 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 	for k, _ := range singles {
 		fields, ok := newIndex[k]
 		if ok {
-			addField(fields, "type", "single")
+			addField(fields, FieldType, TypeSingle)
 		}
 	}
 
@@ -660,7 +674,7 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 	for k, _ := range popular {
 		fields, ok := newIndex[k]
 		if ok {
-			addField(fields, "type", "popular")
+			addField(fields, FieldType, TypePopular)
 		}
 	}
 
@@ -669,7 +683,7 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 		tracks := m.tracksFor([]string{k})
 		date := m.trackFirstReleaseDate(&tracks[0])
 		s := fmt.Sprintf("%4d-%02d-%02d", date.Year(), date.Month(), date.Day())
-		addField(v, "date", s)
+		addField(v, FieldDate, s)
 	}
 
 	return newIndex, nil
@@ -695,9 +709,20 @@ func (m *Music) syncIndex() error {
 	return m.syncIndexFor(artists)
 }
 
-func (m *Music) syncIndexFor(artists []Artist) error {
+func (m *Music) newSearch() *search.Search {
 	s := search.NewSearch(m.config)
+	s.Keywords = []string{
+		FieldGenre,
+		FieldStatus,
+		FieldTag,
+		FieldType,
+	}
 	s.Open("music")
+	return s
+}
+
+func (m *Music) syncIndexFor(artists []Artist) error {
+	s := m.newSearch()
 	defer s.Close()
 
 	for _, a := range artists {
@@ -713,15 +738,31 @@ func (m *Music) syncIndexFor(artists []Artist) error {
 	return nil
 }
 
-func (m *Music) Search(q string) []Track {
-	s := search.NewSearch(m.config)
-	s.Open("music")
+func (m *Music) Search(q string, limit ...int) []Track {
+	s := m.newSearch()
 	defer s.Close()
 
-	keys, err := s.Search(q)
+	l := m.config.Music.SearchLimit
+	if len(limit) == 1 {
+		l = limit[0]
+	}
+
+	keys, err := s.Search(q, l)
 	if err != nil {
 		return nil
 	}
 
-	return m.tracksFor(keys)
+	// split potentially large # of result keys into chunks to query
+	chunkSize := 100
+	var tracks []Track
+	for i := 0; i < len(keys); i += chunkSize {
+		end := i + chunkSize
+		if end > len(keys) {
+			end = len(keys)
+		}
+		chunk := keys[i:end]
+		tracks = append(tracks, m.tracksFor(chunk)...)
+	}
+
+	return tracks
 }

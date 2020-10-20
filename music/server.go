@@ -26,6 +26,7 @@ import (
 	"github.com/defsub/takeout/log"
 	"html/template"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -150,7 +151,9 @@ func (handler *MusicHandler) render(music *Music, temp string, view interface{},
 			case Track:
 				ref = fmt.Sprintf("/music/tracks/%d", o.(Track).ID)
 			case string:
-				ref = fmt.Sprintf("/music/search/%s", o.(string))
+				ref = fmt.Sprintf("/music/search?q=%s", url.QueryEscape(o.(string)))
+			case Station:
+				ref = fmt.Sprintf("/music/radio/%d", o.(Station).ID)
 			}
 			return ref
 		},
@@ -311,10 +314,10 @@ func (handler *MusicHandler) viewHandler(w http.ResponseWriter, r *http.Request)
 		// /v?q={pattern}
 		view = music.SearchView(strings.TrimSpace(v))
 		temp = "search.html"
-	} else if v := r.URL.Query().Get("channels"); v != "" {
-		// /v?channels=x
-		view = music.ChannelsView(handler.user)
-		temp = "channels.html"
+	} else if v := r.URL.Query().Get("radio"); v != "" {
+		// /v?radio=x
+		view = music.RadioView(handler.user)
+		temp = "radio.html"
 	} else {
 		view = time.Now().Unix()
 		temp = "index.html"

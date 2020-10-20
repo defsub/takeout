@@ -66,8 +66,12 @@ type SearchView struct {
 	Hits     int
 }
 
-type ChannelsView struct {
-	Channels []Channel
+type RadioView struct {
+	Artist []Station
+	Genre  []Station
+	Mix    []Station
+	Period []Station
+	Other  []Station
 }
 
 func (m *Music) HomeView() *HomeView {
@@ -145,9 +149,22 @@ func (m *Music) SearchView(query string) *SearchView {
 	return view
 }
 
-func (m *Music) ChannelsView(user *auth.User) *ChannelsView {
-	view := &ChannelsView{}
-	view.Channels = m.channels(user)
+func (m *Music) RadioView(user *auth.User) *RadioView {
+	view := &RadioView{}
+	for _, s := range m.stations(user) {
+		switch s.Type {
+		case typeArtist:
+			view.Artist = append(view.Artist, s)
+		case typeGenre:
+			view.Genre = append(view.Genre, s)
+		case typeMix:
+			view.Mix = append(view.Mix, s)
+		case typePeriod:
+			view.Period = append(view.Period, s)
+		default:
+			view.Other = append(view.Other, s)
+		}
+	}
 	return view
 }
 

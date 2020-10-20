@@ -20,6 +20,7 @@ package search
 import (
 	"fmt"
 	"github.com/blevesearch/bleve"
+	"github.com/blevesearch/bleve/analysis/analyzer/keyword"
 	"github.com/defsub/takeout/config"
 )
 
@@ -27,8 +28,9 @@ type FieldMap map[string]interface{}
 type IndexMap map[string]FieldMap
 
 type Search struct {
-	config *config.Config
-	index  bleve.Index
+	config   *config.Config
+	index    bleve.Index
+	Keywords []string
 }
 
 func NewSearch(config *config.Config) *Search {
@@ -37,6 +39,14 @@ func NewSearch(config *config.Config) *Search {
 
 func (s *Search) Open(name string) error {
 	mapping := bleve.NewIndexMapping()
+	keywordFieldMapping := bleve.NewTextFieldMapping()
+	keywordFieldMapping.Analyzer = keyword.Name
+	keywordMapping := bleve.NewDocumentMapping()
+	for _, v := range s.Keywords {
+		keywordMapping.AddFieldMappingsAt(v, keywordFieldMapping)
+	}
+	mapping.AddDocumentMapping("_default", keywordMapping)
+
 	path := fmt.Sprintf("%s/%s.bleve", s.config.Search.BleveDir, name)
 	index, err := bleve.New(path, mapping)
 	if err == bleve.ErrorIndexPathExists {
@@ -56,10 +66,10 @@ func (s *Search) Close() {
 }
 
 // see https://blevesearch.com/docs/Query-String-Query/
-func (s *Search) Search(q string) ([]string, error) {
+func (s *Search) Search(q string, limit int) ([]string, error) {
 	query := bleve.NewQueryStringQuery(q)
 	searchRequest := bleve.NewSearchRequest(query)
-	searchRequest.Size = 100
+	searchRequest.Size = limit
 	searchResult, err := s.index.Search(searchRequest)
 	if err != nil {
 		return nil, err

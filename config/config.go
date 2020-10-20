@@ -55,9 +55,15 @@ type MusicConfig struct {
 	SearchLimit          int
 	PopularLimit         int
 	SinglesLimit         int
+	DeepLimit            int
 	SimilarArtistsLimit  int
 	SimilarReleases      time.Duration
 	SimilarReleasesLimit int
+	RadioGenres          []string
+	RadioLimit           int
+	RadioSearchLimit     int
+	ArtistRadioBreadth   int
+	ArtistRadioDepth     int
 }
 
 type LastFMAPIConfig struct {
@@ -72,8 +78,9 @@ type AuthDB struct {
 }
 
 type AuthConfig struct {
-	DB     AuthDB
-	MaxAge time.Duration
+	DB            AuthDB
+	MaxAge        time.Duration
+	SecureCookies bool
 }
 
 type SearchConfig struct {
@@ -115,18 +122,62 @@ func (mc *MusicConfig) readMaps() {
 
 func configDefaults() {
 	viper.SetDefault("Auth.MaxAge", "24h")
+	viper.SetDefault("Auth.SecureCookies", "true")
 	viper.SetDefault("Auth.DB.Driver", "sqlite3")
 	viper.SetDefault("Auth.DB.Source", "auth.db")
 	viper.SetDefault("Auth.DB.LogMode", "false")
 
 	viper.SetDefault("Music.Recent", "8760h") // 1 year
 	viper.SetDefault("Music.RecentLimit", "50")
-	viper.SetDefault("Music.SearchLimit", "50")
+	viper.SetDefault("Music.SearchLimit", "100")
 	viper.SetDefault("Music.PopularLimit", "50")
 	viper.SetDefault("Music.SinglesLimit", "50")
+	viper.SetDefault("Music.DeepLimit", "50")
 	viper.SetDefault("Music.SimilarArtistsLimit", "10")
 	viper.SetDefault("Music.SimilarReleases", "8760h") // +/- 1 year
 	viper.SetDefault("Music.SimilarReleasesLimit", "10")
+
+	viper.SetDefault("Music.RadioLimit", "250")
+	viper.SetDefault("Music.RadioSearchLimit", "1000")
+	viper.SetDefault("Music.ArtistRadioBreadth", "25")
+	viper.SetDefault("Music.ArtistRadioDepth", "10")
+
+	// see https://musicbrainz.org/genres
+	viper.SetDefault("Music.RadioGenres", []string{
+		"alternative rock",
+		"alternative",
+		"ambient",
+		"big beat",
+		"blues rock",
+		"blues",
+		"classic rock",
+		"contemporary r&b",
+		"country rock",
+		"dance-pop",
+		"disco",
+		"electronic",
+		"gothic rock",
+		"grunge",
+		"hard rock",
+		"heavy metal",
+		"hip hop",
+		"house",
+		"indie pop",
+		"indie rock",
+		"indie",
+		"krautrock",
+		"latin",
+		"metal",
+		"new wave",
+		"pop rock",
+		"pop",
+		"post-punk",
+		"post-rock",
+		"progressive rock",
+		"r&b",
+		"rock",
+		"shoegaze",
+	})
 
 	viper.SetDefault("Music.Bucket.UseSSL", "true")
 	viper.SetDefault("Music.Bucket.URLExpiration", "72h")

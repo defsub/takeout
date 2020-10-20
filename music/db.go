@@ -20,25 +20,44 @@ package music
 import (
 	"errors"
 	"github.com/defsub/takeout/auth"
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+	"gorm.io/driver/sqlite"
 	"strconv"
 	"time"
 )
 
 func (m *Music) openDB() (err error) {
-	m.db, err = gorm.Open(m.config.Music.DB.Driver, m.config.Music.DB.Source)
+	var glog logger.Interface
+	if m.config.Music.DB.LogMode == false {
+		glog = logger.Discard
+	} else {
+		glog = logger.Default
+	}
+	cfg := &gorm.Config{
+		Logger: glog,
+	}
+
+	if m.config.Music.DB.Driver == "sqlite3" {
+		m.db, err = gorm.Open(sqlite.Open(m.config.Music.DB.Source), cfg)
+	} else {
+		err = errors.New("driver not supported")
+	}
+
 	if err != nil {
 		return
 	}
-	m.db.LogMode(m.config.Music.DB.LogMode)
-	m.db.AutoMigrate(&Artist{}, &ArtistTag{}, &Channel{}, &Media{}, &Playlist{},
-		&Popular{}, &Similar{}, &Release{}, &Track{})
+
+	m.db.AutoMigrate(&Artist{}, &ArtistTag{}, &Media{}, &Playlist{},
+		&Popular{}, &Similar{}, &Station{}, &Release{}, &Track{})
 	return
 }
 
 func (m *Music) closeDB() {
-	m.db.Close()
+	conn, err := m.db.DB()
+	if err != nil {
+		defer conn.Close()
+	}
 }
 
 func (m *Music) lastModified() time.Time {
@@ -52,7 +71,7 @@ func (m *Music) lastModified() time.Time {
 }
 
 func (m *Music) deleteTracks() {
-	m.db.Unscoped().Model(&Track{}).Delete(&Track{})
+	m.db.Exec("delete from tracks")
 }
 
 func (m *Music) createTrack(track *Track) error {
@@ -60,12 +79,13 @@ func (m *Music) createTrack(track *Track) error {
 }
 
 // Find an artist by name.
-func (m *Music) artist(artist string) (a *Artist) {
-	a = &Artist{Name: artist}
-	if m.db.Find(a, a).RecordNotFound() {
+func (m *Music) artist(artist string) *Artist {
+	var a Artist
+	err := m.db.Where("name = ?", artist).First(&a).Error
+	if err != nil {
 		return nil
 	}
-	return a
+	return &a
 }
 
 // Compute and update TrackCount for each track with total number of
@@ -309,23 +329,51 @@ func (m *Music) trackArtistNames() []string {
 	return artists
 }
 
-func (m *Music) artistSingleTracks(a Artist) []Track {
+func (m *Music) artistSingleTracks(a Artist, limit ...int) []Track {
 	var tracks []Track
+	l := m.config.Music.SinglesLimit
+	if len(limit) == 1 {
+		l = limit[0]
+	}
 	m.db.Where("tracks.artist = ?", a.Name).
 		Joins("inner join releases on tracks.artist = releases.artist" +
 		" and tracks.title = releases.name and releases.type = 'Single'").
 		Order("releases.date").
+		Limit(l).
 		Group("tracks.artist, tracks.title").
 		Find(&tracks)
 	return tracks
 }
 
-func (m *Music) artistPopularTracks(a Artist) []Track {
+func (m *Music) artistPopularTracks(a Artist, limit ...int) []Track {
 	var tracks []Track
+	l := m.config.Music.PopularLimit
+	if len(limit) == 1 {
+		l = limit[0]
+	}
 	m.db.Where("tracks.artist = ?", a.Name).
 		Joins("inner join popular on tracks.artist = popular.artist" +
  		" and tracks.title = popular.title").
 		Order("popular.rank").
+		Limit(l).
+		Group("tracks.artist, tracks.title").
+		Find(&tracks)
+	return tracks
+}
+
+func (m *Music) artistDeepTracks(a Artist, limit ...int) []Track {
+	var tracks []Track
+	l := m.config.Music.DeepLimit
+	if len(limit) == 1 {
+		l = limit[0]
+	}
+	popularTracks := "select popular.title from popular where tracks.artist = popular.artist"
+	singleTracks := "select releases.name from releases where tracks.artist = releases.artist and releases.type = 'Single'"
+	m.db.Where("tracks.artist = ?" +
+		" and tracks.title not in (" + popularTracks + ")" +
+		" and tracks.title not in (" + singleTracks + ")",
+		a.Name).
+		Limit(l).
 		Group("tracks.artist, tracks.title").
 		Find(&tracks)
 	return tracks
@@ -364,16 +412,19 @@ func (m *Music) similarArtistsByTags(a *Artist) []Artist {
 }
 
 // Similar artists based on similarity rank from Last.fm.
-func (m *Music) similarArtists(a *Artist) []Artist {
+func (m *Music) similarArtists(a *Artist, limit ...int) []Artist {
 	var artists []Artist
+	l := m.config.Music.SimilarArtistsLimit
+	if len(limit) == 1 {
+		l = limit[0]
+	}
 	m.db.Joins("inner join similar on similar.artist = ?", a.Name).
 		Where("artists.ar_id = similar.ar_id").
 		Order("similar.rank asc").
-		Limit(m.config.Music.SimilarArtistsLimit).
+		Limit(l).
 		Find(&artists)
 	return artists
 }
-
 
 // Similar releases based on releases from similar artists in the
 // previous and following year.
@@ -437,17 +488,19 @@ func (m *Music) recentlyReleased() []Release {
 // REID or RGID from MusicBrainz. This is useful for covers.
 func (m *Music) assignedRelease(t *Track) (*Release, error) {
 	var release Release
-	if m.db.Where("re_id = ?", t.REID).First(&release).RecordNotFound() {
-		if m.db.Where("rg_id = ?", t.RGID).First(&release).RecordNotFound() {
+	err := m.db.Where("re_id = ?", t.REID).First(&release).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		err = m.db.Where("rg_id = ?", t.RGID).First(&release).Error
+		if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("release not found")
 		}
 	}
-	return &release, nil
+	return &release, err
 }
 
 // func (m *Music) releaseGroup(rgid string) (*Release, error) {
 // 	var release Release
-// 	if m.db.Where("rg_id = ?", rgid).First(&release).RecordNotFound() {
+// 	if m.db.Where("rg_id = ?", rgid).First(&release).ErrRecordNotFound() {
 // 		return nil, errors.New("release group not found")
 // 	}
 // 	return &release, nil
@@ -456,10 +509,11 @@ func (m *Music) assignedRelease(t *Track) (*Release, error) {
 // Obtain a release using MusicBrainz REID.
 func (m *Music) release(reid string) (*Release, error) {
 	var release Release
-	if m.db.Where("re_id = ?", reid).First(&release).RecordNotFound() {
+	err := m.db.Where("re_id = ?", reid).First(&release).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errors.New("release group not found")
 	}
-	return &release, nil
+	return &release, err
 }
 
 // Obtain all the tracks for this release, ordered by disc and track
@@ -498,36 +552,37 @@ func (m *Music) releasePopular(release Release) []Track {
 // Lookup a release given the internal record ID.
 func (m *Music) lookupRelease(id int) (Release, error) {
 	var release Release
-	if m.db.First(&release, id).RecordNotFound() {
+	err := m.db.First(&release, id).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return Release{}, errors.New("release not found")
 	}
-	return release, nil
+	return release, err
 }
 
 // Lookup an artist given the internal record ID.
 func (m *Music) lookupArtist(id int) (Artist, error) {
 	var artist Artist
-	if m.db.First(&artist, id).RecordNotFound() {
+	err := m.db.First(&artist, id).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return Artist{}, errors.New("artist not found")
 	}
-	return artist, nil
+	return artist, err
 }
 
 // Lookup a track given the internal record ID.
 func (m *Music) lookupTrack(id int) (Track, error) {
 	var track Track
-	if m.db.First(&track, id).RecordNotFound() {
+	err := m.db.First(&track, id).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return Track{}, errors.New("track not found")
 	}
-	return track, nil
+	return track, err
 }
 
 // Lookup a track given the internal record ID.
 func (m *Music) tracksFor(keys []string) []Track {
 	var tracks []Track
-	m.db.Where("key in (?)", keys).
-		Limit(m.config.Music.SearchLimit).
-		Find(&tracks)
+	m.db.Where("key in (?)", keys).Find(&tracks)
 	return tracks
 }
 
@@ -537,10 +592,8 @@ func (m *Music) tracksFor(keys []string) []Track {
 // interal record ID can change.
 func (m *Music) lookupETag(etag string) (*Track, error) {
 	track := Track{ETag: etag}
-	if m.db.First(&track, &track).RecordNotFound() {
-		return nil, nil
-	}
-	return &track, nil
+	err := m.db.First(&track, &track).Error
+	return &track, err
 }
 
 // Simple sql search for artists, releases and tracks. Use config
@@ -570,11 +623,12 @@ func (m *Music) search(query string) ([]Artist, []Release, []Track) {
 
 // Lookup user playlist.
 func (m *Music) lookupPlaylist(user *auth.User) *Playlist {
-	p := &Playlist{User: user.Name}
-	if m.db.Find(p, p).RecordNotFound() {
+	var p Playlist
+	err := m.db.Where("user = ?", user.Name).First(&p).Error
+	if err != nil {
 		return nil
 	}
-	return p
+	return &p
 }
 
 // Save a playlist.
@@ -582,32 +636,54 @@ func (m *Music) updatePlaylist(p *Playlist) error {
 	return m.db.Save(p).Error
 }
 
-// Obtain user channels.
-func (m *Music) channels(user *auth.User) []Channel {
-	var channels []Channel
-	m.db.Where("user = ?", user.Name).Find(&channels)
-	return channels
+// Obtain user stations.
+func (m *Music) stations(user *auth.User) []Station {
+	var stations []Station
+	m.db.Where("user = ? or shared = 1", user.Name).Find(&stations)
+	return stations
 }
 
-// Obtain user channel by id.
-func (m *Music) lookupChannel(user *auth.User, id int) (Channel, error) {
-	var c Channel
-	if m.db.First(&c, id).RecordNotFound() {
-		return Channel{}, errors.New("channel not found")
+func (m *Music) clearStationPlaylists() {
+	m.db.Exec(`update stations set playlist = ""`)
+}
+
+// Obtain user station by id.
+func (m *Music) lookupStation(id int) (Station, error) {
+	var s Station
+	err := m.db.First(&s, id).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return Station{}, errors.New("station not found")
 	}
-	if c.User != user.Name {
-		return Channel{}, errors.New("wrong channel user")
+	return s, err
+}
+
+// Update a station.
+func (m *Music) updateStation(s *Station) error {
+	return m.db.Save(s).Error
+}
+
+func (m *Music) deleteStation(s *Station) error {
+	return m.db.Unscoped().Delete(s).Error
+}
+
+func (m *Music) favoriteArtists(limit int) ([]string, error) {
+	var artists []string
+	rows, err := m.db.Table("tracks").
+		Select("artist, count(title)").
+		Group("artist").
+		Limit(limit).
+		Order("count(title) desc").Rows()
+	if err != nil {
+		return artists, err
 	}
-	return c, nil
-}
-
-// Update a channel.
-func (m *Music) updateChannel(c *Channel) error {
-	return m.db.Save(c).Error
-}
-
-func (m *Music) deleteChannel(c *Channel) error {
-	return m.db.Unscoped().Delete(c).Error
+	for rows.Next() {
+		var artist string
+		var count int
+		rows.Scan(&artist, &count)
+		artists = append(artists, artist)
+	}
+	rows.Close()
+	return artists, nil
 }
 
 func (m *Music) createArtist(a *Artist) error {
@@ -638,6 +714,6 @@ func (m *Music) createPlaylist(p *Playlist) error {
 	return m.db.Create(p).Error
 }
 
-func (m *Music) createChannel(c *Channel) error {
-	return m.db.Create(c).Error
+func (m *Music) createStation(s *Station) error {
+	return m.db.Create(s).Error
 }
