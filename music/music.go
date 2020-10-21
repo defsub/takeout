@@ -651,6 +651,7 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 			}
 		}
 		if !matched {
+			// likely video discs
 			log.Printf("no match %s\n", k)
 		}
 	}
