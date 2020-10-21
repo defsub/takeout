@@ -40,6 +40,7 @@ import (
 // * correcting track titles
 
 func newMusicBrainzClient() *gomusicbrainz.WS2Client {
+	client.RateLimit("musicbrainz.org")
 	mbz, _ := gomusicbrainz.NewWS2Client(
 		"https://musicbrainz.org/ws/2",
 		takeout.AppName, takeout.Version, takeout.Contact)
@@ -79,9 +80,7 @@ func (m *Music) SearchArtistId(arid string) (a *Artist, tags []ArtistTag) {
 //
 // TODO replace with internal client
 func (m *Music) SearchArtist(name string) (a *Artist, tags []ArtistTag) {
-	client.RateLimit()
 	mbz := newMusicBrainzClient()
-
 	var query string
 	mbid, ok := m.config.Music.UserArtistID(name)
 	if ok {
@@ -328,7 +327,6 @@ func doArtistReleases(arid string, limit int, offset int) (*mbzReleasesPage, err
 	inc := []string{"release-groups", "media"}
 	url := fmt.Sprintf("https://musicbrainz.org/ws/2/release?fmt=json&artist=%s&inc=%s&limit=%d&offset=%d",
 		arid, strings.Join(inc, "%2B"), limit, offset)
-	client.RateLimit()
 	err := client.GetJson(url, &result)
 	return &result, err
 }
@@ -341,7 +339,6 @@ func (m *Music) MusicBrainzReleaseCredits(reid string) (*mbzRelease, error) {
 	url := fmt.Sprintf("https://musicbrainz.org/ws/2/release/%s?fmt=json&inc=%s",
 		reid, strings.Join(inc, "%2B"))
 	var result mbzRelease
-	client.RateLimit()
 	err := client.GetJson(url, &result)
 	return &result, err
 }
@@ -352,7 +349,6 @@ func (m *Music) MusicBrainzReleaseGroup(rgid string) (*mbzReleaseGroup, error) {
 	url := fmt.Sprintf("https://musicbrainz.org/ws/2/release-group/%s?fmt=json&inc=%s",
 		rgid, strings.Join(inc, "%2B"))
 	var result mbzReleaseGroup
-	client.RateLimit()
 	err := client.GetJson(url, &result)
 	for _, r := range result.Releases {
 		if r.Title == "" {
@@ -387,7 +383,6 @@ func (m *Music) MusicBrainzSearchReleaseGroup(arid string, name string) (*mbzSea
 		`https://musicbrainz.org/ws/2/release-group/?fmt=json&query=arid:%s+AND+release:"%s"`,
 		arid, strings.Replace(name, " ", "+", -1))
 	var result mbzSearchResult
-	client.RateLimit()
 	err := client.GetJson(url, &result)
 	return &result, err
 }

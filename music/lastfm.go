@@ -30,7 +30,7 @@ import (
 // * looking up artists not found by MusicBrainz to get their MBID
 
 func (m *Music) lastfmArtistTopTracks(artist *Artist) []Popular {
-	client.RateLimit()
+	client.RateLimit("last.fm")
 	api := lastfm.New(m.config.LastFM.Key, m.config.LastFM.Secret)
 
 	result, _ := api.Artist.GetTopTracks(lastfm.P{"mbid": artist.ARID})
@@ -50,8 +50,7 @@ func (m *Music) lastfmArtistTopTracks(artist *Artist) []Popular {
 }
 
 func (m *Music) lastfmSimilarArtists(artist *Artist) []Similar {
-	client.RateLimit()
-
+	client.RateLimit("last.fm")
 	api := lastfm.New(m.config.LastFM.Key, m.config.LastFM.Secret)
 	result, _ := api.Artist.GetSimilar(lastfm.P{"mbid": artist.ARID})
 
@@ -76,8 +75,7 @@ func (m *Music) lastfmSimilarArtists(artist *Artist) []Similar {
 }
 
 func (m *Music) lastfmArtistSearch(name string) *Artist {
-	client.RateLimit()
-
+	client.RateLimit("last.fm")
 	api := lastfm.New(m.config.LastFM.Key, m.config.LastFM.Secret)
 	result, _ := api.Artist.Search(lastfm.P{"artist": name})
 

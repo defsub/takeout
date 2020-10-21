@@ -101,8 +101,6 @@ func (m *Music) Setlists(artist *Artist) {
 }
 
 func (m *Music) setlistPage(artist *Artist, page int) *setlistResponse {
-	client.RateLimit()
-
 	url := fmt.Sprintf("https://api.setlist.fm/rest/1.0/artist/%s/setlists?p=%d",
 		artist.ARID, page)
 
