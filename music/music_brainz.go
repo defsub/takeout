@@ -242,6 +242,17 @@ func (r mbzRelease) totalTracks() int {
 	return count
 }
 
+func (r mbzRelease) totalDiscs() int {
+	count := 0
+	for _, m := range r.Media {
+		if m.video() {
+			continue
+		}
+		count++
+	}
+	return count
+}
+
 type mbzTag struct {
 	Name  string `json:"name"`
 	Count int    `json:"count"`
@@ -299,6 +310,7 @@ func release(a *Artist, r mbzRelease) Release {
 		Type:           r.ReleaseGroup.PrimaryType,
 		Asin:           r.Asin,
 		TrackCount:     r.totalTracks(),
+		DiscCount:      r.totalDiscs(),
 		FrontCover:     r.CoverArtArchive.Front,
 		Media:          media,
 		Date:           r.ReleaseGroup.firstReleaseDate()}

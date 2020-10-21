@@ -42,6 +42,7 @@ type Release struct {
 	Type           string
 	Date           time.Time
 	TrackCount     int
+	DiscCount      int
 	FrontCover     bool
 	Media          []Media `gorm:"-"`
 }
@@ -105,6 +106,7 @@ type Track struct {
 	// TODO remove Location, only needed for old spiff
 	Location     []string `gorm:"-" spiff:"location"`
 	TrackCount   int
+	DiscCount    int
 	REID         string
 	RGID         string
 	MediaTitle   string
