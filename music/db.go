@@ -20,10 +20,9 @@ package music
 import (
 	"errors"
 	"github.com/defsub/takeout/auth"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"gorm.io/driver/sqlite"
-	"strconv"
 	"time"
 )
 
@@ -94,29 +93,31 @@ func (m *Music) artist(artist string) *Artist {
 // matches.
 func (m *Music) updateTrackCount() error {
 	rows, err := m.db.Table("tracks").
-		Select("artist, release, date, count(title)").
+		Select("artist, release, date, count(title), max(disc_num)").
 		Group("artist, release, date").
 		Order("artist, release").Rows()
 	if err != nil {
 		return err
 	}
-	var results []map[string]string
+	var results []map[string]interface{}
 	for rows.Next() {
 		var artist, release, date string
-		var count int
-		rows.Scan(&artist, &release, &date, &count)
-		results = append(results, map[string]string{
-			"artist":  artist,
-			"release": release,
-			"date":    date,
-			"count":   strconv.Itoa(count)})
+		var trackCount, discCount int
+		rows.Scan(&artist, &release, &date, &trackCount, &discCount)
+		results = append(results, map[string]interface{}{
+			"artist":     artist,
+			"release":    release,
+			"date":       date,
+			"trackCount": trackCount,
+			"discCount":  discCount,
+		})
 	}
 	rows.Close()
 
 	for _, v := range results {
 		err = m.db.Table("tracks").
 			Where("artist = ? and release = ? and date = ?", v["artist"], v["release"], v["date"]).
-			Update("track_count", v["count"]).Error
+			Updates(Track{TrackCount: v["trackCount"].(int), DiscCount: v["discCount"].(int)}).Error
 		if err != nil {
 			return err
 		}
@@ -143,11 +144,12 @@ func (m *Music) updateTrackArtist(oldName, newName string) (err error) {
 // Tracks may have release names that are modified to meet
 // file/directory naming limitations. Update the track entries with
 // these modified names to the actual release name.
+// TODO not used?
 func (m *Music) updateTrackRelease(artist, oldName, newName string,
-	trackCount int) (err error) {
+	trackCount, discCount int) (err error) {
 	var tracks []Track
-	m.db.Where("artist = ? and release = ? and track_count = ?",
-		artist, oldName, trackCount).Find(&tracks)
+	m.db.Where("artist = ? and release = ? and track_count = ? and disc_count = ?",
+		artist, oldName, trackCount, discCount).Find(&tracks)
 	for _, t := range tracks {
 		err = m.db.Model(t).Update("release", newName).Error
 		if err != nil {
@@ -194,10 +196,10 @@ func (m *Music) tracksWithoutReleases() []Track {
 
 // Try to pattern match releases names. This can help if the track
 // release name contains underscores which match nicely with 'like'.
-func (m *Music) artistReleasesLike(a *Artist, pattern string, trackCount int) []Release {
+func (m *Music) artistReleasesLike(a *Artist, pattern string, trackCount, discCount int) []Release {
 	var releases []Release
-	m.db.Where("artist = ? and name like ? and track_count = ?",
-		a.Name, pattern, trackCount).Find(&releases)
+	m.db.Where("artist = ? and name like ? and track_count = ? and disc_count = ?",
+		a.Name, pattern, trackCount, discCount).Find(&releases)
 	return releases
 }
 
@@ -248,8 +250,8 @@ func (m *Music) deleteReleaseMedia(reid string) {
 // original release dates.
 func (m *Music) trackReleases(t *Track) []Release {
 	var releases []Release
-	m.db.Where("artist = ? and name = ? and track_count = ?",
-		t.Artist, t.Release, t.TrackCount).
+	m.db.Where("artist = ? and name = ? and track_count = ? and disc_count = ?",
+		t.Artist, t.Release, t.TrackCount, t.DiscCount).
 		Having("date = min(date)").
 		Group("name").
 		Order("date").Find(&releases)
@@ -297,12 +299,12 @@ func (m *Music) trackFirstReleaseDate(t *Track) time.Time {
 
 // At this point a release couldn't be found easily. Like Weezer has
 // multiple albums called Weezer with the same number of tracks. Use
-// MusicBrainz disambiguate for look further. This returns all artist
+// MusicBrainz disambiguate to look further. This returns all artist
 // releases with a specific track count that have a disambiguate.
-func (m *Music) disambiguate(artist string, trackCount int) []Release {
+func (m *Music) disambiguate(artist string, trackCount, discCount int) []Release {
 	var releases []Release
-	m.db.Where("releases.artist = ? and releases.track_count = ? and releases.disambiguation != ''",
-		artist, trackCount).
+	m.db.Where("releases.artist = ? and releases.track_count = ? and releases.disc_count = ? and releases.disambiguation != ''",
+		artist, trackCount, discCount).
 		Order("date desc").Find(&releases)
 	return releases
 }
@@ -337,7 +339,7 @@ func (m *Music) artistSingleTracks(a Artist, limit ...int) []Track {
 	}
 	m.db.Where("tracks.artist = ?", a.Name).
 		Joins("inner join releases on tracks.artist = releases.artist" +
-		" and tracks.title = releases.name and releases.type = 'Single'").
+			" and tracks.title = releases.name and releases.type = 'Single'").
 		Order("releases.date").
 		Limit(l).
 		Group("tracks.artist, tracks.title").
@@ -353,7 +355,7 @@ func (m *Music) artistPopularTracks(a Artist, limit ...int) []Track {
 	}
 	m.db.Where("tracks.artist = ?", a.Name).
 		Joins("inner join popular on tracks.artist = popular.artist" +
- 		" and tracks.title = popular.title").
+			" and tracks.title = popular.title").
 		Order("popular.rank").
 		Limit(l).
 		Group("tracks.artist, tracks.title").
@@ -369,9 +371,9 @@ func (m *Music) artistDeepTracks(a Artist, limit ...int) []Track {
 	}
 	popularTracks := "select popular.title from popular where tracks.artist = popular.artist"
 	singleTracks := "select releases.name from releases where tracks.artist = releases.artist and releases.type = 'Single'"
-	m.db.Where("tracks.artist = ?" +
-		" and tracks.title not in (" + popularTracks + ")" +
-		" and tracks.title not in (" + singleTracks + ")",
+	m.db.Where("tracks.artist = ?"+
+		" and tracks.title not in ("+popularTracks+")"+
+		" and tracks.title not in ("+singleTracks+")",
 		a.Name).
 		Limit(l).
 		Group("tracks.artist, tracks.title").
@@ -463,7 +465,7 @@ func (m *Music) recentlyAdded() []Release {
 	var releases []Release
 	m.db.Joins("inner join tracks on tracks.re_id = releases.re_id").
 		Group("releases.name").
-		Having("tracks.last_modified >= ?", time.Now().Add(m.config.Music.Recent * -1)).
+		Having("tracks.last_modified >= ?", time.Now().Add(m.config.Music.Recent*-1)).
 		Order("tracks.last_modified desc").
 		Limit(m.config.Music.RecentLimit).
 		Find(&releases)
@@ -477,7 +479,7 @@ func (m *Music) recentlyReleased() []Release {
 	var releases []Release
 	m.db.Joins("inner join tracks on tracks.re_id = releases.re_id").
 		Group("releases.name").
-		Having("releases.date >= ?", time.Now().Add(m.config.Music.Recent * -1)).
+		Having("releases.date >= ?", time.Now().Add(m.config.Music.Recent*-1)).
 		Order("releases.date desc").
 		Limit(m.config.Music.RecentLimit).
 		Find(&releases)
@@ -532,8 +534,8 @@ func (m *Music) releaseMedia(release Release) []Media {
 
 func (m *Music) releaseSingles(release Release) []Track {
 	var tracks []Track
-	m.db.Where("tracks.re_id = ? and" +
-		" exists (select releases.name from releases where tracks.artist = releases.artist" +
+	m.db.Where("tracks.re_id = ? and"+
+		" exists (select releases.name from releases where tracks.artist = releases.artist"+
 		" and releases.type = 'Single' and releases.name = tracks.title)",
 		release.REID).
 		Order("tracks.disc_num, tracks.track_num").Find(&tracks)
@@ -542,8 +544,8 @@ func (m *Music) releaseSingles(release Release) []Track {
 
 func (m *Music) releasePopular(release Release) []Track {
 	var tracks []Track
-	m.db.Where("re_id = ? and" +
-		" exists (select popular.title from popular where" +
+	m.db.Where("re_id = ? and"+
+		" exists (select popular.title from popular where"+
 		" tracks.artist = popular.artist and tracks.title = popular.title)",
 		release.REID).
 		Order("disc_num, track_num").Find(&tracks)
@@ -586,7 +588,6 @@ func (m *Music) tracksFor(keys []string) []Track {
 	m.db.Where("key in (?)", keys).Find(&tracks)
 	return tracks
 }
-
 
 // Lookup a track given the etag from the S3 bucket object. Etag can
 // be used as a good external identifier (for playlists) since the

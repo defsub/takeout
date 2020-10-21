@@ -32,7 +32,7 @@ import (
 )
 
 const (
-	TakeoutUser = "takeout"
+	TakeoutUser    = "takeout"
 	VariousArtists = "Various Artists"
 )
 
@@ -315,7 +315,7 @@ func (m *Music) assignTrackReleases() error {
 		if r == nil {
 			assigned := false
 			// try using disambiguation
-			releases := m.disambiguate(t.Artist, t.TrackCount)
+			releases := m.disambiguate(t.Artist, t.TrackCount, t.DiscCount)
 			for _, r := range releases {
 				if r.Disambiguation != "" {
 					name1 := fmt.Sprintf("%s (%s)", r.Name, r.Disambiguation)
@@ -368,7 +368,7 @@ func (m *Music) fixTrackReleases() error {
 			continue
 		}
 
-		releases := m.artistReleasesLike(artist, t.Release, t.TrackCount)
+		releases := m.artistReleasesLike(artist, t.Release, t.TrackCount, t.DiscCount)
 		// for _, r := range releases {
 		// 	log.Printf("check %s/%s/%d\n", r.Artist, r.Name, r.TrackCount)
 		// }
@@ -390,10 +390,11 @@ func (m *Music) fixTrackReleases() error {
 					t.TrackCount == r.TrackCount {
 					fixReleases[t.Release] = true
 					fixTracks = append(fixTracks, map[string]string{
-						"artist": artist.Name,
-						"from":   t.Release,
-						"to":     r.Name,
-						"count":  itoa(r.TrackCount),
+						"artist":     artist.Name,
+						"from":       t.Release,
+						"to":         r.Name,
+						"trackCount": itoa(r.TrackCount),
+						"discCount":  itoa(r.DiscCount),
 					})
 					matched = true
 					break
@@ -408,7 +409,7 @@ func (m *Music) fixTrackReleases() error {
 	}
 
 	for _, v := range fixTracks {
-		err := m.updateTrackRelease(v["artist"], v["from"], v["to"], atoi(v["count"]))
+		err := m.updateTrackRelease(v["artist"], v["from"], v["to"], atoi(v["trackCount"]), atoi(v["discCount"]))
 		if err != nil {
 			return err
 		}
@@ -650,6 +651,7 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 			}
 		}
 		if !matched {
+			// likely video discs
 			log.Printf("no match %s\n", k)
 		}
 	}
