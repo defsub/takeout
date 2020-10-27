@@ -64,6 +64,7 @@ type MusicConfig struct {
 	RadioSearchLimit     int
 	ArtistRadioBreadth   int
 	ArtistRadioDepth     int
+	ReleaseCountries     []string
 }
 
 type LastFMAPIConfig struct {
@@ -141,6 +142,13 @@ func configDefaults() {
 	viper.SetDefault("Music.RadioSearchLimit", "1000")
 	viper.SetDefault("Music.ArtistRadioBreadth", "25")
 	viper.SetDefault("Music.ArtistRadioDepth", "10")
+
+	// see https://wiki.musicbrainz.org/Release_Country
+	viper.SetDefault("Music.ReleaseContries", []string{
+		"US", // United States
+		"XW", // Worldwide
+		"XE", // Europe
+	})
 
 	// see https://musicbrainz.org/genres
 	viper.SetDefault("Music.RadioGenres", []string{

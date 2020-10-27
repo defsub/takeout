@@ -19,6 +19,7 @@ package music
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/defsub/takeout/log"
 	"github.com/defsub/takeout/spiff"
 	"io/ioutil"
@@ -219,6 +220,22 @@ func (handler *MusicHandler) apiStation(w http.ResponseWriter, r *http.Request, 
 	}
 }
 
+// GET /api/{res}/id/playlist > spiff.Playlist{}
+// 200: success
+func (handler *MusicHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Request, m *Music,
+	title, ref string) {
+	plist := spiff.NewPlaylist()
+	plist.Spiff.Title = title
+	plist.Entries = []spiff.Entry{{Ref: ref}}
+	m.Resolve(handler.user, plist)
+	if plist.Entries == nil {
+		plist.Entries = []spiff.Entry{}
+	}
+	result, _ := plist.Marshal()
+	w.WriteHeader(http.StatusOK)
+	w.Write(result)
+}
+
 // GET /api/playlist > spiff.Playlist{}
 // 200: success
 // 500: error
@@ -335,6 +352,31 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 					ETag:         track.ETag,
 					LastModified: track.LastModified,
 				})
+				return
+			}
+
+			// resources with id and playlist
+			playlistRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)/playlist`)
+			matches = playlistRegexp.FindStringSubmatch(r.URL.Path)
+			if matches != nil {
+				v := matches[1]
+				id, _ := strconv.Atoi(matches[2])
+				switch v {
+				case "artists":
+					// /api/artists/1/playlist
+					artist, _ := music.lookupArtist(id)
+					handler.apiRefPlaylist(w, r, music,
+						fmt.Sprintf("%s", artist.Name),
+						fmt.Sprintf("/music/artists/%d/shuffle", id))
+				case "releases":
+					// /api/releases/1/playlist
+					release, _ := music.lookupRelease(id)
+					handler.apiRefPlaylist(w, r, music,
+						fmt.Sprintf("%s ~ %s", release.Artist, release.Name),
+						fmt.Sprintf("/music/releases/%d/tracks", id))
+				default:
+					http.Error(w, "bummer", http.StatusNotFound)
+				}
 				return
 			}
 

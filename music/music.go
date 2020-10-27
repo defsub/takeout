@@ -25,8 +25,10 @@ import (
 	"github.com/defsub/takeout/log"
 	"github.com/defsub/takeout/search"
 	"gorm.io/gorm"
+	"math"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 )
@@ -373,13 +375,37 @@ func (m *Music) fixTrackReleases() error {
 		// 	log.Printf("check %s/%s/%d\n", r.Artist, r.Name, r.TrackCount)
 		// }
 
-		if len(releases) == 1 {
+		if len(releases) > 0 {
+			if len(releases) > 1 {
+				// more than one matching release so reorder
+				// releases by country ordered user preference;
+				// lower is better
+				lowest := math.MaxUint32
+				priority := make(map[string]int)
+				for i, v := range m.config.Music.ReleaseCountries {
+					priority[v] = i
+				}
+				sort.Slice(releases, func(i, j int) bool {
+					var p1, p2 int
+					if p1, ok = priority[releases[i].Country]; !ok {
+						p1 = lowest
+					}
+					if p2, ok = priority[releases[j].Country]; !ok {
+						p2 = lowest
+					}
+					return p1 < p2
+				})
+				log.Printf("picking [%s] %s/%s/%d/%d\n",
+					releases[0].Artist, releases[0].Name,
+					releases[0].TrackCount, releases[0].DiscCount)
+			}
 			fixReleases[t.Release] = true
 			fixTracks = append(fixTracks, map[string]string{
-				"artist": artist.Name,
-				"from":   t.Release,
-				"to":     releases[0].Name,
-				"count":  itoa(releases[0].TrackCount),
+				"artist":     artist.Name,
+				"from":       t.Release,
+				"to":         releases[0].Name,
+				"trackCount": itoa(releases[0].TrackCount),
+				"discCount":  itoa(releases[0].DiscCount),
 			})
 		} else {
 			releases = m.releases(artist)

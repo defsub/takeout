@@ -309,6 +309,7 @@ func release(a *Artist, r mbzRelease) Release {
 		RGID:           string(r.ReleaseGroup.ID),
 		Type:           r.ReleaseGroup.PrimaryType,
 		Asin:           r.Asin,
+		Country:        r.Country,
 		TrackCount:     r.totalTracks(),
 		DiscCount:      r.totalDiscs(),
 		FrontCover:     r.CoverArtArchive.Front,

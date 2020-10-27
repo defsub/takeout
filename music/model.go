@@ -39,6 +39,7 @@ type Release struct {
 	REID           string `gorm:"uniqueIndex:idx_release"`
 	Disambiguation string
 	Asin           string
+	Country        string
 	Type           string
 	Date           time.Time
 	TrackCount     int
