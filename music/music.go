@@ -395,9 +395,9 @@ func (m *Music) fixTrackReleases() error {
 					}
 					return p1 < p2
 				})
-				log.Printf("picking [%s] %s/%s/%d/%d\n",
-					releases[0].Artist, releases[0].Name,
-					releases[0].TrackCount, releases[0].DiscCount)
+				// log.Printf("picking [%s] %s/%s/%d/%d\n",
+				// 	releases[0].Artist, releases[0].Name,
+				// 	releases[0].TrackCount, releases[0].DiscCount)
 			}
 			fixReleases[t.Release] = true
 			fixTracks = append(fixTracks, map[string]string{

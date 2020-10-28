@@ -61,7 +61,7 @@ func TestIndex(t *testing.T) {
 	}
 
 	fmt.Printf("searching\n")
-	s.Search("artist:tool +length:>900 +performer:tool")
+	s.Search("artist:tool +length:>900 +performer:tool", 100)
 }
 
 func TestArtistReleases(t *testing.T) {

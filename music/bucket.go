@@ -157,6 +157,8 @@ func matchRelease(release string) (string, string) {
 }
 
 var trackRegexp = regexp.MustCompile(`(?:([\d]+)-)?([\d]+)-(.*)\.(mp3|flac|ogg|m4a)$`)
+var trackRegexp2 = regexp.MustCompile(`([\d]+)-(.*)\.(mp3|flac|ogg|m4a)$`)
+var numericRegexp = regexp.MustCompile(`^[\d]+([\s-])*`)
 
 func matchTrack(file string, t *Track) bool {
 	matches := trackRegexp.FindStringSubmatch(file)
@@ -170,6 +172,20 @@ func matchTrack(file string, t *Track) bool {
 	t.Title = matches[3]
 	if t.DiscNum == 0 {
 		t.DiscNum = 1
+	}
+	if numericRegexp.MatchString(t.Title) {
+		// handle titles like:
+		// 4-36-22-36.flac
+		//   -> Track: 4, Title: 36-22-36
+		// 11-19-2000.flac
+		//   -> Track: 11, Title: 19-2000
+		// 18-19-2000 (Soulchild remix).flac
+		//   -> Track: 18, Title: 19-2000 (Soulchild remix)
+		matches = trackRegexp2.FindStringSubmatch(file)
+		// TODO assuming these are single disc for now
+		t.DiscNum = 1
+		t.TrackNum, _ = strconv.Atoi(matches[1])
+		t.Title = matches[2]
 	}
 	return true
 }
