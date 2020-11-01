@@ -200,6 +200,11 @@ func (m *Music) artistReleasesLike(a *Artist, pattern string, trackCount, discCo
 	var releases []Release
 	m.db.Where("artist = ? and name like ? and track_count = ? and disc_count = ?",
 		a.Name, pattern, trackCount, discCount).Find(&releases)
+	if len(releases) == 0 {
+		// try w/o disc
+		m.db.Where("artist = ? and name like ? and track_count = ?",
+			a.Name, pattern, trackCount).Find(&releases)
+	}
 	return releases
 }
 

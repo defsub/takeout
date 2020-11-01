@@ -46,6 +46,8 @@ func TestPattern(t *testing.T) {
 		"Music/Artist/Album (2020)/01-02-2020.flac",
 		"Music/Artist/Album (2020)/1-2-2020.flac",
 		"Music/ZZ Top/XXX (1999)/4-36-22-36.flac",
+		"Music/Beastie Boys/Paul's Boutique (1989)/07-3-Minute Rule.flac",
+		"Music/Beastie Boys/Paul's Boutique (1989)/09-5-Piece Chicken Dinner.flac",
 	}
 
 	for _, v := range patterns {
