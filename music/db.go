@@ -141,17 +141,18 @@ func (m *Music) updateTrackArtist(oldName, newName string) (err error) {
 	return
 }
 
-// Tracks may have release names that are modified to meet
-// file/directory naming limitations. Update the track entries with
-// these modified names to the actual release name.
-// TODO not used?
+// Tracks may have release names that are modified to meet file/directory
+// naming limitations. Update the track entries with these modified names to
+// the actual release name.  Also fix disc counts.
 func (m *Music) updateTrackRelease(artist, oldName, newName string,
 	trackCount, discCount int) (err error) {
 	var tracks []Track
-	m.db.Where("artist = ? and release = ? and track_count = ? and disc_count = ?",
-		artist, oldName, trackCount, discCount).Find(&tracks)
+	m.db.Where("artist = ? and release = ? and track_count = ?",
+		artist, oldName, trackCount).Find(&tracks)
 	for _, t := range tracks {
-		err = m.db.Model(t).Update("release", newName).Error
+		err = m.db.Model(t).
+			Update("release", newName).
+			Update("disc_count", discCount).Error
 		if err != nil {
 			break
 		}
