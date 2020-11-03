@@ -304,10 +304,15 @@ func fixName(name string) string {
 // same number of tracks. This way original release dates are
 // presented to the user. An attempt is also made to match using
 // disambiguations, things like:
+// Weezer:
 //   Weezer (Blue Album)
 //   Weezer - Blue Album
 //   Weezer Blue Album
 //   Weezer [Blue Album]
+//   Blue Album
+// David Bowie:
+//   ★ (Blackstar)
+//   Blackstar
 func (m *Music) assignTrackReleases() error {
 	notfound := make(map[string]int)
 	tracks := m.tracksWithoutAssignedRelease()
@@ -324,8 +329,10 @@ func (m *Music) assignTrackReleases() error {
 					name2 := fmt.Sprintf("%s - %s", r.Name, r.Disambiguation)
 					name3 := fmt.Sprintf("%s %s", r.Name, r.Disambiguation)
 					name4 := fmt.Sprintf("%s [%s]", r.Name, r.Disambiguation)
+					name5 := fmt.Sprintf("%s", r.Disambiguation)
 					if name1 == t.Release || name2 == t.Release ||
-						name3 == t.Release || name4 == t.Release {
+						name3 == t.Release || name4 == t.Release ||
+						name5 == t.Release {
 						err := m.assignTrackRelease(&t, &r)
 						if err != nil {
 							return err
@@ -356,7 +363,8 @@ func (m *Music) assignTrackReleases() error {
 func (m *Music) fixTrackReleases() error {
 	fixReleases := make(map[string]bool)
 	var fixTracks []map[string]string
-	tracks := m.tracksWithoutReleases()
+	//tracks := m.tracksWithoutReleases()
+	tracks := m.tracksWithoutAssignedRelease()
 
 	for _, t := range tracks {
 		artist := m.artist(t.Artist)
@@ -372,8 +380,12 @@ func (m *Music) fixTrackReleases() error {
 
 		releases := m.artistReleasesLike(artist, t.Release, t.TrackCount, t.DiscCount)
 		// for _, r := range releases {
-		// 	log.Printf("check %s/%s/%d\n", r.Artist, r.Name, r.TrackCount)
+		// 	log.Printf("check %s/%s/%d/%d\n", r.Artist, r.Name, r.TrackCount, t.DiscCount)
 		// }
+		if len(releases) == 0 {
+			log.Printf("no releases for %s/%s/%d/%d\n",
+				artist.Name, t.Release, t.TrackCount, t.DiscCount)
+		}
 
 		if len(releases) > 0 {
 			if len(releases) > 1 {
