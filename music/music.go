@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/defsub/takeout/client"
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/log"
 	"github.com/defsub/takeout/search"
@@ -42,6 +43,7 @@ type Music struct {
 	config     *config.Config
 	db         *gorm.DB
 	s3         *s3.S3
+	client     *client.Client
 	coverCache map[string]string
 }
 
@@ -70,6 +72,7 @@ func NewMusic(config *config.Config) *Music {
 	return &Music{
 		config:     config,
 		coverCache: make(map[string]string),
+		client:     client.NewClient(config),
 	}
 }
 
@@ -568,10 +571,10 @@ func (m *Music) syncArtists() error {
 // Try MusicBrainz and Last.fm to find an artist. Fortunately Last.fm
 // will give up the ARID so MusicBrainz can still be used.
 func (m *Music) resolveArtist(name string) (artist *Artist, tags []ArtistTag) {
-	artist, tags = m.SearchArtist(name)
+	artist, tags = m.MusicBrainzSearchArtist(name)
 	if artist == nil {
 		// try again
-		artist, tags = m.SearchArtist(fuzzyArtist(name))
+		artist, tags = m.MusicBrainzSearchArtist(fuzzyArtist(name))
 	}
 	if artist == nil {
 		// try lastfm
@@ -580,7 +583,7 @@ func (m *Music) resolveArtist(name string) (artist *Artist, tags []ArtistTag) {
 			log.Printf("try lastfm got %s mbid:'%s'\n", artist.Name, artist.ARID)
 			// resolve with mbz
 			if artist.ARID != "" {
-				artist, tags = m.SearchArtistId(artist.ARID)
+				artist, tags = m.MusicBrainzSearchArtistID(artist.ARID)
 			} else {
 				artist = nil
 			}

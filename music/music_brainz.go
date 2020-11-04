@@ -19,10 +19,6 @@ package music
 
 import (
 	"fmt"
-	"github.com/defsub/takeout"
-	"github.com/defsub/takeout/client"
-	"github.com/defsub/takeout/log"
-	"github.com/michiwend/gomusicbrainz"
 	"strings"
 	"time"
 )
@@ -39,95 +35,18 @@ import (
 // * getting the exact MBID for a release
 // * correcting track titles
 
-func newMusicBrainzClient() *gomusicbrainz.WS2Client {
-	client.RateLimit("musicbrainz.org")
-	mbz, _ := gomusicbrainz.NewWS2Client(
-		"https://musicbrainz.org/ws/2",
-		takeout.AppName, takeout.Version, takeout.Contact)
-	return mbz
-}
-
-// Obtain artist details using MusicBrainz artist ID.
-//
-// TODO replace with internal client
-func (m *Music) SearchArtistId(arid string) (a *Artist, tags []ArtistTag) {
-	mbz := newMusicBrainzClient()
-	resp, _ := mbz.SearchArtist(fmt.Sprintf(`arid:"%s"`, arid), -1, -1)
-	artists := resp.ResultsWithScore(100)
-	if len(artists) == 0 {
-		return
-	}
-	artist := artists[0]
-
-	a = &Artist{
-		Name:     artist.Name,
-		SortName: artist.SortName,
-		ARID:     string(artist.ID)}
-
-	for _, t := range artist.Tags {
-		at := ArtistTag{
-			Artist: a.Name,
-			Tag:    t.Name,
-			Count:  t.Count}
-		tags = append(tags, at)
-	}
-	return
-}
-
-// Search MusicBrainz for an artist by name. There can be duplicates
-// or unintended matches. For those cases it's best to override using
-// config with the specific MusicBrainz artist ID that is needed.
-//
-// TODO replace with internal client
-func (m *Music) SearchArtist(name string) (a *Artist, tags []ArtistTag) {
-	mbz := newMusicBrainzClient()
-	var query string
-	mbid, ok := m.config.Music.UserArtistID(name)
-	if ok {
-		query = fmt.Sprintf(`arid:"%s"`, mbid)
-		log.Printf("%s using %s\n", name, mbid)
-	} else {
-		query = fmt.Sprintf(`artist:"%s"`, name)
-	}
-	resp, _ := mbz.SearchArtist(query, -1, -1)
-	score := 100 // change to widen matches below
-	artists := resp.ResultsWithScore(score)
-	if len(artists) == 0 {
-		return
-	}
-
-	pick := 0
-	if len(artists) > 1 {
-		// multiple matches within results
-		for index, artist := range artists {
-			fmt.Printf("ID: %s Name: %-25sScore: %d\n",
-				artist.ID, artist.Name, resp.Scores[artist])
-			if strings.EqualFold(name, artist.Name) {
-				// try to use a close match
-				pick = index
-			}
-		}
-	}
-	artist := artists[pick]
-
-	a = &Artist{
-		Name:     artist.Name,
-		SortName: artist.SortName,
-		ARID:     string(artist.ID)}
-
-	for _, t := range artist.Tags {
-		at := ArtistTag{
-			Artist: a.Name,
-			Tag:    t.Name,
-			Count:  t.Count}
-		tags = append(tags, at)
-	}
-	return
+type mbzArtistsPage struct {
+	Artists []mbzArtist `json:"artists"`
+	Offset  int         `json:"offset"`
+	Count   int         `json:"count"`
 }
 
 type mbzArtist struct {
+	ID             string     `json:"id"`
+	Score          int        `json:"score"`
 	Name           string     `json:"name"`
 	SortName       string     `json:"sort-name"`
+	Country        string     `json:"country"`
 	Disambiguation string     `json:"disambiguation"`
 	Type           string     `json:"type"`
 	Genres         []mbzGenre `json:"genres"`
@@ -322,7 +241,7 @@ func (m *Music) MusicBrainzArtistReleases(a *Artist) ([]Release, error) {
 	var releases []Release
 	limit, offset := 100, 0
 	for {
-		result, _ := doArtistReleases(a.ARID, limit, offset)
+		result, _ := m.doArtistReleases(a.ARID, limit, offset)
 		for _, r := range result.Releases {
 			releases = append(releases, release(a, r))
 		}
@@ -335,12 +254,12 @@ func (m *Music) MusicBrainzArtistReleases(a *Artist) ([]Release, error) {
 	return releases, nil
 }
 
-func doArtistReleases(arid string, limit int, offset int) (*mbzReleasesPage, error) {
+func (m *Music) doArtistReleases(arid string, limit int, offset int) (*mbzReleasesPage, error) {
 	var result mbzReleasesPage
 	inc := []string{"release-groups", "media"}
 	url := fmt.Sprintf("https://musicbrainz.org/ws/2/release?fmt=json&artist=%s&inc=%s&limit=%d&offset=%d",
 		arid, strings.Join(inc, "%2B"), limit, offset)
-	err := client.GetJson(url, &result)
+	err := m.client.GetJson(url, &result)
 	return &result, err
 }
 
@@ -352,7 +271,7 @@ func (m *Music) MusicBrainzReleaseCredits(reid string) (*mbzRelease, error) {
 	url := fmt.Sprintf("https://musicbrainz.org/ws/2/release/%s?fmt=json&inc=%s",
 		reid, strings.Join(inc, "%2B"))
 	var result mbzRelease
-	err := client.GetJson(url, &result)
+	err := m.client.GetJson(url, &result)
 	return &result, err
 }
 
@@ -362,7 +281,7 @@ func (m *Music) MusicBrainzReleaseGroup(rgid string) (*mbzReleaseGroup, error) {
 	url := fmt.Sprintf("https://musicbrainz.org/ws/2/release-group/%s?fmt=json&inc=%s",
 		rgid, strings.Join(inc, "%2B"))
 	var result mbzReleaseGroup
-	err := client.GetJson(url, &result)
+	err := m.client.GetJson(url, &result)
 	for _, r := range result.Releases {
 		if r.Title == "" {
 			r.Title = result.Title
@@ -396,6 +315,87 @@ func (m *Music) MusicBrainzSearchReleaseGroup(arid string, name string) (*mbzSea
 		`https://musicbrainz.org/ws/2/release-group/?fmt=json&query=arid:%s+AND+release:"%s"`,
 		arid, strings.Replace(name, " ", "+", -1))
 	var result mbzSearchResult
-	err := client.GetJson(url, &result)
+	err := m.client.GetJson(url, &result)
+	return &result, err
+}
+
+func doArtist(artist mbzArtist) (a *Artist, tags []ArtistTag) {
+	a = &Artist{
+		Name:     artist.Name,
+		SortName: artist.SortName,
+		ARID:     string(artist.ID)}
+	for _, t := range artist.Tags {
+		at := ArtistTag{
+			Artist: a.Name,
+			Tag:    t.Name,
+			Count:  t.Count}
+		tags = append(tags, at)
+	}
+	return
+}
+
+// Obtain artist details using MusicBrainz artist ID.
+func (m *Music) MusicBrainzSearchArtistID(arid string) (a *Artist, tags []ArtistTag) {
+	query := fmt.Sprintf(`arid:%s`, arid)
+	result, _ := m.doArtistSearch(query, 100, 0)
+	if len(result.Artists) == 0 {
+		return
+	}
+	a, tags = doArtist(result.Artists[0])
+	return
+}
+
+// Search for artist by name using MusicBrainz.
+func (m *Music) MusicBrainzSearchArtist(name string) (a *Artist, tags []ArtistTag) {
+	var artists []mbzArtist
+	limit, offset := 100, 0
+	query := fmt.Sprintf(`artist:"%s"`, name)
+	for {
+		result, _ := m.doArtistSearch(query, limit, offset)
+		for _, r := range result.Artists {
+			artists = append(artists, r)
+		}
+		// should just need the first batch
+		break
+	}
+
+	score := 100 // change to widen matches below
+	artists = scoreFilter(artists, score)
+	if len(artists) == 0 {
+		return
+	}
+
+	pick := 0
+	if len(artists) > 1 {
+		// multiple matches
+		for index, artist := range artists {
+			fmt.Printf("ID: %s Name: %-25sScore: %d\n",
+				artist.ID, artist.Name, artist.Score)
+			if strings.EqualFold(name, artist.Name) {
+				// try to use a close match
+				pick = index
+			}
+		}
+	}
+	artist := artists[pick]
+	a, tags = doArtist(artist)
+	return
+}
+
+func scoreFilter(artists []mbzArtist, score int) []mbzArtist {
+	result := []mbzArtist{}
+	for _, v := range artists {
+		if v.Score >= score {
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
+func (m *Music) doArtistSearch(query string, limit int, offset int) (*mbzArtistsPage, error) {
+	var result mbzArtistsPage
+	url := fmt.Sprintf(`https://musicbrainz.org/ws/2/artist?fmt=json&query=%s&limit=%d&offset=%d`,
+		query, limit, offset)
+	err := m.client.GetJson(url, &result)
 	return &result, err
 }

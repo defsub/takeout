@@ -19,7 +19,6 @@ package music
 
 import (
 	"fmt"
-	"github.com/defsub/takeout/client"
 )
 
 type setlistArtist struct {
@@ -110,6 +109,6 @@ func (m *Music) setlistPage(artist *Artist, page int) *setlistResponse {
 	}
 
 	var result setlistResponse
-	client.GetJsonWith(headers, url, &result)
+	m.client.GetJsonWith(headers, url, &result)
 	return &result
 }

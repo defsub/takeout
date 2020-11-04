@@ -21,7 +21,8 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"github.com/defsub/takeout"
+	"github.com/defsub/takeout/config"
+	"github.com/defsub/takeout/log"
 	"github.com/gregjones/httpcache"
 	"github.com/gregjones/httpcache/diskcache"
 	"net/http"
@@ -34,17 +35,33 @@ const (
 	HeaderCacheControl = "Cache-Control"
 )
 
-var UserAgent = userAgent()
-var DiskCache = ".httpcache"
-var MaxAge = 24 * 60 * 60 * 30 // 30 days (seconds)
+type Client struct {
+	client    *http.Client
+	useCache  bool
+	userAgent string
+	cache     httpcache.Cache
+	maxAge    int
+}
 
-func userAgent() string {
-	return takeout.AppName + "/" + takeout.Version + " ( " + takeout.Contact + " ) "
+func NewClient(config *config.Config) *Client {
+	c := Client{}
+	c.userAgent = config.Client.UserAgent
+	c.useCache = config.Client.UseCache
+	if c.useCache {
+		c.maxAge = config.Client.MaxAge
+		c.cache = diskcache.New(config.Client.CacheDir)
+		transport := httpcache.NewTransport(c.cache)
+		c.client = transport.Client()
+	} else {
+		c.client = &http.Client{}
+	}
+	return &c
 }
 
 var lastRequest map[string]time.Time = map[string]time.Time{}
 
 func RateLimit(host string) {
+	// TODO no support for concurrency
 	t := time.Now()
 	if v, ok := lastRequest[host]; ok {
 		d := t.Sub(v)
@@ -55,33 +72,39 @@ func RateLimit(host string) {
 	lastRequest[host] = t
 }
 
-func doGet(headers map[string]string, urlStr string) (*http.Response, error) {
-	fmt.Printf("doGet %s\n", urlStr)
+func (c *Client) doGet(headers map[string]string, urlStr string) (*http.Response, error) {
+	log.Printf("doGet %s\n", urlStr)
 	url, _ := url.Parse(urlStr)
 	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Set(HeaderUserAgent, UserAgent)
-	req.Header.Set(HeaderCacheControl, fmt.Sprintf("max-age=%d", MaxAge))
+	req.Header.Set(HeaderUserAgent, c.userAgent)
 	if headers != nil {
 		for k, v := range headers {
 			req.Header.Set(k, v)
 		}
 	}
 
-	cache := diskcache.New(DiskCache)
-	transport := httpcache.NewTransport(cache)
-	client := transport.Client()
+	throttle := true
+	if c.useCache {
+		req.Header.Set(HeaderCacheControl, fmt.Sprintf("max-age=%d", c.maxAge))
 
-	// peek into the cache, is there's nothing then rate limit
-	cachedResp, err := httpcache.CachedResponse(cache, req)
-	if cachedResp == nil {
+		// peek into the cache, is there's something there don't slow down
+		cachedResp, err := httpcache.CachedResponse(c.cache, req)
+		if err != nil {
+			log.Printf("cache error %s\n", err)
+		}
+		if cachedResp != nil {
+			throttle = false
+		}
+	}
+	if throttle {
 		RateLimit(url.Hostname())
 	}
 
-	resp, err := client.Do(req)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -93,12 +116,12 @@ func doGet(headers map[string]string, urlStr string) (*http.Response, error) {
 	return resp, err
 }
 
-func GetJson(url string, result interface{}) error {
-	return GetJsonWith(nil, url, result)
+func (c *Client) GetJson(url string, result interface{}) error {
+	return c.GetJsonWith(nil, url, result)
 }
 
-func GetJsonWith(headers map[string]string, url string, result interface{}) error {
-	resp, err := doGet(headers, url)
+func (c *Client) GetJsonWith(headers map[string]string, url string, result interface{}) error {
+	resp, err := c.doGet(headers, url)
 	if err != nil {
 		return nil
 	}
@@ -110,8 +133,8 @@ func GetJsonWith(headers map[string]string, url string, result interface{}) erro
 	return nil
 }
 
-func GetXML(url string, result interface{}) error {
-	resp, err := doGet(nil, url)
+func (c *Client) GetXML(url string, result interface{}) error {
+	resp, err := c.doGet(nil, url)
 	if err != nil {
 		return nil
 	}

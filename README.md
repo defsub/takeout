@@ -31,6 +31,7 @@ Screens running on Chrome 85 for Android 10:
 * Web playback using HTML5 audio - Chrome, Safari & Firefox tested on desktop & mobile
 * [XSPF ("spiff")](https://xspf.org/) and JSPF playlists
 * Written in [Go](https://golang.org/), using [SQLite3](https://sqlite.org/index.html) and [Bleve](https://blevesearch.com/)
+* Support [caching](https://github.com/gregjones/httpcache) of MusicBrainz data for faster syncing
 
 ## Quick Start
 

@@ -20,6 +20,7 @@ package config
 import (
 	"encoding/json"
 	"errors"
+	"github.com/defsub/takeout"
 	"github.com/spf13/viper"
 	"io/ioutil"
 	"os"
@@ -93,12 +94,20 @@ type ServerConfig struct {
 	WebDir string
 }
 
+type ClientConfig struct {
+	UseCache  bool
+	MaxAge    int
+	CacheDir  string
+	UserAgent string
+}
+
 type Config struct {
 	Auth   AuthConfig
 	Music  MusicConfig
 	LastFM LastFMAPIConfig
 	Search SearchConfig
 	Server ServerConfig
+	Client ClientConfig
 }
 
 func (mc *MusicConfig) UserArtistID(name string) (string, bool) {
@@ -201,6 +210,15 @@ func configDefaults() {
 	viper.SetDefault("Search.BleveDir", ".")
 
 	viper.SetDefault("Server.WebDir", "web")
+
+	viper.SetDefault("Client.UseCache", "false")
+	viper.SetDefault("Client.MaxAge", 86400*30) // 30 days in seconds
+	viper.SetDefault("Client.CacheDir", ".httpcache")
+	viper.SetDefault("Client.UserAgent", userAgent())
+}
+
+func userAgent() string {
+	return takeout.AppName + "/" + takeout.Version + " ( " + takeout.Contact + " ) "
 }
 
 func readConfig() (*Config, error) {

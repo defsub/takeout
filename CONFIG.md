@@ -103,6 +103,14 @@ Note: use Nginx or other frontend with TLS (and Let's Encrypt)
 
 * Search.BleveDir - Directory used to store index (default .)
 
+### HTTP Client
+
+* Client.UseCache - Enable or disable http caching (default false)
+* Client.MaxAge - Age in seconds to use cached responses (default 30 days)
+* Client.CacheDir - Directory to store cached responses (default .httpcache)
+
+Note: this client is currently only used for MusicBrainz API calls
+
 ## Examples
 
 ### Required fields in ini format

@@ -114,3 +114,35 @@ func TestReleaseGroupLookup(t *testing.T) {
 	// 	fmt.Printf("%s %s %s - %d\n", r.ID, r.Date, r.title(), r.totalTracks())
 	// }
 }
+
+func TestSearchArtist(t *testing.T) {
+	config, err := config.TestConfig()
+	if err != nil {
+		t.Errorf("GetConfig %s\n", err)
+	}
+	m := NewMusic(config)
+	m.Open()
+	a, tags := m.MusicBrainzSearchArtist("Queen")
+	t.Logf("%s, %s, %s", a.Name, a.SortName, a.ARID)
+	for _, v := range tags {
+		if v.Count > 0 {
+			t.Logf("%s, %d", v.Tag, v.Count)
+		}
+	}
+}
+
+func TestSearchArtistId(t *testing.T) {
+	config, err := config.TestConfig()
+	if err != nil {
+		t.Errorf("GetConfig %s\n", err)
+	}
+	m := NewMusic(config)
+	m.Open()
+	a, tags := m.MusicBrainzSearchArtistID("0383dadf-2a4e-4d10-a46a-e9e041da8eb3")
+	t.Logf("%s, %s, %s", a.Name, a.SortName, a.ARID)
+	for _, v := range tags {
+		if v.Count > 0 {
+			t.Logf("%s, %d", v.Tag, v.Count)
+		}
+	}
+}
