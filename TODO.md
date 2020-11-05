@@ -1,6 +1,5 @@
 # MusicBrainz
 
-* Use track names from MusicBrainz, currently original name from bucket is used
 * Prefer physical media over digital media or prefer releases with media that have titles
 
 # Last.fm

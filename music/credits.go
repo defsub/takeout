@@ -131,7 +131,7 @@ func (m *Music) creditsIndex(reid string) (search.IndexMap, error) {
 			for _, a := range t.ArtistCredit {
 				addField(trackFields, FieldArtist, a.Name)
 			}
-			key := fmt.Sprintf("%d-%d-%s", m.Position, t.Position, t.Recording.Title)
+			key := fmt.Sprintf("%d-%d-%s", m.Position, t.Position, fixName(t.Recording.Title))
 			index[key] = trackFields
 		}
 	}
