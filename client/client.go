@@ -63,12 +63,13 @@ var lastRequest map[string]time.Time = map[string]time.Time{}
 func RateLimit(host string) {
 	// TODO no support for concurrency
 	t := time.Now()
-	if v, ok := lastRequest[host]; ok {
-		d := t.Sub(v)
-		if d < time.Second {
-			time.Sleep(d)
-		}
-	}
+	// if v, ok := lastRequest[host]; ok {
+	// 	d := t.Sub(v)
+	// 	if d < time.Second {
+	// 		time.Sleep(d)
+	// 	}
+	// }
+	time.Sleep(time.Second)
 	lastRequest[host] = t
 }
 
@@ -106,7 +107,12 @@ func (c *Client) doGet(headers map[string]string, urlStr string) (*http.Response
 
 	resp, err := c.client.Do(req)
 	if err != nil {
+		log.Printf("resp %d %s\n", resp.StatusCode, err)
 		return nil, err
+	}
+
+	if resp.StatusCode != 200 {
+		log.Printf("resp %d!\n", resp.StatusCode)
 	}
 
 	// if resp.Header.Get(httpcache.XFromCache) != "" {

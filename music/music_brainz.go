@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"net/url"
 )
 
 // MusicBrainz is used for:
@@ -313,7 +314,7 @@ type mbzSearchResult struct {
 func (m *Music) MusicBrainzSearchReleaseGroup(arid string, name string) (*mbzSearchResult, error) {
 	url := fmt.Sprintf(
 		`https://musicbrainz.org/ws/2/release-group/?fmt=json&query=arid:%s+AND+release:"%s"`,
-		arid, strings.Replace(name, " ", "+", -1))
+		arid, url.QueryEscape(name))
 	var result mbzSearchResult
 	err := m.client.GetJson(url, &result)
 	return &result, err
@@ -349,14 +350,12 @@ func (m *Music) MusicBrainzSearchArtistID(arid string) (a *Artist, tags []Artist
 func (m *Music) MusicBrainzSearchArtist(name string) (a *Artist, tags []ArtistTag) {
 	var artists []mbzArtist
 	limit, offset := 100, 0
+
+	// can also add "AND type:group" or "AND type:person"
 	query := fmt.Sprintf(`artist:"%s"`, name)
-	for {
-		result, _ := m.doArtistSearch(query, limit, offset)
-		for _, r := range result.Artists {
-			artists = append(artists, r)
-		}
-		// should just need the first batch
-		break
+	result, _ := m.doArtistSearch(query, limit, offset)
+	for _, r := range result.Artists {
+		artists = append(artists, r)
 	}
 
 	score := 100 // change to widen matches below
@@ -395,7 +394,7 @@ func scoreFilter(artists []mbzArtist, score int) []mbzArtist {
 func (m *Music) doArtistSearch(query string, limit int, offset int) (*mbzArtistsPage, error) {
 	var result mbzArtistsPage
 	url := fmt.Sprintf(`https://musicbrainz.org/ws/2/artist?fmt=json&query=%s&limit=%d&offset=%d`,
-		query, limit, offset)
+		url.QueryEscape(query), limit, offset)
 	err := m.client.GetJson(url, &result)
 	return &result, err
 }

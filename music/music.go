@@ -576,10 +576,15 @@ func (m *Music) syncArtists() error {
 // Try MusicBrainz and Last.fm to find an artist. Fortunately Last.fm
 // will give up the ARID so MusicBrainz can still be used.
 func (m *Music) resolveArtist(name string) (artist *Artist, tags []ArtistTag) {
-	artist, tags = m.MusicBrainzSearchArtist(name)
+	arid, ok := m.config.Music.UserArtistID(name)
+	if ok {
+		artist, tags = m.MusicBrainzSearchArtistID(arid)
+	} else {
+		artist, tags = m.MusicBrainzSearchArtist(name)
+	}
 	if artist == nil {
 		// try again
-		fuzzy := fuzzyName(name)
+		fuzzy := fuzzyArtist(name)
 		if fuzzy != name {
 			artist, tags = m.MusicBrainzSearchArtist(fuzzy)
 		}
@@ -698,8 +703,6 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 				// use track key
 				newIndex[t.Key] = v
 				if t.Title != trackTitle {
-					log.Printf("updating title '%s' to '%s'\n",
-						t.Title, trackTitle)
 					m.updateTrackTitle(t, trackTitle)
 				}
 				matched = true
