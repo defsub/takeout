@@ -365,7 +365,7 @@ func (m *Music) assignTrackReleases() error {
 // Fix track release names using various pattern matching and name variants.
 func (m *Music) fixTrackReleases() error {
 	fixReleases := make(map[string]bool)
-	var fixTracks []map[string]string
+	var fixTracks []map[string]interface{}
 	//tracks := m.tracksWithoutReleases()
 	tracks := m.tracksWithoutAssignedRelease()
 
@@ -415,12 +415,12 @@ func (m *Music) fixTrackReleases() error {
 				// 	releases[0].TrackCount, releases[0].DiscCount)
 			}
 			fixReleases[t.Release] = true
-			fixTracks = append(fixTracks, map[string]string{
+			fixTracks = append(fixTracks, map[string]interface{}{
 				"artist":     artist.Name,
 				"from":       t.Release,
 				"to":         releases[0].Name,
-				"trackCount": itoa(releases[0].TrackCount),
-				"discCount":  itoa(releases[0].DiscCount),
+				"trackCount": releases[0].TrackCount,
+				"discCount":  releases[0].DiscCount,
 			})
 		} else {
 			releases = m.releases(artist)
@@ -430,12 +430,12 @@ func (m *Music) fixTrackReleases() error {
 				if fuzzyName(t.Release) == fuzzyName(r.Name) &&
 					t.TrackCount == r.TrackCount {
 					fixReleases[t.Release] = true
-					fixTracks = append(fixTracks, map[string]string{
+					fixTracks = append(fixTracks, map[string]interface{}{
 						"artist":     artist.Name,
 						"from":       t.Release,
 						"to":         r.Name,
-						"trackCount": itoa(r.TrackCount),
-						"discCount":  itoa(r.DiscCount),
+						"trackCount": r.TrackCount,
+						"discCount":  r.DiscCount,
 					})
 					matched = true
 					break
@@ -450,7 +450,12 @@ func (m *Music) fixTrackReleases() error {
 	}
 
 	for _, v := range fixTracks {
-		err := m.updateTrackRelease(v["artist"], v["from"], v["to"], atoi(v["trackCount"]), atoi(v["discCount"]))
+		err := m.updateTrackRelease(
+			v["artist"].(string),
+			v["from"].(string),
+			v["to"].(string),
+			v["trackCount"].(int),
+			v["discCount"].(int))
 		if err != nil {
 			return err
 		}
@@ -672,7 +677,7 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 		return nil, err
 	}
 
-	re := regexp.MustCompile(`^(\d+)-(\d+)`)
+	re := regexp.MustCompile(`^(\d+)-(\d+)-(.+)$`)
 	newIndex := make(search.IndexMap)
 	for k, v := range index {
 		matches := re.FindStringSubmatch(k)
@@ -682,12 +687,18 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 		}
 		discNum := atoi(matches[1])
 		trackNum := atoi(matches[2])
+		trackTitle := matches[3]
 		matched := false
 		for _, t := range tracks {
 			if t.DiscNum == discNum &&
 				t.TrackNum == trackNum {
 				// use track key
 				newIndex[t.Key] = v
+				if t.Title != trackTitle {
+					log.Printf("updating title '%s' to '%s'\n",
+						t.Title, trackTitle)
+					m.updateTrackTitle(t, trackTitle)
+				}
 				matched = true
 			}
 		}

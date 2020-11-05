@@ -57,7 +57,7 @@ const (
 )
 
 func (m *Music) creditsIndex(reid string) (search.IndexMap, error) {
-	rel, err := m.MusicBrainzReleaseCredits(reid)
+	rel, err := m.MusicBrainzRelease(reid)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func (m *Music) creditsIndex(reid string) (search.IndexMap, error) {
 			for _, a := range t.ArtistCredit {
 				addField(trackFields, FieldArtist, a.Name)
 			}
-			key := fmt.Sprintf("%d-%d", m.Position, t.Position)
+			key := fmt.Sprintf("%d-%d-%s", m.Position, t.Position, t.Recording.Title)
 			index[key] = trackFields
 		}
 	}

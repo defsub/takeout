@@ -263,7 +263,7 @@ func (m *Music) doArtistReleases(arid string, limit int, offset int) (*mbzReleas
 	return &result, err
 }
 
-func (m *Music) MusicBrainzReleaseCredits(reid string) (*mbzRelease, error) {
+func (m *Music) MusicBrainzRelease(reid string) (*mbzRelease, error) {
 	inc := []string{"aliases", "artist-credits", "labels",
 		"discids", "recordings", "artist-rels",
 		"release-groups", "genres", "tags", "ratings",

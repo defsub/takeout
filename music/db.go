@@ -251,6 +251,11 @@ func (m *Music) deleteReleaseMedia(reid string) {
 	}
 }
 
+func (m *Music) updateTrackTitle(t Track, newTitle string) (err error) {
+	err = m.db.Model(t).Update("title", newTitle).Error
+	return
+}
+
 // Part of the sync process to find releases that match the track. The
 // preferred release will be the first one so dates corresponding to
 // original release dates.
