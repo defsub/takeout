@@ -579,7 +579,10 @@ func (m *Music) resolveArtist(name string) (artist *Artist, tags []ArtistTag) {
 	artist, tags = m.MusicBrainzSearchArtist(name)
 	if artist == nil {
 		// try again
-		artist, tags = m.MusicBrainzSearchArtist(fuzzyArtist(name))
+		fuzzy := fuzzyName(name)
+		if fuzzy != name {
+			artist, tags = m.MusicBrainzSearchArtist(fuzzy)
+		}
 	}
 	if artist == nil {
 		// try lastfm
