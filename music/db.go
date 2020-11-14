@@ -55,8 +55,9 @@ func (m *Music) openDB() (err error) {
 func (m *Music) closeDB() {
 	conn, err := m.db.DB()
 	if err != nil {
-		defer conn.Close()
+		return
 	}
+	conn.Close()
 }
 
 func (m *Music) lastModified() time.Time {
