@@ -221,11 +221,11 @@ func (m *Music) tracksWithoutAssignedRelease() []Track {
 // original data is just file names, the release is selected
 // automatically.
 func (m *Music) assignTrackRelease(t *Track, r *Release) error {
-	err := m.db.Model(t).Update("re_id", r.REID).Error
-	if err != nil {
-		return err
-	}
-	err = m.db.Model(t).Update("rg_id", r.RGID).Error
+	err := m.db.Model(t).
+		Update("re_id", r.REID).
+		Update("rg_id", r.RGID).
+		Update("front_cover", r.FrontCover).
+		Update("back_cover", r.BackCover).Error
 	if err != nil {
 		return err
 	}

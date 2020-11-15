@@ -233,6 +233,7 @@ func release(a *Artist, r mbzRelease) Release {
 		TrackCount:     r.totalTracks(),
 		DiscCount:      r.totalDiscs(),
 		FrontCover:     r.CoverArtArchive.Front,
+		BackCover:      r.CoverArtArchive.Back,
 		Media:          media,
 		Date:           r.ReleaseGroup.firstReleaseDate()}
 }
