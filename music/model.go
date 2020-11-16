@@ -44,8 +44,10 @@ type Release struct {
 	Date           time.Time
 	TrackCount     int
 	DiscCount      int
-	FrontCover     bool
-	BackCover      bool
+	Artwork        bool
+	FrontArtwork   bool
+	BackArtwork    bool
+	OtherArtwork   string
 	Media          []Media `gorm:"-"`
 }
 
@@ -113,8 +115,10 @@ type Track struct {
 	RGID         string
 	MediaTitle   string
 	ReleaseTitle string `spiff:"album"`
-	FrontCover   bool
-	BackCover    bool
+	Artwork      bool
+	FrontArtwork bool
+	BackArtwork  bool
+	OtherArtwork string
 }
 
 type Playlist struct {

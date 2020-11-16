@@ -163,27 +163,27 @@ func (handler *MusicHandler) render(music *Music, temp string, view interface{},
 		"coverSmall": func(o interface{}) string {
 			switch o.(type) {
 			case Release:
-				return music.cover(o.(Release), "front-250")
+				return music.cover(o.(Release), "250")
 			case Track:
-				return music.trackCover(o.(Track), "front-250")
+				return music.trackCover(o.(Track), "250")
 			}
 			return ""
 		},
 		"coverLarge": func(o interface{}) string {
 			switch o.(type) {
 			case Release:
-				return music.cover(o.(Release), "front-500")
+				return music.cover(o.(Release), "500")
 			case Track:
-				return music.trackCover(o.(Track), "front-500")
+				return music.trackCover(o.(Track), "500")
 			}
 			return ""
 		},
 		"coverExtraLarge": func(o interface{}) string {
 			switch o.(type) {
 			case Release:
-				return music.cover(o.(Release), "front-1200")
+				return music.cover(o.(Release), "1200")
 			case Track:
-				return music.trackCover(o.(Track), "front-1200")
+				return music.trackCover(o.(Track), "1200")
 			}
 			return ""
 		},

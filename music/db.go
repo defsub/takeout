@@ -218,6 +218,13 @@ func (m *Music) tracksWithoutAssignedRelease() []Track {
 	return tracks
 }
 
+func (m *Music) tracksWithoutArtwork() []Track {
+	var tracks []Track
+	m.db.Where("artwork = 1 and front_cover = 0 and back_cover = 0").
+		Find(&tracks)
+	return tracks
+}
+
 // Assign a track to a specific MusicBrainz release. Since the
 // original data is just file names, the release is selected
 // automatically.
@@ -225,8 +232,10 @@ func (m *Music) assignTrackRelease(t *Track, r *Release) error {
 	err := m.db.Model(t).
 		Update("re_id", r.REID).
 		Update("rg_id", r.RGID).
-		Update("front_cover", r.FrontCover).
-		Update("back_cover", r.BackCover).Error
+		Update("artwork", r.Artwork).
+		Update("front_artwork", r.FrontArtwork).
+		Update("back_artwork", r.BackArtwork).
+		Update("other_artwork", r.OtherArtwork).Error
 	if err != nil {
 		return err
 	}
@@ -270,11 +279,25 @@ func (m *Music) trackReleases(t *Track) []Release {
 	return releases
 }
 
-// During sync try to find a single release to match a track.
+// Same as above but prefer those with front cover art
+func (m *Music) trackReleasesWithFrontArtwork(t *Track) []Release {
+	var releases []Release
+	m.db.Where("artist = ? and name = ? and track_count = ? and disc_count = ? and front_artwork = 1",
+		t.Artist, t.Release, t.TrackCount, t.DiscCount).
+		Having("date = min(date)").
+		Group("name").
+		Order("date").Find(&releases)
+	return releases
+}
+
+// During sync try to find a single release with artwork to match a track.
 func (m *Music) trackRelease(t *Track) *Release {
-	releases := m.trackReleases(t)
+	releases := m.trackReleasesWithFrontArtwork(t)
 	if len(releases) == 0 {
-		return nil
+		releases = m.trackReleases(t)
+		if len(releases) == 0 {
+			return nil
+		}
 	}
 	return &releases[0]
 }
@@ -307,6 +330,12 @@ func (m *Music) trackFirstReleaseDate(t *Track) time.Time {
 		}
 	}
 	return result
+}
+
+// When there's artwork but no front, other_cover will be the ID of the image
+// used for some type of artwork.
+func (m *Music) updateOtherArtwork(r *Release, id string) error {
+	return m.db.Model(r).Update("other_artwork", id).Error
 }
 
 // At this point a release couldn't be found easily. Like Weezer has

@@ -280,6 +280,26 @@ func (m *Music) syncReleasesFor(artists []Artist) error {
 	return nil
 }
 
+func (m *Music) checkReleaseArtwork(r *Release) error {
+	if r.Artwork && r.FrontArtwork == false {
+		log.Printf("need artwork for %s / %s\n", r.Artist, r.Name)
+		// have artwork but no front cover
+		art, err := m.coverArtArchive(r.REID)
+		if err != nil {
+			return err
+		}
+		if len(art.Images) > 0 {
+			id := art.Images[0].ID
+			r.OtherArtwork = id
+			err = m.updateOtherArtwork(r, id)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func fuzzyArtist(name string) string {
 	re := regexp.MustCompile(`[^a-zA-Z0-9& -]`)
 	return re.ReplaceAllString(name, "")
@@ -318,12 +338,13 @@ func fixName(name string) string {
 //   Blackstar
 func (m *Music) assignTrackReleases() error {
 	notfound := make(map[string]int)
+	artChecked := make(map[string]bool)
 	tracks := m.tracksWithoutAssignedRelease()
 	// TODO this could be more efficient
 	for _, t := range tracks {
+		var assignedRelease *Release
 		r := m.trackRelease(&t)
 		if r == nil {
-			assigned := false
 			// try using disambiguation
 			releases := m.disambiguate(t.Artist, t.TrackCount, t.DiscCount)
 			for _, r := range releases {
@@ -340,12 +361,12 @@ func (m *Music) assignTrackReleases() error {
 						if err != nil {
 							return err
 						}
-						assigned = true
+						assignedRelease = &r
 						break
 					}
 				}
 			}
-			if !assigned {
+			if assignedRelease == nil {
 				v := fmt.Sprintf("%s/%s/%d", t.Artist, t.Release, t.TrackCount)
 				notfound[v] += 1
 				if notfound[v] == 1 {
@@ -357,7 +378,21 @@ func (m *Music) assignTrackReleases() error {
 			if err != nil {
 				return err
 			}
+			assignedRelease = r
 		}
+
+		if assignedRelease != nil {
+			// ensure releases assigned to tracks have artwork
+			if _, ok := artChecked[assignedRelease.REID]; !ok {
+				err := m.checkReleaseArtwork(assignedRelease)
+				if err != nil {
+					log.Println(err)
+					return err
+				}
+				artChecked[assignedRelease.REID] = true
+			}
+		}
+
 	}
 	return nil
 }
@@ -606,18 +641,25 @@ func (m *Music) resolveArtist(name string) (artist *Artist, tags []ArtistTag) {
 }
 
 // Get the URL for the release cover from The Cover Art Archive. Use
-// REID front cover if MusicBrainz has that otherwise use the RGID
-// cover.
-func (m *Music) cover(r Release, s string) string {
-	if r.FrontCover && r.REID != "" {
-		return fmt.Sprintf("https://coverartarchive.org/release/%s/%s", r.REID, s)
+// REID front cover.
+//
+// See https://musicbrainz.org/doc/Cover_Art_Archive/API
+func (m *Music) cover(r Release, size string) string {
+	if r.Artwork && r.FrontArtwork {
+		// user front-250, front-500, front-1200
+		return fmt.Sprintf("https://coverartarchive.org/release/%s/front-%s",
+			r.REID, size)
+	} else if r.Artwork && r.OtherArtwork != "" {
+		// use id-250, id-500, id-1200
+		return fmt.Sprintf("https://coverartarchive.org/release/%s/%s-%s",
+			r.REID, r.OtherArtwork, size)
 	} else {
-		return fmt.Sprintf("https://coverartarchive.org/release-group/%s/%s", r.RGID, s)
+		return "/static/album-white-36dp.svg"
 	}
 }
 
 // Track cover based on assigned release.
-func (m *Music) trackCover(t Track, s string) string {
+func (m *Music) trackCover(t Track, size string) string {
 	// TODO should expire the cache
 	v, ok := m.coverCache[t.REID]
 	if ok {
@@ -627,7 +669,7 @@ func (m *Music) trackCover(t Track, s string) string {
 	if release == nil {
 		v = ""
 	} else {
-		v = m.cover(*release, s)
+		v = m.cover(*release, size)
 	}
 	m.coverCache[t.REID] = v
 	return v

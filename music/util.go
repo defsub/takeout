@@ -18,6 +18,7 @@
 package music
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -65,4 +66,14 @@ func atoi(a string) int {
 
 func itoa(i int) string {
 	return strconv.Itoa(i)
+}
+
+var doubleQuotedRegexp = regexp.MustCompile(`"(.*)"`)
+
+func unquote(s string) string {
+	matches := doubleQuotedRegexp.FindStringSubmatch(s)
+	if matches != nil {
+		return matches[1]
+	}
+	return s
 }

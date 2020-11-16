@@ -146,3 +146,26 @@ func TestSearchArtistId(t *testing.T) {
 		}
 	}
 }
+
+func TestCoverArt(t *testing.T) {
+	config, err := config.TestConfig()
+	if err != nil {
+		t.Errorf("GetConfig %s\n", err)
+	}
+	m := NewMusic(config)
+	m.Open()
+
+	// id is int
+	art, err := m.coverArtArchive("a3b644af-6ef0-4cbf-a85f-6c979e210238")
+	for _, a := range art.Images {
+		t.Logf("approved: %t, front: %t, back: %t, id: %s, small: %s\n",
+			a.Approved, a.Front, a.Back, a.ID, a.Thumbnails["small"])
+	}
+
+	// id is string
+	art, err = m.coverArtArchive("f268b8bc-2768-426b-901b-c7966e76de29")
+	for _, a := range art.Images {
+		t.Logf("approved: %t, front: %t, back: %t, id: %s, small: %s\n",
+			a.Approved, a.Front, a.Back, a.ID, a.Thumbnails["small"])
+	}
+}

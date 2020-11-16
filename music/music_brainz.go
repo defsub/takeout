@@ -18,10 +18,11 @@
 package music
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
-	"net/url"
 )
 
 // MusicBrainz is used for:
@@ -121,8 +122,8 @@ type mbzReleasesPage struct {
 
 type mbzCoverArtArchive struct {
 	Count    int  `json:"count"`
-	Front    bool `json:"front"`
 	Artwork  bool `json:"artwork"`
+	Front    bool `json:"front"`
 	Back     bool `json:"back"`
 	Darkened bool `json:"darkened"`
 }
@@ -232,8 +233,9 @@ func release(a *Artist, r mbzRelease) Release {
 		Country:        r.Country,
 		TrackCount:     r.totalTracks(),
 		DiscCount:      r.totalDiscs(),
-		FrontCover:     r.CoverArtArchive.Front,
-		BackCover:      r.CoverArtArchive.Back,
+		Artwork:        r.CoverArtArchive.Artwork,
+		FrontArtwork:   r.CoverArtArchive.Front,
+		BackArtwork:    r.CoverArtArchive.Back,
 		Media:          media,
 		Date:           r.ReleaseGroup.firstReleaseDate()}
 }
@@ -397,5 +399,37 @@ func (m *Music) doArtistSearch(query string, limit int, offset int) (*mbzArtists
 	url := fmt.Sprintf(`https://musicbrainz.org/ws/2/artist?fmt=json&query=%s&limit=%d&offset=%d`,
 		url.QueryEscape(query), limit, offset)
 	err := m.client.GetJson(url, &result)
+	return &result, err
+}
+
+type coverArtImage struct {
+	RawID    json.RawMessage `json:"id"`
+	ID       string          `json:"-"`
+	Approved bool            `json:"approved"`
+	Front    bool            `json:"front"`
+	Back     bool            `json:"back"`
+	Image    string          `json:"image"`
+	// 250, 500, 1200, small (250), large (500)
+	Thumbnails map[string]string `json:"thumbnails"`
+}
+
+type coverArt struct {
+	Release string          `json:"release"`
+	Images  []coverArtImage `json:"images"`
+}
+
+func (m *Music) coverArtArchive(reid string) (*coverArt, error) {
+	var result coverArt
+	url := fmt.Sprintf(`https://coverartarchive.org/release/%s`, reid)
+	err := m.client.GetJson(url, &result)
+	if err != nil {
+		return &result, err
+	}
+	for i, img := range result.Images {
+		// api has ID with both int and string types
+		// id: 42
+		// id: "42"
+		result.Images[i].ID = unquote(string(img.RawID))
+	}
 	return &result, err
 }
