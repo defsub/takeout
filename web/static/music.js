@@ -118,13 +118,11 @@ Takeout.music = (function() {
 
     const playNow = async function(track) {
 	if (track['location'] != null) {
-	    await fetchLocation(track).then(url => {
-		audioSource().setAttribute("src", url);
-		updateTitle(track);
-		current = track;
-		audioTag().load();
-		document.getElementById("playing").style.display = "block";
-	    })
+	    audioSource().setAttribute("src", url);
+	    updateTitle(track);
+	    current = track;
+	    audioTag().load();
+	    document.getElementById("playing").style.display = "block";
 	} else {
 	    document.getElementById("playing").style.display = "none";
 	    document.getElementById("playlist").style.display = "none";
@@ -152,16 +150,6 @@ Takeout.music = (function() {
 		});
 	    });
 	}
-    };
-
-    const fetchLocation = function(track) {
-	return fetch(track['location'], {credentials: 'include'}).
-	    then(response => {
-		return response.json();
-	    }).
-	    then(data => {
-		return data['Url'];
-	    });
     };
 
     const fetchPlaylist = function() {

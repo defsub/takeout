@@ -26,16 +26,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
-	"time"
 )
-
-type location struct {
-	ID           uint
-	Url          string
-	Size         int64
-	ETag         string
-	LastModified time.Time
-}
 
 type login struct {
 	User string
@@ -345,13 +336,8 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 				id, _ := strconv.Atoi(v)
 				track, _ := music.lookupTrack(id)
 				url := music.TrackURL(&track)
-				handler.apiView(w, r, location{
-					ID:           track.ID,
-					Url:          url.String(),
-					Size:         track.Size,
-					ETag:         track.ETag,
-					LastModified: track.LastModified,
-				})
+				// TODO use 307 instead?
+				http.Redirect(w, r, url.String(), http.StatusFound)
 				return
 			}
 
