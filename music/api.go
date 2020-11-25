@@ -341,25 +341,38 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 				return
 			}
 
-			// resources with id and playlist
-			playlistRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)/playlist`)
+			// resources with id and sub-resource
+			playlistRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)/(playlist|popular|singles)`)
 			matches = playlistRegexp.FindStringSubmatch(r.URL.Path)
 			if matches != nil {
 				v := matches[1]
 				id, _ := strconv.Atoi(matches[2])
+				res := matches[3]
 				switch v {
 				case "artists":
-					// /api/artists/1/playlist
 					artist, _ := music.lookupArtist(id)
-					handler.apiRefPlaylist(w, r, music,
-						fmt.Sprintf("%s", artist.Name),
-						fmt.Sprintf("/music/artists/%d/shuffle", id))
+					if res == "playlist" {
+						// /api/artists/1/playlist
+						handler.apiRefPlaylist(w, r, music,
+							fmt.Sprintf("%s", artist.Name),
+							fmt.Sprintf("/music/artists/%d/shuffle", id))
+					} else if res == "popular" {
+						// /api/artists/1/popular
+						handler.apiView(w, r, music.PopularView(artist))
+					} else if res == "singles" {
+						// /api/artists/1/singles
+						handler.apiView(w, r, music.SinglesView(artist))
+					}
 				case "releases":
 					// /api/releases/1/playlist
-					release, _ := music.lookupRelease(id)
-					handler.apiRefPlaylist(w, r, music,
-						fmt.Sprintf("%s ~ %s", release.Artist, release.Name),
-						fmt.Sprintf("/music/releases/%d/tracks", id))
+					if res == "playlist" {
+						release, _ := music.lookupRelease(id)
+						handler.apiRefPlaylist(w, r, music,
+							fmt.Sprintf("%s ~ %s", release.Artist, release.Name),
+							fmt.Sprintf("/music/releases/%d/tracks", id))
+					} else {
+						http.Error(w, "bummer", http.StatusNotFound)
+					}
 				default:
 					http.Error(w, "bummer", http.StatusNotFound)
 				}
