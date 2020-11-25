@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 type login struct {
@@ -290,6 +291,16 @@ func (handler *MusicHandler) apiView(w http.ResponseWriter, r *http.Request, vie
 	enc.Encode(view)
 }
 
+func (handler *MusicHandler) apiSearch(w http.ResponseWriter, r *http.Request, music *Music) {
+	if v := r.URL.Query().Get("q"); v != "" {
+		// /api/search?q={pattern}
+		view := music.SearchView(strings.TrimSpace(v))
+		handler.apiView(w, r, view)
+	} else {
+		http.Error(w, "bummer", http.StatusNotFound)
+	}
+}
+
 // POST /api/login -> see apiLogin
 // GET,PATCH /api/playlist -> see apiPlaylist
 //
@@ -327,6 +338,8 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 			handler.apiView(w, r, music.HomeView())
 		case "/api/artists":
 			handler.apiView(w, r, music.ArtistsView())
+		case "/api/search":
+			handler.apiSearch(w, r, music)
 		default:
 			// id sub-resources
 			locationRegexp := regexp.MustCompile(`/api/tracks/([0-9]+)/location`)
