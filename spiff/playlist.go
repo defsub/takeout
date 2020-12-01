@@ -33,6 +33,8 @@ type Playlist struct {
 
 type Spiff struct {
 	Title   string  `json:"title"`
+	Creator string  `json:"creator,omitempty"`
+	Image   string  `json:"image,omitempty"`
 	Entries []Entry `json:"track"`
 }
 
@@ -47,7 +49,7 @@ type Entry struct {
 }
 
 func NewPlaylist() *Playlist {
-	return &Playlist{Spiff{"", []Entry{}}, -1, 0}
+	return &Playlist{Spiff{"", "", "", []Entry{}}, -1, 0}
 }
 
 func Unmarshal(data []byte) (*Playlist, error) {

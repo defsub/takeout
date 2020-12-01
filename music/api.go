@@ -215,9 +215,11 @@ func (handler *MusicHandler) apiStation(w http.ResponseWriter, r *http.Request, 
 // GET /api/{res}/id/playlist > spiff.Playlist{}
 // 200: success
 func (handler *MusicHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Request, m *Music,
-	title, ref string) {
+	creator, title, image, ref string) {
 	plist := spiff.NewPlaylist()
+	plist.Spiff.Creator = creator
 	plist.Spiff.Title = title
+	plist.Spiff.Image = image
 	plist.Entries = []spiff.Entry{{Ref: ref}}
 	m.Resolve(handler.user, plist)
 	if plist.Entries == nil {
@@ -367,7 +369,9 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 					if res == "playlist" {
 						// /api/artists/1/playlist
 						handler.apiRefPlaylist(w, r, music,
-							fmt.Sprintf("%s", artist.Name),
+							artist.Name,
+							fmt.Sprintf("%s Popular Tracks", artist.Name),
+							"",
 							fmt.Sprintf("/music/artists/%d/shuffle", id))
 					} else if res == "popular" {
 						// /api/artists/1/popular
@@ -381,7 +385,9 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 					if res == "playlist" {
 						release, _ := music.lookupRelease(id)
 						handler.apiRefPlaylist(w, r, music,
-							fmt.Sprintf("%s ~ %s", release.Artist, release.Name),
+							release.Artist,
+							release.Name,
+							music.cover(release, "250"),
 							fmt.Sprintf("/music/releases/%d/tracks", id))
 					} else {
 						http.Error(w, "bummer", http.StatusNotFound)

@@ -88,6 +88,7 @@ func (m *Music) stationRefresh(s *Station, user *auth.User) {
 
 func (m *Music) resolveStation(s *Station, user *auth.User) {
 	plist := spiff.NewPlaylist()
+	// Creator, Image
 	plist.Spiff.Title = s.Name
 	plist.Entries = []spiff.Entry{{Ref: s.Ref}}
 	m.Resolve(user, plist)
