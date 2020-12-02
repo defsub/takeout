@@ -46,6 +46,7 @@ type Entry struct {
 	Image      string   `json:"image,omitempty"`
 	Location   []string `json:"location,omitempty"`
 	Identifier []string `json:"identifier,omitempty"`
+	Size       []int64  `json:"size,omitempty"`
 }
 
 func NewPlaylist() *Playlist {

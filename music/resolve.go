@@ -34,7 +34,8 @@ func (m *Music) addTrackEntries(tracks []Track, entries []spiff.Entry) []spiff.E
 			Title:      t.Title,
 			Image:      m.TrackImage(t).String(),
 			Location:   []string{trackLocation(t)},
-			Identifier: []string{t.ETag}}
+			Identifier: []string{t.ETag},
+			Size:       []int64{t.Size}}
 		entries = append(entries, e)
 	}
 	return entries
