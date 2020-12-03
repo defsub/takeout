@@ -92,6 +92,7 @@ type SearchConfig struct {
 type ServerConfig struct {
 	Listen string
 	WebDir string
+	URL    string
 }
 
 type ClientConfig struct {
@@ -210,6 +211,7 @@ func configDefaults() {
 	viper.SetDefault("Search.BleveDir", ".")
 
 	viper.SetDefault("Server.WebDir", "web")
+	viper.SetDefault("Server.URL", "https://example.com/")
 
 	viper.SetDefault("Client.UseCache", "false")
 	viper.SetDefault("Client.MaxAge", 86400*30) // 30 days in seconds

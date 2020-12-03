@@ -217,6 +217,7 @@ func (handler *MusicHandler) apiStation(w http.ResponseWriter, r *http.Request, 
 func (handler *MusicHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Request, m *Music,
 	creator, title, image, ref string) {
 	plist := spiff.NewPlaylist()
+	plist.Spiff.Location = m.config.Server.URL
 	plist.Spiff.Creator = creator
 	plist.Spiff.Title = title
 	plist.Spiff.Image = image
@@ -241,7 +242,9 @@ func (handler *MusicHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Reque
 func (handler *MusicHandler) apiPlaylist(w http.ResponseWriter, r *http.Request, music *Music) {
 	p := music.lookupPlaylist(handler.user)
 	if p == nil {
-		data, _ := spiff.NewPlaylist().Marshal()
+		plist := spiff.NewPlaylist()
+		plist.Spiff.Location = music.config.Server.URL
+		data, _ := plist.Marshal()
 		p = &Playlist{User: handler.user.Name, Playlist: data}
 		err := music.createPlaylist(p)
 		if err != nil {
@@ -370,7 +373,7 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 						// /api/artists/1/playlist
 						handler.apiRefPlaylist(w, r, music,
 							artist.Name,
-							fmt.Sprintf("%s Popular Tracks", artist.Name),
+							"Popular Tracks",
 							"",
 							fmt.Sprintf("/music/artists/%d/shuffle", id))
 					} else if res == "popular" {
