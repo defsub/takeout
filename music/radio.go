@@ -80,17 +80,19 @@ func (m *Music) CreateStations() {
 }
 
 func (m *Music) stationRefresh(s *Station, user *auth.User) {
-	if len(s.Playlist) == 0 {
-		m.resolveStation(s, user)
-	}
-	// TODO force refresh
+	// if len(s.Playlist) == 0 {
+	// 	m.resolveStation(s, user)
+	// }
+
+	// force refresh
+	m.resolveStation(s, user)
 }
 
 func (m *Music) resolveStation(s *Station, user *auth.User) {
 	plist := spiff.NewPlaylist()
 	// Creator, Image
-	plist.Spiff.Location = m.config.Server.URL
-	plist.Spiff.Title = s.Name
+	plist.Spiff.Location = fmt.Sprintf("%s/api/radio/%d", m.config.Server.URL, s.ID)
+	plist.Spiff.Title = fmt.Sprintf("Radio: %s", s.Name)
 	plist.Entries = []spiff.Entry{{Ref: s.Ref}}
 	m.Resolve(user, plist)
 	if plist.Entries == nil {
