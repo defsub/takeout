@@ -756,6 +756,17 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 		}
 	}
 
+	// Popular artist tracks mapped to the first release where the tracks
+	// appeared. If this is that release, add popularty fields for those
+	// tracks below.
+	popularityMap := make(map[string]int)
+	a := m.artist(release.Artist)
+	if a != nil {
+		for rank, t := range m.artistPopularTracks(*a) {
+			popularityMap[t.Key] = rank
+		}
+	}
+
 	// update type field with single
 	singles := make(map[string]bool)
 	for _, t := range m.releaseSingles(release) {
@@ -777,6 +788,13 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 		fields, ok := newIndex[k]
 		if ok {
 			addField(fields, FieldType, TypePopular)
+
+			rank, pop := popularityMap[k]
+			if pop {
+				// add popularity rank
+				log.Printf("popularity %s -> %d", k, rank)
+				addField(fields, FieldPopularity, rank)
+			}
 		}
 	}
 
