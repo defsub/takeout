@@ -26,16 +26,8 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
-	"time"
+	"strings"
 )
-
-type location struct {
-	ID           uint
-	Url          string
-	Size         int64
-	ETag         string
-	LastModified time.Time
-}
 
 type login struct {
 	User string
@@ -223,9 +215,12 @@ func (handler *MusicHandler) apiStation(w http.ResponseWriter, r *http.Request, 
 // GET /api/{res}/id/playlist > spiff.Playlist{}
 // 200: success
 func (handler *MusicHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Request, m *Music,
-	title, ref string) {
+	creator, title, image, ref string) {
 	plist := spiff.NewPlaylist()
+	plist.Spiff.Location = fmt.Sprintf("%s%s", m.config.Server.URL, r.URL.Path)
+	plist.Spiff.Creator = creator
 	plist.Spiff.Title = title
+	plist.Spiff.Image = image
 	plist.Entries = []spiff.Entry{{Ref: ref}}
 	m.Resolve(handler.user, plist)
 	if plist.Entries == nil {
@@ -247,7 +242,9 @@ func (handler *MusicHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Reque
 func (handler *MusicHandler) apiPlaylist(w http.ResponseWriter, r *http.Request, music *Music) {
 	p := music.lookupPlaylist(handler.user)
 	if p == nil {
-		data, _ := spiff.NewPlaylist().Marshal()
+		plist := spiff.NewPlaylist()
+		plist.Spiff.Location = fmt.Sprintf("%s/api/playlist", music.config.Server.URL)
+		data, _ := plist.Marshal()
 		p = &Playlist{User: handler.user.Name, Playlist: data}
 		err := music.createPlaylist(p)
 		if err != nil {
@@ -299,16 +296,40 @@ func (handler *MusicHandler) apiView(w http.ResponseWriter, r *http.Request, vie
 	enc.Encode(view)
 }
 
+func (handler *MusicHandler) apiSearch(w http.ResponseWriter, r *http.Request, music *Music) {
+	if v := r.URL.Query().Get("q"); v != "" {
+		// /api/search?q={pattern}
+		view := music.SearchView(strings.TrimSpace(v))
+		handler.apiView(w, r, view)
+	} else {
+		http.Error(w, "bummer", http.StatusNotFound)
+	}
+}
+
 // POST /api/login -> see apiLogin
+//
 // GET,PATCH /api/playlist -> see apiPlaylist
 //
+// GET /api/radio > RadioView{}
+// GET /api/radio/1 > spiff.Playlist{}
+// POST /api/radio
+// GET,PATH,DELETE /api/radio/1 >
+//
 // GET /api/home > HomeView{}
+// GET /api/search > SearchView{}
+//
+// GET /api/tracks/1/location -> Redirect
+//
 // GET /api/artists > ArtistsView{}
 // GET /api/artists/1 > ArtistView{}
+// GET /api/artists/1/popular > PopularView{}
+// GET /api/artists/1/singles > SinglesView{}
+// GET /api/artists/1/playlist > spiff.Playlist{}
+// GET /api/artists/1/radio > spiff.Playlist{}
+//
 // GET /api/releases/1 > ReleaseView{}
-// GET,POST /api/radio
-// GET,PATH,DELETE /api/radio/1 >
-// GET /api/tracks/1/location -> location{}
+// GET /api/releases/1/playlist > spiff.Playlist{}
+//
 // 200: success
 // 500: error
 func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
@@ -336,6 +357,8 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 			handler.apiView(w, r, music.HomeView())
 		case "/api/artists":
 			handler.apiView(w, r, music.ArtistsView())
+		case "/api/search":
+			handler.apiSearch(w, r, music)
 		default:
 			// id sub-resources
 			locationRegexp := regexp.MustCompile(`/api/tracks/([0-9]+)/location`)
@@ -345,35 +368,54 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 				id, _ := strconv.Atoi(v)
 				track, _ := music.lookupTrack(id)
 				url := music.TrackURL(&track)
-				handler.apiView(w, r, location{
-					ID:           track.ID,
-					Url:          url.String(),
-					Size:         track.Size,
-					ETag:         track.ETag,
-					LastModified: track.LastModified,
-				})
+				// TODO use 307 instead?
+				http.Redirect(w, r, url.String(), http.StatusFound)
 				return
 			}
 
-			// resources with id and playlist
-			playlistRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)/playlist`)
+			// resources with id and sub-resource
+			playlistRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)/(playlist|popular|singles|radio)`)
 			matches = playlistRegexp.FindStringSubmatch(r.URL.Path)
 			if matches != nil {
 				v := matches[1]
 				id, _ := strconv.Atoi(matches[2])
+				res := matches[3]
 				switch v {
 				case "artists":
-					// /api/artists/1/playlist
 					artist, _ := music.lookupArtist(id)
-					handler.apiRefPlaylist(w, r, music,
-						fmt.Sprintf("%s", artist.Name),
-						fmt.Sprintf("/music/artists/%d/shuffle", id))
+					if res == "playlist" {
+						// /api/artists/1/playlist
+						handler.apiRefPlaylist(w, r, music,
+							artist.Name,
+							"Top Tracks",
+							"",
+							fmt.Sprintf("/music/artists/%d/popular", id))
+					} else if res == "radio" {
+						// /api/artists/1/radio
+						handler.apiRefPlaylist(w, r, music,
+							"Radio",
+							fmt.Sprintf("%s Radio", artist.Name),
+							"",
+							fmt.Sprintf("/music/artists/%d/similar", id))
+					} else if res == "popular" {
+						// /api/artists/1/popular
+						handler.apiView(w, r, music.PopularView(artist))
+					} else if res == "singles" {
+						// /api/artists/1/singles
+						handler.apiView(w, r, music.SinglesView(artist))
+					}
 				case "releases":
 					// /api/releases/1/playlist
-					release, _ := music.lookupRelease(id)
-					handler.apiRefPlaylist(w, r, music,
-						fmt.Sprintf("%s ~ %s", release.Artist, release.Name),
-						fmt.Sprintf("/music/releases/%d/tracks", id))
+					if res == "playlist" {
+						release, _ := music.lookupRelease(id)
+						handler.apiRefPlaylist(w, r, music,
+							release.Artist,
+							release.Name,
+							music.cover(release, "250"),
+							fmt.Sprintf("/music/releases/%d/tracks", id))
+					} else {
+						http.Error(w, "bummer", http.StatusNotFound)
+					}
 				default:
 					http.Error(w, "bummer", http.StatusNotFound)
 				}

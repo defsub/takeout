@@ -92,6 +92,7 @@ type SearchConfig struct {
 type ServerConfig struct {
 	Listen string
 	WebDir string
+	URL    string
 }
 
 type ClientConfig struct {
@@ -147,9 +148,9 @@ func configDefaults() {
 	viper.SetDefault("Music.SimilarReleases", "8760h") // +/- 1 year
 	viper.SetDefault("Music.SimilarReleasesLimit", "10")
 
-	viper.SetDefault("Music.RadioLimit", "250")
+	viper.SetDefault("Music.RadioLimit", "25")
 	viper.SetDefault("Music.RadioSearchLimit", "1000")
-	viper.SetDefault("Music.ArtistRadioBreadth", "25")
+	viper.SetDefault("Music.ArtistRadioBreadth", "10")
 	viper.SetDefault("Music.ArtistRadioDepth", "10")
 
 	// see https://wiki.musicbrainz.org/Release_Country
@@ -195,6 +196,8 @@ func configDefaults() {
 		"r&b",
 		"rock",
 		"shoegaze",
+		"stoner metal",
+		"stoner rock",
 	})
 
 	viper.SetDefault("Music.Bucket.UseSSL", "true")
@@ -210,6 +213,7 @@ func configDefaults() {
 	viper.SetDefault("Search.BleveDir", ".")
 
 	viper.SetDefault("Server.WebDir", "web")
+	viper.SetDefault("Server.URL", "https://example.com") // w/o trailing slash
 
 	viper.SetDefault("Client.UseCache", "false")
 	viper.SetDefault("Client.MaxAge", 86400*30) // 30 days in seconds

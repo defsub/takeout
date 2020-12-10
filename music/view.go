@@ -67,11 +67,11 @@ type SearchView struct {
 }
 
 type RadioView struct {
-	Artist []Station
-	Genre  []Station
-	Mix    []Station
-	Period []Station
-	Other  []Station
+	Artist  []Station
+	Genre   []Station
+	Similar []Station
+	Period  []Station
+	Other   []Station
 }
 
 func (m *Music) HomeView() *HomeView {
@@ -157,8 +157,8 @@ func (m *Music) RadioView(user *auth.User) *RadioView {
 			view.Artist = append(view.Artist, s)
 		case typeGenre:
 			view.Genre = append(view.Genre, s)
-		case typeMix:
-			view.Mix = append(view.Mix, s)
+		case typeSimilar:
+			view.Similar = append(view.Similar, s)
 		case typePeriod:
 			view.Period = append(view.Period, s)
 		default:

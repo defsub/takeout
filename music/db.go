@@ -302,12 +302,11 @@ func (m *Music) trackRelease(t *Track) *Release {
 	return &releases[0]
 }
 
-// Find the first release date for the release(s) with` this track, including
+// Find the first release date for the release(s) with this track, including
 // an media specific release from a multi-disc set like: Eagles/Legacy or The
 // Beatles/The Beatles in Mono. These each have media with titles that
 // themselves were previous releases so check them too.
-func (m *Music) trackFirstReleaseDate(t *Track) time.Time {
-	result := time.Time{}
+func (m *Music) trackFirstReleaseDate(t *Track) (result time.Time, err error) {
 	var releases []Release
 	names := []string{t.Release}
 	if t.MediaTitle != "" {
@@ -321,6 +320,7 @@ func (m *Music) trackFirstReleaseDate(t *Track) time.Time {
 		Order("date").Find(&releases)
 	if len(releases) > 0 {
 		result = releases[0].Date
+		err = nil
 	} else {
 		// could be disambiguation like "Weezer (Blue Album)" so just
 		// use release date for now
@@ -329,7 +329,7 @@ func (m *Music) trackFirstReleaseDate(t *Track) time.Time {
 			result = r.Date
 		}
 	}
-	return result
+	return result, err
 }
 
 // When there's artwork but no front, other_cover will be the ID of the image

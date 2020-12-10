@@ -28,10 +28,10 @@ import (
 )
 
 const (
-	typeArtist = "artist" // Songs by single artist
-	typeGenre  = "genre"  // Songs from one or more genres
-	typeMix    = "mix"    // Songs from many artists
-	typePeriod = "period" // Songs from one or more time periods
+	typeArtist  = "artist"  // Songs by single artist
+	typeGenre   = "genre"   // Songs from one or more genres
+	typeSimilar = "similar" // Songs from similar artists
+	typePeriod  = "period"  // Songs from one or more time periods
 )
 
 func (s *Station) visible(user *auth.User) bool {
@@ -43,7 +43,7 @@ func (m *Music) ClearStations() {
 }
 
 func (m *Music) CreateStations() {
-	artists, _ := m.favoriteArtists(10)
+	artists, _ := m.favoriteArtists(25)
 	for _, v := range artists {
 		a := m.artist(v)
 		if a == nil {
@@ -53,16 +53,16 @@ func (m *Music) CreateStations() {
 			User:   TakeoutUser,
 			Shared: true,
 			Type:   typeArtist,
-			Name:   fmt.Sprintf("%s Singles", a.Name),
-			Ref:    fmt.Sprintf(`/music/artists/%d/shuffle`, a.ID)}
+			Name:   fmt.Sprintf("%s Top Tracks", a.Name),
+			Ref:    fmt.Sprintf(`/music/artists/%d/popular`, a.ID)}
 		m.createStation(&station)
 
 		station = Station{
 			User:   TakeoutUser,
 			Shared: true,
-			Type:   typeMix,
-			Name:   fmt.Sprintf("%s Mix", a.Name),
-			Ref:    fmt.Sprintf(`/music/artists/%d/mix`, a.ID)}
+			Type:   typeSimilar,
+			Name:   fmt.Sprintf("%s Similar", a.Name),
+			Ref:    fmt.Sprintf(`/music/artists/%d/similar`, a.ID)}
 		m.createStation(&station)
 	}
 
@@ -73,22 +73,35 @@ func (m *Music) CreateStations() {
 			Type:   typeGenre,
 			Name:   strings.Title(g),
 			Ref: fmt.Sprintf(`/music/search?q=%s&radio=1`,
-				url.QueryEscape(fmt.Sprintf(`+genre:"%s" +type:"single" -artist:"Various Artists"`, g)))}
+				url.QueryEscape(fmt.Sprintf(`+genre:"%s" +popularity:<11 -artist:"Various Artists"`, g)))}
+		m.createStation(&station)
+	}
+
+	decades := []int{1960, 1970, 1980, 1990, 2000, 2010, 2020}
+	for _, d := range decades {
+		station := Station{
+			User:   TakeoutUser,
+			Shared: true,
+			Type:   typePeriod,
+			Name:   fmt.Sprintf("%ds Top Tracks", d),
+			Ref: fmt.Sprintf(`/music/search?q=%s&radio=1`,
+				url.QueryEscape(fmt.Sprintf(
+					`+date:>="%d-01-01" +date:<="%d-12-31" +popularity:<11`, d, d+9)))}
 		m.createStation(&station)
 	}
 
 }
 
 func (m *Music) stationRefresh(s *Station, user *auth.User) {
-	if len(s.Playlist) == 0 {
-		m.resolveStation(s, user)
-	}
-	// TODO force refresh
+	m.resolveStation(s, user)
 }
 
 func (m *Music) resolveStation(s *Station, user *auth.User) {
 	plist := spiff.NewPlaylist()
+	// Image
+	plist.Spiff.Location = fmt.Sprintf("%s/api/radio/%d", m.config.Server.URL, s.ID)
 	plist.Spiff.Title = s.Name
+	plist.Spiff.Creator = "Radio"
 	plist.Entries = []spiff.Entry{{Ref: s.Ref}}
 	m.Resolve(user, plist)
 	if plist.Entries == nil {
@@ -104,7 +117,7 @@ func shuffle(tracks []Track) []Track {
 	return tracks
 }
 
-func (m *Music) artistMix(artist Artist, depth int, breadth int) []Track {
+func (m *Music) artistSimilar(artist Artist, depth int, breadth int) []Track {
 	var station []Track
 	tracks := m.artistPopularTracks(artist, depth)
 	station = append(station, tracks...)
@@ -116,41 +129,41 @@ func (m *Music) artistMix(artist Artist, depth int, breadth int) []Track {
 	return shuffle(station)
 }
 
-func (m *Music) artistShuffle(artist Artist, depth int) []Track {
-	tracks := m.artistPopularTracks(artist, depth)
-	return shuffle(tracks)
-}
+// func (m *Music) artistShuffle(artist Artist, depth int) []Track {
+// 	tracks := m.artistPopularTracks(artist, depth)
+// 	return shuffle(tracks)
+// }
 
 func (m *Music) artistDeep(artist Artist, depth int) []Track {
 	tracks := m.artistDeepTracks(artist, depth)
 	return shuffle(tracks)
 }
 
-func (m *Music) genreRadio(genres []string, depth int) []Track {
-	var query string
-	query += fmt.Sprintf("+type:single")
-	for _, g := range genres {
-		query += fmt.Sprintf(` +genre:"%s"`, g)
-	}
-	tracks := m.Search(query, depth)
-	return shuffle(tracks)
-}
+// func (m *Music) genreRadio(genres []string, depth int) []Track {
+// 	var query string
+// 	query += fmt.Sprintf("+type:single")
+// 	for _, g := range genres {
+// 		query += fmt.Sprintf(` +genre:"%s"`, g)
+// 	}
+// 	tracks := m.Search(query, depth)
+// 	return shuffle(tracks)
+// }
 
-func (m *Music) decadeRadio(dstart, dend int, depth int) []Track {
-	var query string
-	query += fmt.Sprintf("+type:single")
-	query += fmt.Sprintf(` +date:>="%d-01-01" +date:<="%d-12-31"`, dstart, dend)
-	tracks := m.Search(query, depth)
-	return shuffle(tracks)
-}
+// func (m *Music) decadeRadio(dstart, dend int, depth int) []Track {
+// 	var query string
+// 	query += fmt.Sprintf("+type:single")
+// 	query += fmt.Sprintf(` +date:>="%d-01-01" +date:<="%d-12-31"`, dstart, dend)
+// 	tracks := m.Search(query, depth)
+// 	return shuffle(tracks)
+// }
 
-func (m *Music) decadeGenreRadio(dstart, dend int, genres []string, depth int) []Track {
-	var query string
-	query += fmt.Sprintf("+type:single")
-	query += fmt.Sprintf(` +date:>="%d-01-01" +date:<="%d-12-31"`, dstart, dend)
-	for _, g := range genres {
-		query += fmt.Sprintf(` +genre:"%s"`, g)
-	}
-	tracks := m.Search(query, depth)
-	return shuffle(tracks)
-}
+// func (m *Music) decadeGenreRadio(dstart, dend int, genres []string, depth int) []Track {
+// 	var query string
+// 	query += fmt.Sprintf("+type:single")
+// 	query += fmt.Sprintf(` +date:>="%d-01-01" +date:<="%d-12-31"`, dstart, dend)
+// 	for _, g := range genres {
+// 		query += fmt.Sprintf(` +genre:"%s"`, g)
+// 	}
+// 	tracks := m.Search(query, depth)
+// 	return shuffle(tracks)
+// }

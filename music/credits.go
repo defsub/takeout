@@ -34,6 +34,7 @@ const (
 	FieldLength      = "length"
 	FieldMedia       = "media"
 	FieldMediaTitle  = "media_title"
+	FieldPopularity  = "popularity"
 	FieldRating      = "rating"
 	FieldRelease     = "release"
 	FieldReleaseDate = "release_date"
