@@ -148,9 +148,9 @@ func configDefaults() {
 	viper.SetDefault("Music.SimilarReleases", "8760h") // +/- 1 year
 	viper.SetDefault("Music.SimilarReleasesLimit", "10")
 
-	viper.SetDefault("Music.RadioLimit", "50")
+	viper.SetDefault("Music.RadioLimit", "25")
 	viper.SetDefault("Music.RadioSearchLimit", "1000")
-	viper.SetDefault("Music.ArtistRadioBreadth", "25")
+	viper.SetDefault("Music.ArtistRadioBreadth", "10")
 	viper.SetDefault("Music.ArtistRadioDepth", "10")
 
 	// see https://wiki.musicbrainz.org/Release_Country
@@ -196,6 +196,8 @@ func configDefaults() {
 		"r&b",
 		"rock",
 		"shoegaze",
+		"stoner metal",
+		"stoner rock",
 	})
 
 	viper.SetDefault("Music.Bucket.UseSSL", "true")

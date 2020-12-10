@@ -41,12 +41,12 @@ func (m *Music) addTrackEntries(tracks []Track, entries []spiff.Entry) []spiff.E
 	return entries
 }
 
-// /music/artists/{id}/singles
-// /music/artists/{id}/popular
-// /music/artists/{id}/tracks
-// /music/artists/{id}/mix
-// /music/artists/{id}/radio
-// /music/artists/{id}/deep
+// Artist Track Refs:
+// /music/artists/{id}/singles - artist tracks released as singles
+// /music/artists/{id}/popular - artist tracks that are popular (lastfm)
+// /music/artists/{id}/tracks - artist tracks
+// /music/artists/{id}/similar - artist and similar artist tracks
+// /music/artists/{id}/deep - atrist deep tracks
 func (m *Music) resolveArtistRef(id, res string, entries []spiff.Entry) ([]spiff.Entry, error) {
 	n, err := strconv.Atoi(id)
 	if err != nil {
@@ -64,12 +64,15 @@ func (m *Music) resolveArtistRef(id, res string, entries []spiff.Entry) ([]spiff
 		tracks = m.artistPopularTracks(artist)
 	case "tracks":
 		tracks = m.artistTracks(artist)
-	case "shuffle":
-		tracks = m.artistShuffle(artist, m.config.Music.RadioLimit)
-	case "mix":
-		tracks = m.artistMix(artist,
+	// case "shuffle":
+	// 	tracks = m.artistShuffle(artist, m.config.Music.RadioLimit)
+	case "similar":
+		tracks = m.artistSimilar(artist,
 			m.config.Music.ArtistRadioDepth,
 			m.config.Music.ArtistRadioBreadth)
+		if len(tracks) > m.config.Music.RadioLimit {
+			tracks = tracks[:m.config.Music.RadioLimit]
+		}
 	case "deep":
 		tracks = m.artistDeep(artist, m.config.Music.RadioLimit)
 	}

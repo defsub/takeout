@@ -118,7 +118,7 @@ Takeout.music = (function() {
 
     const playNow = async function(track) {
 	if (track['location'] != null) {
-	    audioSource().setAttribute("src", url);
+	    audioSource().setAttribute("src", track['location']);
 	    updateTitle(track);
 	    current = track;
 	    audioTag().load();

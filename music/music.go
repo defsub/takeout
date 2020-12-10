@@ -763,7 +763,7 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 	a := m.artist(release.Artist)
 	if a != nil {
 		for rank, t := range m.artistPopularTracks(*a) {
-			popularityMap[t.Key] = rank
+			popularityMap[t.Key] = rank+1
 		}
 	}
 
@@ -801,7 +801,10 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 	// use first track release date for tracks index
 	for k, v := range newIndex {
 		tracks := m.tracksFor([]string{k})
-		date := m.trackFirstReleaseDate(&tracks[0])
+		date, err := m.trackFirstReleaseDate(&tracks[0])
+		if err != nil {
+			continue
+		}
 		s := fmt.Sprintf("%4d-%02d-%02d", date.Year(), date.Month(), date.Day())
 		addField(v, FieldDate, s)
 	}

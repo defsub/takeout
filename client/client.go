@@ -99,9 +99,11 @@ func (c *Client) doGet(headers map[string]string, urlStr string) (*http.Response
 		}
 		if cachedResp != nil {
 			throttle = false
+			log.Printf("is cached\n")
 		}
 	}
 	if throttle {
+		log.Printf("rate limit\n")
 		RateLimit(url.Hostname())
 	}
 

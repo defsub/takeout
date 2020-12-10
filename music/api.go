@@ -307,15 +307,29 @@ func (handler *MusicHandler) apiSearch(w http.ResponseWriter, r *http.Request, m
 }
 
 // POST /api/login -> see apiLogin
+//
 // GET,PATCH /api/playlist -> see apiPlaylist
 //
+// GET /api/radio > RadioView{}
+// GET /api/radio/1 > spiff.Playlist{}
+// POST /api/radio
+// GET,PATH,DELETE /api/radio/1 >
+//
 // GET /api/home > HomeView{}
+// GET /api/search > SearchView{}
+//
+// GET /api/tracks/1/location -> Redirect
+//
 // GET /api/artists > ArtistsView{}
 // GET /api/artists/1 > ArtistView{}
+// GET /api/artists/1/popular > PopularView{}
+// GET /api/artists/1/singles > SinglesView{}
+// GET /api/artists/1/playlist > spiff.Playlist{}
+// GET /api/artists/1/radio > spiff.Playlist{}
+//
 // GET /api/releases/1 > ReleaseView{}
-// GET,POST /api/radio
-// GET,PATH,DELETE /api/radio/1 >
-// GET /api/tracks/1/location -> location{}
+// GET /api/releases/1/playlist > spiff.Playlist{}
+//
 // 200: success
 // 500: error
 func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
@@ -360,7 +374,7 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 			}
 
 			// resources with id and sub-resource
-			playlistRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)/(playlist|popular|singles)`)
+			playlistRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)/(playlist|popular|singles|radio)`)
 			matches = playlistRegexp.FindStringSubmatch(r.URL.Path)
 			if matches != nil {
 				v := matches[1]
@@ -373,9 +387,16 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 						// /api/artists/1/playlist
 						handler.apiRefPlaylist(w, r, music,
 							artist.Name,
-							"Popular Tracks",
+							"Top Tracks",
 							"",
-							fmt.Sprintf("/music/artists/%d/shuffle", id))
+							fmt.Sprintf("/music/artists/%d/popular", id))
+					} else if res == "radio" {
+						// /api/artists/1/radio
+						handler.apiRefPlaylist(w, r, music,
+							"Radio",
+							fmt.Sprintf("%s Radio", artist.Name),
+							"",
+							fmt.Sprintf("/music/artists/%d/similar", id))
 					} else if res == "popular" {
 						// /api/artists/1/popular
 						handler.apiView(w, r, music.PopularView(artist))
