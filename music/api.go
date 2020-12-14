@@ -25,7 +25,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -322,9 +321,11 @@ func (handler *MusicHandler) apiSearch(w http.ResponseWriter, r *http.Request, m
 //
 // GET /api/artists > ArtistsView{}
 // GET /api/artists/1 > ArtistView{}
-// GET /api/artists/1/popular > PopularView{}
-// GET /api/artists/1/singles > SinglesView{}
 // GET /api/artists/1/playlist > spiff.Playlist{}
+// GET /api/artists/1/popular > PopularView{}
+// GET /api/artists/1/popular/playlist > spiff.Playlist{}
+// GET /api/artists/1/singles > SinglesView{}
+// GET /api/artists/1/singles/playlist > spiff.Playlist{}
 // GET /api/artists/1/radio > spiff.Playlist{}
 //
 // GET /api/releases/1 > ReleaseView{}
@@ -360,12 +361,11 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 		case "/api/search":
 			handler.apiSearch(w, r, music)
 		default:
-			// id sub-resources
+			// /api/tracks/id/location
 			locationRegexp := regexp.MustCompile(`/api/tracks/([0-9]+)/location`)
 			matches := locationRegexp.FindStringSubmatch(r.URL.Path)
 			if matches != nil {
-				v := matches[1]
-				id, _ := strconv.Atoi(v)
+				id := atoi(matches[1])
 				track, _ := music.lookupTrack(id)
 				url := music.TrackURL(&track)
 				// TODO use 307 instead?
@@ -373,12 +373,36 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 				return
 			}
 
-			// resources with id and sub-resource
+			// /api/artists/id/(popular|singles)/playlist
+			subPlayistRegexp := regexp.MustCompile(`/api/artists/([0-9]+)/([a-z]+)/playlist`)
+			matches = subPlayistRegexp.FindStringSubmatch(r.URL.Path)
+			if matches != nil {
+				id := atoi(matches[1])
+				artist, _ := music.lookupArtist(id)
+				sub := matches[2]
+				switch sub {
+				case "popular":
+					// /api/artists/id/popular/playlist
+					handler.apiRefPlaylist(w, r, music,
+						artist.Name, "Top Tracks", "",
+						fmt.Sprintf("/music/artists/%d/popular", id))
+				case "singles":
+					// /api/artists/id/singles/playlist
+					handler.apiRefPlaylist(w, r, music,
+						artist.Name, "Singles", "",
+						fmt.Sprintf("/music/artists/%d/singles", id))
+				default:
+					http.Error(w, "bummer", http.StatusNotFound)
+				}
+				return
+			}
+
+			// /api/(artists|releases)/id/(playlist|popular|radio|singles)
 			playlistRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)/(playlist|popular|singles|radio)`)
 			matches = playlistRegexp.FindStringSubmatch(r.URL.Path)
 			if matches != nil {
 				v := matches[1]
-				id, _ := strconv.Atoi(matches[2])
+				id := atoi(matches[2])
 				res := matches[3]
 				switch v {
 				case "artists":
@@ -386,10 +410,8 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 					if res == "playlist" {
 						// /api/artists/1/playlist
 						handler.apiRefPlaylist(w, r, music,
-							artist.Name,
-							"Top Tracks",
-							"",
-							fmt.Sprintf("/music/artists/%d/popular", id))
+							artist.Name, "Shuffle", "",
+							fmt.Sprintf("/music/artists/%d/shuffle", id))
 					} else if res == "radio" {
 						// /api/artists/1/radio
 						handler.apiRefPlaylist(w, r, music,
@@ -403,6 +425,8 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 					} else if res == "singles" {
 						// /api/artists/1/singles
 						handler.apiView(w, r, music.SinglesView(artist))
+					} else {
+						http.Error(w, "bummer", http.StatusNotFound)
 					}
 				case "releases":
 					// /api/releases/1/playlist
@@ -422,12 +446,12 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 				return
 			}
 
-			// resources with id
+			// /api/(artists|radio|releases)/id
 			resourceRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)`)
 			matches = resourceRegexp.FindStringSubmatch(r.URL.Path)
 			if matches != nil {
 				v := matches[1]
-				id, _ := strconv.Atoi(matches[2])
+				id := atoi(matches[2])
 				switch v {
 				case "artists":
 					// /api/artists/1

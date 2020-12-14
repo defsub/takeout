@@ -43,28 +43,28 @@ func (m *Music) ClearStations() {
 }
 
 func (m *Music) CreateStations() {
-	artists, _ := m.favoriteArtists(25)
-	for _, v := range artists {
-		a := m.artist(v)
-		if a == nil {
-			continue
-		}
-		station := Station{
-			User:   TakeoutUser,
-			Shared: true,
-			Type:   typeArtist,
-			Name:   fmt.Sprintf("%s Top Tracks", a.Name),
-			Ref:    fmt.Sprintf(`/music/artists/%d/popular`, a.ID)}
-		m.createStation(&station)
+	// artists, _ := m.favoriteArtists(25)
+	// for _, v := range artists {
+	// 	a := m.artist(v)
+	// 	if a == nil {
+	// 		continue
+	// 	}
+	// 	station := Station{
+	// 		User:   TakeoutUser,
+	// 		Shared: true,
+	// 		Type:   typeArtist,
+	// 		Name:   fmt.Sprintf("%s Top Tracks", a.Name),
+	// 		Ref:    fmt.Sprintf(`/music/artists/%d/popular`, a.ID)}
+	// 	m.createStation(&station)
 
-		station = Station{
-			User:   TakeoutUser,
-			Shared: true,
-			Type:   typeSimilar,
-			Name:   fmt.Sprintf("%s Similar", a.Name),
-			Ref:    fmt.Sprintf(`/music/artists/%d/similar`, a.ID)}
-		m.createStation(&station)
-	}
+	// 	station = Station{
+	// 		User:   TakeoutUser,
+	// 		Shared: true,
+	// 		Type:   typeSimilar,
+	// 		Name:   fmt.Sprintf("%s Similar", a.Name),
+	// 		Ref:    fmt.Sprintf(`/music/artists/%d/similar`, a.ID)}
+	// 	m.createStation(&station)
+	// }
 
 	for _, g := range m.config.Music.RadioGenres {
 		station := Station{
@@ -129,10 +129,33 @@ func (m *Music) artistSimilar(artist Artist, depth int, breadth int) []Track {
 	return shuffle(station)
 }
 
-// func (m *Music) artistShuffle(artist Artist, depth int) []Track {
-// 	tracks := m.artistPopularTracks(artist, depth)
-// 	return shuffle(tracks)
-// }
+func contains(tracks []Track, t Track) bool {
+	for _, v := range tracks {
+		if v.Title == t.Title && v.Artist == t.Artist {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *Music) artistShuffle(artist Artist, depth int) []Track {
+	var tracks []Track
+	// add 50% popular
+	pop := int(float32(depth) * 0.50)
+	tracks = append(tracks, shuffle(m.artistPopularTracks(artist, pop))...)
+	// randomly add some unique tracks
+	// TODO consider other algorithms
+	all := shuffle(m.artistTracks(artist))
+	pick := 0
+	for len(tracks) < depth && pick < len(all) {
+		t := all[pick]
+		if !contains(tracks, t) {
+			tracks = append(tracks, t)
+		}
+		pick++
+	}
+	return shuffle(tracks)
+}
 
 func (m *Music) artistDeep(artist Artist, depth int) []Track {
 	tracks := m.artistDeepTracks(artist, depth)
