@@ -384,12 +384,16 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 				case "popular":
 					// /api/artists/id/popular/playlist
 					handler.apiRefPlaylist(w, r, music,
-						artist.Name, "Top Tracks", "",
+						artist.Name,
+						fmt.Sprintf("%s: Top Tracks", artist.Name),
+						"",
 						fmt.Sprintf("/music/artists/%d/popular", id))
 				case "singles":
 					// /api/artists/id/singles/playlist
 					handler.apiRefPlaylist(w, r, music,
-						artist.Name, "Singles", "",
+						artist.Name,
+						fmt.Sprintf("%s: Singles", artist.Name),
+						"",
 						fmt.Sprintf("/music/artists/%d/singles", id))
 				default:
 					http.Error(w, "bummer", http.StatusNotFound)
@@ -410,13 +414,15 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 					if res == "playlist" {
 						// /api/artists/1/playlist
 						handler.apiRefPlaylist(w, r, music,
-							artist.Name, "Shuffle", "",
+							artist.Name,
+							fmt.Sprintf("%s: Shuffle", artist.Name),
+							"",
 							fmt.Sprintf("/music/artists/%d/shuffle", id))
 					} else if res == "radio" {
 						// /api/artists/1/radio
 						handler.apiRefPlaylist(w, r, music,
 							"Radio",
-							fmt.Sprintf("%s Radio", artist.Name),
+							fmt.Sprintf("%s: Radio", artist.Name),
 							"",
 							fmt.Sprintf("/music/artists/%d/similar", id))
 					} else if res == "popular" {
