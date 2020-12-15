@@ -378,12 +378,19 @@ func (m *Music) artistSingleTracks(a Artist, limit ...int) []Track {
 	if len(limit) == 1 {
 		l = limit[0]
 	}
-	m.db.Where("tracks.artist = ?", a.Name).
-		Joins("inner join releases on tracks.artist = releases.artist" +
-			" and tracks.title = releases.name and releases.type = 'Single'").
+
+	// select title from tracks inner join releases on tracks.re_id =
+	// releases.re_id where tracks.artist = 'Rage Against the Machine' and
+	// title in (select name from releases where artist = 'Rage Against the
+	// Machine' and type = 'Single') group by tracks.title having
+	// releases.date = min(releases.date) order by releases.date;
+	m.db.Where("tracks.artist = ?"+
+		" and tracks.title in (select distinct name from releases where artist = ? and type = 'Single')", a.Name, a.Name).
+		Joins("inner join releases on tracks.re_id = releases.re_id").
+		Group("tracks.title").
+		Having("releases.date = min(releases.date)").
 		Order("releases.date").
 		Limit(l).
-		Group("tracks.artist, tracks.title").
 		Find(&tracks)
 	return tracks
 }
@@ -394,12 +401,20 @@ func (m *Music) artistPopularTracks(a Artist, limit ...int) []Track {
 	if len(limit) == 1 {
 		l = limit[0]
 	}
+
+	// select tracks.title, tracks.release from tracks inner join releases
+	// on tracks.re_id = releases.re_id inner join popular on tracks.title
+	// = popular.title and tracks.artist = popular.artist where
+	// tracks.artist = 'Rage Against the Machine' group by tracks.title
+	// having releases.date = min(releases.date) order by popular.rank;
 	m.db.Where("tracks.artist = ?", a.Name).
 		Joins("inner join popular on tracks.artist = popular.artist" +
 			" and tracks.title = popular.title").
+		Joins("inner join releases on tracks.re_id = releases.re_id").
+		Group("tracks.title").
+		Having("releases.date = min(releases.date)").
 		Order("popular.rank").
 		Limit(l).
-		Group("tracks.artist, tracks.title").
 		Find(&tracks)
 	return tracks
 }
