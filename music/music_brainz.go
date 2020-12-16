@@ -43,16 +43,37 @@ type mbzArtistsPage struct {
 	Count   int         `json:"count"`
 }
 
+// TODO artist detail
+// get detail for each artist - lifespan, url rel links, genres
+// json api:
+// http://musicbrainz.org/ws/2/artist/3798b104-01cb-484c-a3b0-56adc6399b80?inc=genres+url-rels&fmt=json
+type mbzLifeSpan struct {
+	Ended bool   `json:"ended"`
+	Begin string `json:"begin"`
+	End   string `json:"end"`
+}
+
+// TODO artist detail
+type mbzArea struct {
+	Name     string `json:"name"`
+	SortName string `json:"sort-name"`
+}
+
 type mbzArtist struct {
-	ID             string     `json:"id"`
-	Score          int        `json:"score"`
-	Name           string     `json:"name"`
-	SortName       string     `json:"sort-name"`
-	Country        string     `json:"country"`
-	Disambiguation string     `json:"disambiguation"`
-	Type           string     `json:"type"`
-	Genres         []mbzGenre `json:"genres"`
-	Tags           []mbzTag   `json:"tags"`
+	ID             string        `json:"id"`
+	Score          int           `json:"score"`
+	Name           string        `json:"name"`
+	SortName       string        `json:"sort-name"`
+	Country        string        `json:"country"`
+	Disambiguation string        `json:"disambiguation"`
+	Type           string        `json:"type"`
+	Genres         []mbzGenre    `json:"genres"`
+	Tags           []mbzTag      `json:"tags"`
+	Area           mbzArea       `json:"area"`
+	BeginArea      mbzArea       `json:"begin-area"`
+	EndArea        mbzArea       `json:"end-area"`
+	LifeSpan       mbzLifeSpan   `json:"life-span"`
+	Relations      []mbzRelation `json:"relations"`
 }
 
 type mbzArtistCredit struct {
@@ -66,11 +87,18 @@ type mbzWork struct {
 	Relations []mbzRelation `json:"relations"`
 }
 
+// TODO artist detail
+type mbzURL struct {
+	ID       string `json:"id"`
+	Resource string `json:"resource"`
+}
+
 type mbzRelation struct {
 	Type       string    `json:"type"`
 	Artist     mbzArtist `json:"artist"`
 	Attributes []string  `json:"attributes"`
 	Work       mbzWork   `json:"work"`
+	URL        mbzURL    `json:"url"`
 }
 
 type mbzLabelInfo struct {

@@ -54,6 +54,7 @@ type SyncOptions struct {
 	Popular  bool
 	Similar  bool
 	Index    bool
+	Artwork  bool
 	Artist   string
 }
 
@@ -64,6 +65,7 @@ func NewSyncOptions() SyncOptions {
 		Releases: true,
 		Popular:  true,
 		Similar:  true,
+		Artwork:  true,
 		Index:    true,
 	}
 }
@@ -118,6 +120,10 @@ func (m *Music) Sync(options SyncOptions) {
 			log.Printf("sync similar\n")
 			log.CheckError(m.syncSimilar())
 		}
+		if options.Artwork {
+			log.Printf("sync artwork\n")
+			log.CheckError(m.syncArtwork())
+		}
 		if options.Index {
 			log.Printf("sync index\n")
 			log.CheckError(m.syncIndex())
@@ -144,6 +150,9 @@ func (m *Music) Sync(options SyncOptions) {
 		}
 		if options.Similar {
 			log.CheckError(m.syncSimilarFor(artists))
+		}
+		if options.Artwork {
+			log.CheckError(m.syncArtworkFor(artists))
 		}
 		if options.Index {
 			log.CheckError(m.syncIndexFor(artists))
@@ -572,6 +581,41 @@ func (m *Music) syncSimilarFor(artists []Artist) error {
 	return nil
 }
 
+// Sync artwork from Fanart.
+func (m *Music) syncArtwork() error {
+	return m.syncArtworkFor(m.artists())
+}
+
+func (m *Music) syncArtworkFor(artists []Artist) error {
+	for _, a := range artists {
+		log.Printf("artwork for %s\n", a.Name)
+		artwork := m.fanartArtistArt(&a)
+		if artwork == nil {
+			continue
+		}
+		source := "fanart"
+		for _, art := range artwork.ArtistBackgrounds {
+			bg := ArtistBackground{
+				Artist: a.Name,
+				URL:    art.URL,
+				Source: source,
+				Rank:   atoi(art.Likes),
+			}
+			m.createArtistBackground(&bg)
+		}
+		for _, art := range artwork.ArtistThumbs {
+			img := ArtistImage{
+				Artist: a.Name,
+				URL:    art.URL,
+				Source: source,
+				Rank:   atoi(art.Likes),
+			}
+			m.createArtistImage(&img)
+		}
+	}
+	return nil
+}
+
 // Get the artist names from tracks and try to find the correct artist
 // from MusicBrainz. This doesn't always work since there can be
 // multiple artists with the same name. Last.fm is used to help.
@@ -763,7 +807,7 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 	a := m.artist(release.Artist)
 	if a != nil {
 		for rank, t := range m.artistPopularTracks(*a) {
-			popularityMap[t.Key] = rank+1
+			popularityMap[t.Key] = rank + 1
 		}
 	}
 

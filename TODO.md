@@ -12,9 +12,8 @@
 
 # Music
 
-* Artist browsing
-* Artist images
-* Full screen now playing view
+* Artist browsing (web ui)
+* Full screen now playing view (web ui)
 * Play history
 
 # General

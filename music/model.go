@@ -34,9 +34,9 @@ type Artist struct {
 type Release struct {
 	gorm.Model
 	Artist         string `gorm:"uniqueIndex:idx_release"`
-	Name           string `gorm:"uniqueIndex:idx_release"`
-	RGID           string //`gorm:"uniqueIndex:idx_release"`
-	REID           string `gorm:"uniqueIndex:idx_release"`
+	Name           string `gorm:"uniqueIndex:idx_release;index:idx_release_name"`
+	RGID           string `gorm:"index:idx_release_rgid"`
+	REID           string `gorm:"uniqueIndex:idx_release;index:idx_release_reid"`
 	Disambiguation string
 	Asin           string
 	Country        string
@@ -97,8 +97,8 @@ type ArtistTag struct {
 // data from MusicBrainz.
 type Track struct {
 	gorm.Model
-	Artist       string `spiff:"creator"`
-	Release      string
+	Artist       string `spiff:"creator" gorm:"index:idx_track_artist"`
+	Release      string `gorm:"index:idx_track_release"`
 	Date         string
 	TrackNum     int `spiff:"tracknum"`
 	DiscNum      int
@@ -111,8 +111,8 @@ type Track struct {
 	Location     []string `gorm:"-" spiff:"location"`
 	TrackCount   int
 	DiscCount    int
-	REID         string
-	RGID         string
+	REID         string `gorm:"index:idx_track_reid"`
+	RGID         string `gorm:"index:idx_track_rgid"`
 	MediaTitle   string
 	ReleaseTitle string `spiff:"album"`
 	Artwork      bool
@@ -135,4 +135,20 @@ type Station struct {
 	Shared   bool
 	Type     string
 	Playlist []byte `json:"-"`
+}
+
+type ArtistImage struct {
+	gorm.Model
+	Artist string `gorm:"uniqueIndex:idx_artist_img"`
+	URL    string `gorm:"uniqueIndex:idx_artist_img"`
+	Source string `gorm:"uniqueIndex:idx_artist_img"`
+	Rank   int
+}
+
+type ArtistBackground struct {
+	gorm.Model
+	Artist string `gorm:"uniqueIndex:idx_artist_bg"`
+	URL    string `gorm:"uniqueIndex:idx_artist_bg"`
+	Source string `gorm:"uniqueIndex:idx_artist_bg"`
+	Rank   int
 }

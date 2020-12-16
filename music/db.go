@@ -744,6 +744,28 @@ func (m *Music) favoriteArtists(limit int) ([]string, error) {
 	return artists, nil
 }
 
+func (m *Music) artistBackground(a *Artist) string {
+	var backgrounds []ArtistBackground
+	m.db.Where("artist = ?", a.Name).
+		Order("rank").
+		Find(&backgrounds)
+	if len(backgrounds) == 0 {
+		return ""
+	}
+	return backgrounds[0].URL
+}
+
+func (m *Music) artistImage(a *Artist) string {
+	var imgs []ArtistImage
+	m.db.Where("artist = ?", a.Name).
+		Order("rank").
+		Find(&imgs)
+	if len(imgs) == 0 {
+		return ""
+	}
+	return imgs[0].URL
+}
+
 func (m *Music) createArtist(a *Artist) error {
 	return m.db.Create(a).Error
 }
@@ -774,4 +796,12 @@ func (m *Music) createPlaylist(p *Playlist) error {
 
 func (m *Music) createStation(s *Station) error {
 	return m.db.Create(s).Error
+}
+
+func (m *Music) createArtistBackground(bg *ArtistBackground) error {
+	return m.db.Create(bg).Error
+}
+
+func (m *Music) createArtistImage(img *ArtistImage) error {
+	return m.db.Create(img).Error
 }
