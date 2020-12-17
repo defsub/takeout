@@ -747,7 +747,7 @@ func (m *Music) favoriteArtists(limit int) ([]string, error) {
 func (m *Music) artistBackground(a *Artist) string {
 	var backgrounds []ArtistBackground
 	m.db.Where("artist = ?", a.Name).
-		Order("rank").
+		Order("rank desc").
 		Find(&backgrounds)
 	if len(backgrounds) == 0 {
 		return ""
@@ -758,7 +758,7 @@ func (m *Music) artistBackground(a *Artist) string {
 func (m *Music) artistImage(a *Artist) string {
 	var imgs []ArtistImage
 	m.db.Where("artist = ?", a.Name).
-		Order("rank").
+		Order("rank desc").
 		Find(&imgs)
 	if len(imgs) == 0 {
 		return ""
