@@ -47,7 +47,7 @@ func (m *Music) openDB() (err error) {
 		return
 	}
 
-	m.db.AutoMigrate(&Artist{}, &ArtistTag{}, &Media{}, &Playlist{},
+	m.db.AutoMigrate(&Artist{}, &ArtistBackground{}, &ArtistImage{}, &ArtistTag{}, &Media{}, &Playlist{},
 		&Popular{}, &Similar{}, &Station{}, &Release{}, &Track{})
 	return
 }
