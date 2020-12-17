@@ -25,9 +25,15 @@ import (
 // Artist info from MusicBrainz.
 type Artist struct {
 	gorm.Model
-	Name     string `gorm:"uniqueIndex:idx_artist_name"`
-	SortName string
-	ARID     string `gorm:"uniqueIndex:idx_artist_arid"`
+	Name           string `gorm:"uniqueIndex:idx_artist_name"`
+	SortName       string
+	ARID           string `gorm:"uniqueIndex:idx_artist_arid"`
+	Disambiguation string
+	Country        string
+	Area           string
+	Date           time.Time
+	EndDate        time.Time
+	Genre          string
 }
 
 // Release info from MusicBrainz.

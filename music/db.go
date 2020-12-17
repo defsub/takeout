@@ -766,6 +766,10 @@ func (m *Music) artistImage(a *Artist) string {
 	return imgs[0].URL
 }
 
+func (m *Music) updateArtist(a *Artist) error {
+	return m.db.Save(a).Error
+}
+
 func (m *Music) createArtist(a *Artist) error {
 	return m.db.Create(a).Error
 }

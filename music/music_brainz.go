@@ -430,6 +430,14 @@ func (m *Music) doArtistSearch(query string, limit int, offset int) (*mbzArtists
 	return &result, err
 }
 
+func (m *Music) MusicBrainzArtistDetail(a *Artist) (*mbzArtist, error) {
+	var result mbzArtist
+	url := fmt.Sprintf(`http://musicbrainz.org/ws/2/artist/%s?fmt=json&inc=genres+url-rels`,
+		a.ARID)
+	err := m.client.GetJson(url, &result)
+	return &result, err
+}
+
 type coverArtImage struct {
 	RawID    json.RawMessage `json:"id"`
 	ID       string          `json:"-"`

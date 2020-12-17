@@ -648,6 +648,24 @@ func (m *Music) syncArtists() error {
 			log.Printf("fixing name %s to %s\n", name, artist.Name)
 			m.updateTrackArtist(name, artist.Name)
 		}
+
+		detail, err := m.MusicBrainzArtistDetail(artist)
+		if err != nil {
+			log.Printf("%s\n", err)
+			continue
+		}
+		artist.Disambiguation = detail.Disambiguation
+		artist.Country = detail.Country
+		artist.Area = detail.Area.Name
+		artist.Date = parseDate(detail.LifeSpan.Begin)
+		artist.EndDate = parseDate(detail.LifeSpan.End)
+		if len(detail.Genres) > 0 {
+			sort.Slice(detail.Genres, func(i, j int) bool {
+				return detail.Genres[i].Count > detail.Genres[j].Count
+			})
+			artist.Genre = detail.Genres[0].Name
+		}
+		m.updateArtist(artist)
 	}
 	return nil
 }
