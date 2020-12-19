@@ -520,7 +520,7 @@ func (m *Music) artistReleases(a *Artist) []Release {
 func (m *Music) recentlyAdded() []Release {
 	var releases []Release
 	m.db.Joins("inner join tracks on tracks.re_id = releases.re_id").
-		Group("releases.name").
+		Group("releases.artist, releases.name").
 		Having("tracks.last_modified >= ?", time.Now().Add(m.config.Music.Recent*-1)).
 		Order("tracks.last_modified desc").
 		Limit(m.config.Music.RecentLimit).
@@ -534,7 +534,7 @@ func (m *Music) recentlyAdded() []Release {
 func (m *Music) recentlyReleased() []Release {
 	var releases []Release
 	m.db.Joins("inner join tracks on tracks.re_id = releases.re_id").
-		Group("releases.name").
+		Group("releases.artist, releases.name").
 		Having("releases.date >= ?", time.Now().Add(m.config.Music.Recent*-1)).
 		Order("releases.date desc").
 		Limit(m.config.Music.RecentLimit).
