@@ -47,7 +47,7 @@ func (m *Music) openDB() (err error) {
 		return
 	}
 
-	m.db.AutoMigrate(&Artist{}, &ArtistTag{}, &Media{}, &Playlist{},
+	m.db.AutoMigrate(&Artist{}, &ArtistBackground{}, &ArtistImage{}, &ArtistTag{}, &Media{}, &Playlist{},
 		&Popular{}, &Similar{}, &Station{}, &Release{}, &Track{})
 	return
 }
@@ -378,12 +378,19 @@ func (m *Music) artistSingleTracks(a Artist, limit ...int) []Track {
 	if len(limit) == 1 {
 		l = limit[0]
 	}
-	m.db.Where("tracks.artist = ?", a.Name).
-		Joins("inner join releases on tracks.artist = releases.artist" +
-			" and tracks.title = releases.name and releases.type = 'Single'").
+
+	// select title from tracks inner join releases on tracks.re_id =
+	// releases.re_id where tracks.artist = 'Rage Against the Machine' and
+	// title in (select name from releases where artist = 'Rage Against the
+	// Machine' and type = 'Single') group by tracks.title having
+	// releases.date = min(releases.date) order by releases.date;
+	m.db.Where("tracks.artist = ?"+
+		" and tracks.title in (select distinct name from releases where artist = ? and type = 'Single')", a.Name, a.Name).
+		Joins("inner join releases on tracks.re_id = releases.re_id").
+		Group("tracks.title").
+		Having("releases.date = min(releases.date)").
 		Order("releases.date").
 		Limit(l).
-		Group("tracks.artist, tracks.title").
 		Find(&tracks)
 	return tracks
 }
@@ -394,12 +401,20 @@ func (m *Music) artistPopularTracks(a Artist, limit ...int) []Track {
 	if len(limit) == 1 {
 		l = limit[0]
 	}
+
+	// select tracks.title, tracks.release from tracks inner join releases
+	// on tracks.re_id = releases.re_id inner join popular on tracks.title
+	// = popular.title and tracks.artist = popular.artist where
+	// tracks.artist = 'Rage Against the Machine' group by tracks.title
+	// having releases.date = min(releases.date) order by popular.rank;
 	m.db.Where("tracks.artist = ?", a.Name).
 		Joins("inner join popular on tracks.artist = popular.artist" +
 			" and tracks.title = popular.title").
+		Joins("inner join releases on tracks.re_id = releases.re_id").
+		Group("tracks.title").
+		Having("releases.date = min(releases.date)").
 		Order("popular.rank").
 		Limit(l).
-		Group("tracks.artist, tracks.title").
 		Find(&tracks)
 	return tracks
 }
@@ -505,7 +520,7 @@ func (m *Music) artistReleases(a *Artist) []Release {
 func (m *Music) recentlyAdded() []Release {
 	var releases []Release
 	m.db.Joins("inner join tracks on tracks.re_id = releases.re_id").
-		Group("releases.name").
+		Group("releases.artist, releases.name").
 		Having("tracks.last_modified >= ?", time.Now().Add(m.config.Music.Recent*-1)).
 		Order("tracks.last_modified desc").
 		Limit(m.config.Music.RecentLimit).
@@ -519,7 +534,7 @@ func (m *Music) recentlyAdded() []Release {
 func (m *Music) recentlyReleased() []Release {
 	var releases []Release
 	m.db.Joins("inner join tracks on tracks.re_id = releases.re_id").
-		Group("releases.name").
+		Group("releases.artist, releases.name").
 		Having("releases.date >= ?", time.Now().Add(m.config.Music.Recent*-1)).
 		Order("releases.date desc").
 		Limit(m.config.Music.RecentLimit).
@@ -729,6 +744,32 @@ func (m *Music) favoriteArtists(limit int) ([]string, error) {
 	return artists, nil
 }
 
+func (m *Music) artistBackground(a *Artist) string {
+	var backgrounds []ArtistBackground
+	m.db.Where("artist = ?", a.Name).
+		Order("rank desc").
+		Find(&backgrounds)
+	if len(backgrounds) == 0 {
+		return ""
+	}
+	return backgrounds[0].URL
+}
+
+func (m *Music) artistImage(a *Artist) string {
+	var imgs []ArtistImage
+	m.db.Where("artist = ?", a.Name).
+		Order("rank desc").
+		Find(&imgs)
+	if len(imgs) == 0 {
+		return ""
+	}
+	return imgs[0].URL
+}
+
+func (m *Music) updateArtist(a *Artist) error {
+	return m.db.Save(a).Error
+}
+
 func (m *Music) createArtist(a *Artist) error {
 	return m.db.Create(a).Error
 }
@@ -759,4 +800,12 @@ func (m *Music) createPlaylist(p *Playlist) error {
 
 func (m *Music) createStation(s *Station) error {
 	return m.db.Create(s).Error
+}
+
+func (m *Music) createArtistBackground(bg *ArtistBackground) error {
+	return m.db.Create(bg).Error
+}
+
+func (m *Music) createArtistImage(img *ArtistImage) error {
+	return m.db.Create(img).Error
 }

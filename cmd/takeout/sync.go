@@ -58,6 +58,7 @@ func init() {
 	syncCmd.Flags().BoolVarP(&syncOptions.Releases, "releases", "r", true, "sync releases")
 	syncCmd.Flags().BoolVarP(&syncOptions.Popular, "popular", "p", true, "sync popular")
 	syncCmd.Flags().BoolVarP(&syncOptions.Similar, "similar", "s", true, "sync similar")
+	syncCmd.Flags().BoolVarP(&syncOptions.Artwork, "artwork", "z", true, "sync artwork")
 	syncCmd.Flags().BoolVarP(&syncOptions.Index, "index", "i", true, "sync index")
 	syncCmd.Flags().StringVarP(&syncOptions.Artist, "artist", "a", "", "only sync a specific artist")
 	syncCmd.Flags().BoolVarP(&syncAll, "all", "x", false, "(re)sync all tracks instead of modified/new tracks")

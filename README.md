@@ -17,8 +17,9 @@ Screens running on Chrome 85 for Android 10:
 ## Features
 
 * Powerful search and playlists using [Bleve](https://blevesearch.com/). See [SEARCH.md](SEARCH.md).
-* Metadata from [MusicBrainz](https://musicbrainz.org) and [Last.fm](https://last.fm/)
+* Metadata from [MusicBrainz](https://musicbrainz.org/) and [Last.fm](https://last.fm/)
 * Album covers from the [Cover Art Archive](https://coverartarchive.org/)
+* Artist artwork from [Fanart.tv](https://fanart.tv/)
 * Media streaming directly from S3 using pre-signed time-based URLs
 * Recently added and released
 * Similar artists and releases

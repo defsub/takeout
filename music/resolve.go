@@ -45,7 +45,8 @@ func (m *Music) addTrackEntries(tracks []Track, entries []spiff.Entry) []spiff.E
 // /music/artists/{id}/singles - artist tracks released as singles
 // /music/artists/{id}/popular - artist tracks that are popular (lastfm)
 // /music/artists/{id}/tracks - artist tracks
-// /music/artists/{id}/similar - artist and similar artist tracks
+// /music/artists/{id}/similar - artist and similar artist tracks (radio)
+// /music/artists/{id}/shuffle - selection of shuffled artist tracks
 // /music/artists/{id}/deep - atrist deep tracks
 func (m *Music) resolveArtistRef(id, res string, entries []spiff.Entry) ([]spiff.Entry, error) {
 	n, err := strconv.Atoi(id)
@@ -64,8 +65,8 @@ func (m *Music) resolveArtistRef(id, res string, entries []spiff.Entry) ([]spiff
 		tracks = m.artistPopularTracks(artist)
 	case "tracks":
 		tracks = m.artistTracks(artist)
-	// case "shuffle":
-	// 	tracks = m.artistShuffle(artist, m.config.Music.RadioLimit)
+	case "shuffle":
+		tracks = m.artistShuffle(artist, m.config.Music.RadioLimit)
 	case "similar":
 		tracks = m.artistSimilar(artist,
 			m.config.Music.ArtistRadioDepth,

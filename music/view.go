@@ -32,11 +32,13 @@ type ArtistsView struct {
 }
 
 type ArtistView struct {
-	Artist   Artist
-	Releases []Release
-	Popular  []Track
-	Singles  []Track
-	Similar  []Artist
+	Artist     Artist
+	Image      string
+	Background string
+	Releases   []Release
+	Popular    []Track
+	Singles    []Track
+	Similar    []Artist
 }
 
 type PopularView struct {
@@ -101,7 +103,8 @@ func (m *Music) ArtistView(artist Artist) *ArtistView {
 		view.Singles = view.Singles[:n]
 	}
 	view.Similar = m.similarArtists(&artist)
-
+	view.Image = m.artistImage(&artist)
+	view.Background = m.artistBackground(&artist)
 	return view
 }
 

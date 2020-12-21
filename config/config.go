@@ -73,6 +73,11 @@ type LastFMAPIConfig struct {
 	Secret string
 }
 
+type FanartAPIConfig struct {
+	ProjectKey  string
+	PersonalKey string
+}
+
 type AuthDB struct {
 	Driver  string
 	Source  string
@@ -106,6 +111,7 @@ type Config struct {
 	Auth   AuthConfig
 	Music  MusicConfig
 	LastFM LastFMAPIConfig
+	Fanart FanartAPIConfig
 	Search SearchConfig
 	Server ServerConfig
 	Client ClientConfig
@@ -209,6 +215,8 @@ func configDefaults() {
 
 	viper.SetDefault("LastFM.Key", "77033164cfcda2acc4c58681dcba3cf8")
 	viper.SetDefault("LastFM.Secret", "8f43410e8e81c33d4542738ee84dc39b")
+
+	viper.SetDefault("Fanart.ProjectKey", "93ede276ba6208318031727060b697c8")
 
 	viper.SetDefault("Search.BleveDir", ".")
 
