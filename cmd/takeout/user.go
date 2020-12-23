@@ -32,9 +32,8 @@ var userCmd = &cobra.Command{
 	},
 }
 
-var user string
-var pass string
-var add bool
+var user, pass string
+var add, change bool
 
 func doit() {
 	a := auth.NewAuth(getConfig())
@@ -42,9 +41,14 @@ func doit() {
 	log.CheckError(err)
 	defer a.Close()
 
-	if add && user != "" && pass != "" {
-		err := a.AddUser(user, pass)
-		log.CheckError(err)
+	if user != "" && pass != "" {
+		if add {
+			err := a.AddUser(user, pass)
+			log.CheckError(err)
+		} else if change {
+			err := a.ChangePass(user, pass)
+			log.CheckError(err)
+		}
 	}
 }
 
@@ -53,5 +57,6 @@ func init() {
 	userCmd.Flags().StringVarP(&user, "user", "u", "", "user")
 	userCmd.Flags().StringVarP(&pass, "pass", "p", "", "pass")
 	userCmd.Flags().BoolVarP(&add, "add", "a", true, "add")
+	userCmd.Flags().BoolVarP(&add, "change", "n", true, "change")
 	rootCmd.AddCommand(userCmd)
 }

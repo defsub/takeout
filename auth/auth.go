@@ -25,8 +25,9 @@ import (
 	"github.com/defsub/takeout"
 	"github.com/defsub/takeout/config"
 	"github.com/google/uuid"
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 	"golang.org/x/crypto/scrypt"
 	"net/http"
 	"time"
@@ -60,17 +61,36 @@ func NewAuth(config *config.Config) *Auth {
 }
 
 func (a *Auth) Open() (err error) {
-	a.db, err = gorm.Open(a.config.Auth.DB.Driver, a.config.Auth.DB.Source)
+	var glog logger.Interface
+	if a.config.Music.DB.LogMode == false {
+		glog = logger.Discard
+	} else {
+		glog = logger.Default
+	}
+	cfg := &gorm.Config{
+		Logger: glog,
+	}
+
+	if a.config.Music.DB.Driver == "sqlite3" {
+		a.db, err = gorm.Open(sqlite.Open(a.config.Music.DB.Source), cfg)
+	} else {
+		err = errors.New("driver not supported")
+	}
+
 	if err != nil {
 		return
 	}
-	a.db.LogMode(a.config.Auth.DB.LogMode)
+
 	a.db.AutoMigrate(&Session{}, &User{})
 	return
 }
 
 func (a *Auth) Close() {
-	a.db.Close()
+	conn, err := a.db.DB()
+	if err != nil {
+		return
+	}
+	conn.Close()
 }
 
 func (a *Auth) AddUser(email, pass string) error {
@@ -93,8 +113,9 @@ func (a *Auth) AddUser(email, pass string) error {
 }
 
 func (a *Auth) Login(email, pass string) (http.Cookie, error) {
-	u := &User{Name: email}
-	if a.db.Find(u, u).RecordNotFound() {
+	var u User
+	err := a.db.Where("name = ?", email).First(&u).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return http.Cookie{}, errors.New("user not found")
 	}
 
@@ -107,13 +128,39 @@ func (a *Auth) Login(email, pass string) (http.Cookie, error) {
 		return http.Cookie{}, errors.New("key mismatch")
 	}
 
-	session := a.session(u)
+	session := a.session(&u)
 	err = a.createSession(session)
 	if err != nil {
 		return http.Cookie{}, err
 	}
 
 	return a.newCookie(session), nil
+}
+
+func (a *Auth) ChangePass(email, newpass string) error {
+	var u User
+	err := a.db.Where("name = ?", email).First(&u).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.New("user not found")
+	}
+
+	salt := make([]byte, 8)
+	_, err = rand.Read(salt)
+	if err != nil {
+		fmt.Printf("rand: %s\n", err)
+		return err
+	}
+
+	key, err := a.key(newpass, salt)
+	if err != nil {
+		fmt.Printf("key: %s\n", err)
+		return err
+	}
+
+	u.Salt = salt
+	u.Key = key
+
+	return a.db.Model(u).Update("salt", salt).Update("pass", newpass).Error
 }
 
 func (a *Auth) Expire(cookie *http.Cookie) {
@@ -123,11 +170,11 @@ func (a *Auth) Expire(cookie *http.Cookie) {
 
 func (a *Auth) newCookie(session *Session) http.Cookie {
 	return http.Cookie{
-		Name: CookieName,
-		Value: session.Cookie,
-		MaxAge: session.maxAge(),
-		Path: "/",
-		Secure: a.config.Auth.SecureCookies,
+		Name:     CookieName,
+		Value:    session.Cookie,
+		MaxAge:   session.maxAge(),
+		Path:     "/",
+		Secure:   a.config.Auth.SecureCookies,
 		HttpOnly: true}
 }
 
@@ -165,12 +212,13 @@ func (a *Auth) User(cookie http.Cookie) (*User, error) {
 	}
 
 	// TODO add cache
-	u := &User{Name: session.User}
-	if a.db.Find(u, u).RecordNotFound() {
+	var u User
+	err := a.db.Where("name = ?", session.User).First(&u).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errors.New("user not found")
 	}
 
-	return u, nil
+	return &u, nil
 }
 
 func (a *Auth) Logout(cookie http.Cookie) {
@@ -185,12 +233,12 @@ func (a *Auth) key(pass string, salt []byte) ([]byte, error) {
 }
 
 func (a *Auth) findSession(cookie http.Cookie) *Session {
-	// TODO add cache
-	session := &Session{Cookie: cookie.Value}
-	if a.db.Find(session, session).RecordNotFound() {
+	var session Session
+	err := a.db.Where("cookie = ?", cookie.Value).First(&session).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil
 	}
-	return session
+	return &session
 }
 
 func (a *Auth) session(u *User) *Session {
@@ -201,12 +249,17 @@ func (a *Auth) session(u *User) *Session {
 }
 
 func (a *Auth) touch(s *Session) error {
-        expires := time.Now().Add(a.maxAge())
+	expires := time.Now().Add(a.maxAge())
 	return a.db.Model(s).Update("expires", expires).Error
 }
 
 func (a *Auth) createUser(u *User) (err error) {
 	err = a.db.Create(u).Error
+	return
+}
+
+func (a *Auth) updateUser(u *User) (err error) {
+	err = a.db.Save(u).Error
 	return
 }
 
@@ -216,7 +269,7 @@ func (a *Auth) createSession(s *Session) (err error) {
 }
 
 func (a *Auth) maxAge() time.Duration {
-        return a.config.Auth.MaxAge
+	return a.config.Auth.MaxAge
 }
 
 func (s *Session) maxAge() int {
