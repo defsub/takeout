@@ -352,6 +352,7 @@ func (m *Music) assignTrackReleases() error {
 	// TODO this could be more efficient
 	for _, t := range tracks {
 		var assignedRelease *Release
+		// TODO prefer no disamb., and countries, and CDs
 		r := m.trackRelease(&t)
 		if r == nil {
 			// try using disambiguation

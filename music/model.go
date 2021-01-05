@@ -40,7 +40,7 @@ type Artist struct {
 type Release struct {
 	gorm.Model
 	Artist         string `gorm:"uniqueIndex:idx_release"`
-	Name           string `gorm:"uniqueIndex:idx_release;index:idx_release_name"`
+	Name           string `gorm:"uniqueIndex:idx_release;index:idx_release_name"` // collate nocase?
 	RGID           string `gorm:"index:idx_release_rgid"`
 	REID           string `gorm:"uniqueIndex:idx_release;index:idx_release_reid"`
 	Disambiguation string

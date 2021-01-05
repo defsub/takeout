@@ -33,9 +33,6 @@ import (
 // * getting original release dates (release groups)
 // * getting releases within groups that have different titles
 //
-// MusicBrainz is *not* used for:
-// * getting the exact MBID for a release
-// * correcting track titles
 
 type mbzArtistsPage struct {
 	Artists []mbzArtist `json:"artists"`
@@ -93,12 +90,26 @@ type mbzURL struct {
 	Resource string `json:"resource"`
 }
 
+// type="Release group series"
+// type="Recording series" (for recording in release)
+type mbzSeries struct {
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	Disambiguation string `json:"disambiguation"`
+	Type           string `json:"type"`
+}
+
+// release-group series: type="part of", target-type="series", see series
+// release recording series: type="part of", target-type="series", see series
+// single: type="single from", target-type="release_group", see release_group
 type mbzRelation struct {
-	Type       string    `json:"type"`
-	Artist     mbzArtist `json:"artist"`
-	Attributes []string  `json:"attributes"`
-	Work       mbzWork   `json:"work"`
-	URL        mbzURL    `json:"url"`
+	Type        string    `json:"type"`
+	TargetType  string    `json:"target-type"`
+	Artist      mbzArtist `json:"artist"`
+	Attributes  []string  `json:"attributes"`
+	Work        mbzWork   `json:"work"`
+	URL         mbzURL    `json:"url"`
+	Series      mbzSeries `json:"series"`
 }
 
 type mbzLabelInfo struct {
@@ -228,6 +239,7 @@ type mbzReleaseGroup struct {
 	Genres           []mbzGenre        `json:"genres"`
 	Releases         []mbzRelease      `json:"releases"`
 	ArtistCredit     []mbzArtistCredit `json:"artist-credit"`
+	Relations        []mbzRelation     `json:"relations"`
 }
 
 func (rg mbzReleaseGroup) firstReleaseDate() time.Time {
@@ -309,7 +321,7 @@ func (m *Music) MusicBrainzRelease(reid string) (*mbzRelease, error) {
 
 func (m *Music) MusicBrainzReleaseGroup(rgid string) (*mbzReleaseGroup, error) {
 	inc := []string{"releases", "media", "release-group-rels",
-		"genres", "tags", "ratings"}
+		"genres", "tags", "ratings", "series-rels"}
 	url := fmt.Sprintf("https://musicbrainz.org/ws/2/release-group/%s?fmt=json&inc=%s",
 		rgid, strings.Join(inc, "%2B"))
 	var result mbzReleaseGroup
