@@ -20,12 +20,13 @@ package music
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/defsub/takeout/log"
-	"github.com/defsub/takeout/spiff"
 	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strings"
+
+	"github.com/defsub/takeout/log"
+	"github.com/defsub/takeout/spiff"
 )
 
 type login struct {

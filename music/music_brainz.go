@@ -311,7 +311,7 @@ func (m *Music) MusicBrainzRelease(reid string) (*mbzRelease, error) {
 	inc := []string{"aliases", "artist-credits", "labels",
 		"discids", "recordings", "artist-rels",
 		"release-groups", "genres", "tags", "ratings",
-		"recording-level-rels", "work-rels", "work-level-rels"}
+		"recording-level-rels", "series-rels", "work-rels", "work-level-rels"}
 	url := fmt.Sprintf("https://musicbrainz.org/ws/2/release/%s?fmt=json&inc=%s",
 		reid, strings.Join(inc, "%2B"))
 	var result mbzRelease

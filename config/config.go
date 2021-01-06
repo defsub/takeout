@@ -61,6 +61,7 @@ type MusicConfig struct {
 	SimilarReleases      time.Duration
 	SimilarReleasesLimit int
 	RadioGenres          []string
+	RadioSeries          []string
 	RadioLimit           int
 	RadioSearchLimit     int
 	ArtistRadioBreadth   int
@@ -204,6 +205,15 @@ func configDefaults() {
 		"shoegaze",
 		"stoner metal",
 		"stoner rock",
+	})
+
+	// see https://musicbrainz.org/search (series)
+	viper.SetDefault("Music.RadioSeries", []string{
+		"Billboard Year-End Hot 100 singles of 2019",
+		"Billboard Year-End Hot 100 singles of 2020",
+		"Rolling Stone: The 100 Best Songs of the 2010s",
+		"The Rolling Stone Magazine's 500 Greatest Songs of All Time",
+		"Stereogum: The 200 Best Songs Of The 2010s",
 	})
 
 	viper.SetDefault("Music.Bucket.UseSSL", "true")

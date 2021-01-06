@@ -18,15 +18,16 @@
 package music
 
 import (
+	"net/url"
+	"regexp"
+	"strconv"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/defsub/takeout/config"
-	"net/url"
-	"regexp"
-	"strconv"
-	"time"
 )
 
 func (m *Music) bucketConfig() config.MusicBucket {

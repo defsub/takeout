@@ -36,6 +36,6 @@ func TestFanart(t *testing.T) {
 	m.Open()
 	defer m.Close()
 
-	result := m.FanartArtist(&artist)
+	result := m.fanartArtistArt(&artist)
 	fmt.Printf("%+v\n", result)
 }

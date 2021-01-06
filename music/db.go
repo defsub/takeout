@@ -19,11 +19,12 @@ package music
 
 import (
 	"errors"
+	"time"
+
 	"github.com/defsub/takeout/auth"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"time"
 )
 
 func (m *Music) openDB() (err error) {
