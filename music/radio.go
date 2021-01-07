@@ -34,6 +34,7 @@ const (
 	typeSimilar = "similar" // Songs from similar artists
 	typePeriod  = "period"  // Songs from one or more time periods
 	typeSeries  = "series"  // Songs from one or more series (chart)
+	typeOther   = "other"
 )
 
 func (s *Station) visible(user *auth.User) bool {
@@ -97,9 +98,20 @@ func (m *Music) CreateStations() {
 			User:   TakeoutUser,
 			Shared: true,
 			Type:   typeSeries,
-			Name:   strings.Title(s),
+			Name:   s,
 			Ref: fmt.Sprintf(`/music/search?q=%s&radio=1`,
 				url.QueryEscape(fmt.Sprintf(`+series:"%s"`, s)))}
+		m.createStation(&station)
+	}
+
+	for k, v := range m.config.Music.RadioOther {
+		station := Station{
+			User:   TakeoutUser,
+			Shared: true,
+			Type:   typeSeries,
+			Name:   k,
+			Ref: fmt.Sprintf(`/music/search?q=%s&radio=1`,
+				url.QueryEscape(v))}
 		m.createStation(&station)
 	}
 }
