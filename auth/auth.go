@@ -62,7 +62,7 @@ func NewAuth(config *config.Config) *Auth {
 
 func (a *Auth) Open() (err error) {
 	var glog logger.Interface
-	if a.config.Music.DB.LogMode == false {
+	if a.config.Auth.DB.LogMode == false {
 		glog = logger.Discard
 	} else {
 		glog = logger.Default
@@ -71,8 +71,8 @@ func (a *Auth) Open() (err error) {
 		Logger: glog,
 	}
 
-	if a.config.Music.DB.Driver == "sqlite3" {
-		a.db, err = gorm.Open(sqlite.Open(a.config.Music.DB.Source), cfg)
+	if a.config.Auth.DB.Driver == "sqlite3" {
+		a.db, err = gorm.Open(sqlite.Open(a.config.Auth.DB.Source), cfg)
 	} else {
 		err = errors.New("driver not supported")
 	}
@@ -119,18 +119,23 @@ func (a *Auth) Login(email, pass string) (http.Cookie, error) {
 		return http.Cookie{}, errors.New("user not found")
 	}
 
+	fmt.Printf("got %+v\n", u)
+
 	key, err := a.key(pass, u.Salt)
 	if err != nil {
+		fmt.Printf("err %s\n", err)
 		return http.Cookie{}, err
 	}
 
 	if !bytes.Equal(u.Key, key) {
+		fmt.Printf("bad match\n")
 		return http.Cookie{}, errors.New("key mismatch")
 	}
 
 	session := a.session(&u)
 	err = a.createSession(session)
 	if err != nil {
+		fmt.Printf("err %s\n", err)
 		return http.Cookie{}, err
 	}
 

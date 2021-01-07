@@ -108,7 +108,7 @@ func (m *Music) CreateStations() {
 		station := Station{
 			User:   TakeoutUser,
 			Shared: true,
-			Type:   typeSeries,
+			Type:   typeOther,
 			Name:   k,
 			Ref: fmt.Sprintf(`/music/search?q=%s&radio=1`,
 				url.QueryEscape(v))}

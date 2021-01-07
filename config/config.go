@@ -221,7 +221,7 @@ func configDefaults() {
 	})
 
 	viper.SetDefault("Music.RadioOther", map[string]string{
-		"Top Hits": "+popular:1 +series:*",
+		"Top Hits": "+popularity:1 +series:*",
 		"Epic 10+ Minute Tracks": "+length:>600 -silence",
 		"Epic 20+ Minute Tracks": "+length:>1200 -silence",
 		"Deep Tracks": "+length:>10 -silence",
