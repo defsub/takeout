@@ -19,6 +19,7 @@ package music
 
 import (
 	"fmt"
+
 	"github.com/defsub/takeout/auth"
 )
 
@@ -73,6 +74,7 @@ type RadioView struct {
 	Genre   []Station
 	Similar []Station
 	Period  []Station
+	Series  []Station
 	Other   []Station
 }
 
@@ -164,6 +166,8 @@ func (m *Music) RadioView(user *auth.User) *RadioView {
 			view.Similar = append(view.Similar, s)
 		case typePeriod:
 			view.Period = append(view.Period, s)
+		case typeSeries:
+			view.Series = append(view.Series, s)
 		default:
 			view.Other = append(view.Other, s)
 		}

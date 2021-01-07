@@ -20,12 +20,13 @@ package music
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/defsub/takeout/log"
-	"github.com/defsub/takeout/spiff"
 	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strings"
+
+	"github.com/defsub/takeout/log"
+	"github.com/defsub/takeout/spiff"
 )
 
 type login struct {
@@ -385,14 +386,14 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 					// /api/artists/id/popular/playlist
 					handler.apiRefPlaylist(w, r, music,
 						artist.Name,
-						fmt.Sprintf("%s: Top Tracks", artist.Name),
+						fmt.Sprintf("%s \u2013 Popular", artist.Name),
 						"",
 						fmt.Sprintf("/music/artists/%d/popular", id))
 				case "singles":
 					// /api/artists/id/singles/playlist
 					handler.apiRefPlaylist(w, r, music,
 						artist.Name,
-						fmt.Sprintf("%s: Singles", artist.Name),
+						fmt.Sprintf("%s \u2013 Singles", artist.Name),
 						"",
 						fmt.Sprintf("/music/artists/%d/singles", id))
 				default:
@@ -415,14 +416,14 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 						// /api/artists/1/playlist
 						handler.apiRefPlaylist(w, r, music,
 							artist.Name,
-							fmt.Sprintf("%s: Shuffle", artist.Name),
+							fmt.Sprintf("%s \u2013 Shuffle", artist.Name),
 							"",
 							fmt.Sprintf("/music/artists/%d/shuffle", id))
 					} else if res == "radio" {
 						// /api/artists/1/radio
 						handler.apiRefPlaylist(w, r, music,
 							"Radio",
-							fmt.Sprintf("%s: Radio", artist.Name),
+							fmt.Sprintf("%s \u2013 Radio", artist.Name),
 							"",
 							fmt.Sprintf("/music/artists/%d/similar", id))
 					} else if res == "popular" {

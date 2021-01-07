@@ -18,10 +18,11 @@
 package music
 
 import (
+	"fmt"
+	"testing"
+
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/search"
-	"testing"
-	"fmt"
 )
 
 func TestSearchReleases(t *testing.T) {
@@ -93,26 +94,68 @@ func TestReleaseGroupLookup(t *testing.T) {
 	m := NewMusic(config)
 	m.Open()
 
-	// result, err := m.MusicBrainzReleaseGroup("2ba66802-18a7-3bf4-958c-db871a6e7f34")
-	// if err != nil {
-	// 	t.Errorf("bummer %s\n", err)
-	// }
-	// //fmt.Printf("got %+v\n", result)
-	// fmt.Printf("%s %s (%s) - %s\n", result.ID, result.Title, result.Disambiguation, result.PrimaryType)
-	// fmt.Printf("rating: %f (%d)\n", result.Rating.Value, result.Rating.Votes)
-	// fmt.Printf("tags: ")
-	// for _, t := range result.Tags {
-	// 	fmt.Printf("%s:%d ", t.Name, t.Count)
-	// }
-	// fmt.Printf("\n")
-	// fmt.Printf("genres: ")
-	// for _, t := range result.Genres {
-	// 	fmt.Printf("%s:%d ", t.Name, t.Count)
-	// }
-	// fmt.Printf("\n")
-	// for _, r := range result.Releases {
-	// 	fmt.Printf("%s %s %s - %d\n", r.ID, r.Date, r.title(), r.totalTracks())
-	// }
+	result, err := m.MusicBrainzReleaseGroup("72375978-a9a1-4254-b957-85565c716b7e")
+	if err != nil {
+		t.Errorf("bummer %s\n", err)
+	}
+	//fmt.Printf("got %+v\n", result)
+	fmt.Printf("%s %s (%s) - %s\n", result.ID, result.Title, result.Disambiguation, result.PrimaryType)
+	fmt.Printf("rating: %f (%d)\n", result.Rating.Value, result.Rating.Votes)
+	fmt.Printf("tags: ")
+	for _, t := range result.Tags {
+		fmt.Printf("%s:%d ", t.Name, t.Count)
+	}
+	fmt.Printf("\n")
+	fmt.Printf("genres: ")
+	for _, t := range result.Genres {
+		fmt.Printf("%s:%d ", t.Name, t.Count)
+	}
+	fmt.Printf("\n")
+	for _, r := range result.Releases {
+		fmt.Printf("%s %s %s - %d\n", r.ID, r.Date, r.title(), r.totalTracks())
+	}
+	fmt.Printf("\n")
+	for _, r := range result.Relations {
+		fmt.Printf("relation type: %s (%s)\n", r.Type, r.TargetType);
+		if r.TargetType == "series" {
+			fmt.Printf("series %s (%s)\n", r.Series.Name, r.Series.Type);
+		}
+	}
+}
+
+func TestReleaseLookup(t *testing.T) {
+	config, err := config.TestConfig()
+	if err != nil {
+		t.Errorf("GetConfig %s\n", err)
+	}
+
+	m := NewMusic(config)
+	m.Open()
+
+	result, err := m.MusicBrainzRelease("ad60fee6-a25b-4d52-8a9f-00c5fa508c34")
+	if err != nil {
+		t.Errorf("bummer %s\n", err)
+	}
+	fmt.Printf("\n")
+	for _, m := range result.Media {
+		fmt.Printf("%s %d tracks\n", m.Title, m.TrackCount)
+		for _, track := range m.Tracks {
+			fmt.Printf("%s\n", track.Title)
+			for _, r := range track.Recording.Relations {
+				fmt.Printf("relation type: %s (%s)\n", r.Type, r.TargetType);
+				if r.TargetType == "series" {
+					fmt.Printf("series %s (%s)\n", r.Series.Name, r.Series.Type);
+				}
+			}
+		}
+	}
+
+	for _, r := range result.Relations {
+		fmt.Printf("relation type: %s (%s)\n", r.Type, r.TargetType);
+		if r.TargetType == "series" {
+			fmt.Printf("series %s (%s)\n", r.Series.Name, r.Series.Type);
+		}
+	}
 }
 
 func TestSearchArtist(t *testing.T) {

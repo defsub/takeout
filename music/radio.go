@@ -19,12 +19,13 @@ package music
 
 import (
 	"fmt"
-	"github.com/defsub/takeout/auth"
-	"github.com/defsub/takeout/spiff"
 	"math/rand"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/defsub/takeout/auth"
+	"github.com/defsub/takeout/spiff"
 )
 
 const (
@@ -32,6 +33,8 @@ const (
 	typeGenre   = "genre"   // Songs from one or more genres
 	typeSimilar = "similar" // Songs from similar artists
 	typePeriod  = "period"  // Songs from one or more time periods
+	typeSeries  = "series"  // Songs from one or more series (chart)
+	typeOther   = "other"
 )
 
 func (s *Station) visible(user *auth.User) bool {
@@ -90,6 +93,27 @@ func (m *Music) CreateStations() {
 		m.createStation(&station)
 	}
 
+	for _, s := range m.config.Music.RadioSeries {
+		station := Station{
+			User:   TakeoutUser,
+			Shared: true,
+			Type:   typeSeries,
+			Name:   s,
+			Ref: fmt.Sprintf(`/music/search?q=%s&radio=1`,
+				url.QueryEscape(fmt.Sprintf(`+series:"%s"`, s)))}
+		m.createStation(&station)
+	}
+
+	for k, v := range m.config.Music.RadioOther {
+		station := Station{
+			User:   TakeoutUser,
+			Shared: true,
+			Type:   typeOther,
+			Name:   k,
+			Ref: fmt.Sprintf(`/music/search?q=%s&radio=1`,
+				url.QueryEscape(v))}
+		m.createStation(&station)
+	}
 }
 
 func (m *Music) stationRefresh(s *Station, user *auth.User) {

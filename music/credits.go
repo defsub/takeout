@@ -19,9 +19,10 @@ package music
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/defsub/takeout/log"
 	"github.com/defsub/takeout/search"
-	"strings"
 )
 
 const (
@@ -38,6 +39,7 @@ const (
 	FieldRating      = "rating"
 	FieldRelease     = "release"
 	FieldReleaseDate = "release_date"
+	FieldSeries      = "series"
 	FieldStatus      = "status"
 	FieldTag         = "tag"
 	FieldTitle       = "title"
@@ -220,6 +222,8 @@ func relationCredits(c search.FieldMap, relations []mbzRelation) search.FieldMap
 			for _, a := range r.Attributes {
 				addField(c, a, r.Artist.Name)
 			}
+		} else if "part of" == r.Type && "series" == r.TargetType {
+			addField(c, FieldSeries, r.Series.Name)
 		} else {
 			if len(r.Attributes) > 0 {
 				attr := r.Attributes[0]

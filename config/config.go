@@ -20,12 +20,13 @@ package config
 import (
 	"encoding/json"
 	"errors"
-	"github.com/defsub/takeout"
-	"github.com/spf13/viper"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/defsub/takeout"
+	"github.com/spf13/viper"
 )
 
 type MusicBucket struct {
@@ -61,6 +62,8 @@ type MusicConfig struct {
 	SimilarReleases      time.Duration
 	SimilarReleasesLimit int
 	RadioGenres          []string
+	RadioSeries          []string
+	RadioOther           map[string]string
 	RadioLimit           int
 	RadioSearchLimit     int
 	ArtistRadioBreadth   int
@@ -204,6 +207,27 @@ func configDefaults() {
 		"shoegaze",
 		"stoner metal",
 		"stoner rock",
+	})
+
+	// see https://musicbrainz.org/search (series)
+	viper.SetDefault("Music.RadioSeries", []string{
+		"Billboard Year-End Hot 100 singles of 2019",
+		"Billboard Year-End Hot 100 singles of 2020",
+		"Indie 88: Top 500 Indie Rock Songs",
+		`NME: Greatest "Indie" Anthems Ever: 2007`,
+		"Rolling Stone: The 100 Best Songs of the 2010s",
+		"The Rolling Stone Magazine's 500 Greatest Songs of All Time",
+		"Stereogum: The 200 Best Songs Of The 2010s",
+	})
+
+	viper.SetDefault("Music.RadioOther", map[string]string{
+		"Top Hits": "+popularity:1 +series:*",
+		"Epic 10+ Minute Tracks": "+length:>600 -silence",
+		"Epic 20+ Minute Tracks": "+length:>1200 -silence",
+		"Deep Tracks": "+length:>10 -silence",
+		"4AD: Hits": "+label:4ad +popularity:<4",
+		"Sub Pop: Hits": `+label:"sub pop" +popularity:<4`,
+		"Beggars Banquet: Hits": `+label:"beggars banquet" +popularity:<4`,
 	})
 
 	viper.SetDefault("Music.Bucket.UseSSL", "true")

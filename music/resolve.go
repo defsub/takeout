@@ -18,12 +18,13 @@
 package music
 
 import (
-	"github.com/defsub/takeout/auth"
-	"github.com/defsub/takeout/log"
-	"github.com/defsub/takeout/spiff"
 	"net/url"
 	"regexp"
 	"strconv"
+
+	"github.com/defsub/takeout/auth"
+	"github.com/defsub/takeout/log"
+	"github.com/defsub/takeout/spiff"
 )
 
 func (m *Music) addTrackEntries(tracks []Track, entries []spiff.Entry) []spiff.Entry {

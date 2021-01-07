@@ -18,8 +18,9 @@
 package music
 
 import (
-	"github.com/defsub/takeout/config"
 	"testing"
+
+	"github.com/defsub/takeout/config"
 )
 
 func TestArtistView(t *testing.T) {

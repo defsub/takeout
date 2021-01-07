@@ -20,18 +20,19 @@ package music
 import (
 	"errors"
 	"fmt"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/defsub/takeout/client"
-	"github.com/defsub/takeout/config"
-	"github.com/defsub/takeout/log"
-	"github.com/defsub/takeout/search"
-	"gorm.io/gorm"
 	"math"
 	"net/url"
 	"regexp"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/defsub/takeout/client"
+	"github.com/defsub/takeout/config"
+	"github.com/defsub/takeout/log"
+	"github.com/defsub/takeout/search"
+	"gorm.io/gorm"
 )
 
 const (
@@ -59,6 +60,7 @@ type SyncOptions struct {
 }
 
 func NewSyncOptions() SyncOptions {
+
 	return SyncOptions{
 		Since:    time.Time{},
 		Tracks:   true,
@@ -250,7 +252,7 @@ func (m *Music) syncReleasesFor(artists []Artist) error {
 		}
 		for _, r := range releases {
 			r.Name = fixName(r.Name)
-			for i, _ := range r.Media {
+			for i := range r.Media {
 				r.Media[i].Name = fixName(r.Media[i].Name)
 			}
 
@@ -352,6 +354,7 @@ func (m *Music) assignTrackReleases() error {
 	// TODO this could be more efficient
 	for _, t := range tracks {
 		var assignedRelease *Release
+		// TODO prefer no disamb., and countries, and CDs
 		r := m.trackRelease(&t)
 		if r == nil {
 			// try using disambiguation
@@ -519,12 +522,12 @@ func (m *Music) fixTrackReleaseTitles() error {
 		for _, r := range releases {
 			media := m.releaseMedia(r)
 			names := make(map[int]Media)
-			for i, _ := range media {
+			for i := range media {
 				names[media[i].Position] = media[i]
 			}
 
 			tracks := m.releaseTracks(r)
-			for i, _ := range tracks {
+			for i := range tracks {
 				name := names[tracks[i].DiscNum].Name
 				if name != "" && name != r.Name {
 					tracks[i].MediaTitle = name
@@ -834,7 +837,7 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 	for _, t := range m.releaseSingles(release) {
 		singles[t.Key] = true
 	}
-	for k, _ := range singles {
+	for k := range singles {
 		fields, ok := newIndex[k]
 		if ok {
 			addField(fields, FieldType, TypeSingle)
@@ -846,7 +849,7 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 	for _, t := range m.releasePopular(release) {
 		popular[t.Key] = true
 	}
-	for k, _ := range popular {
+	for k := range popular {
 		fields, ok := newIndex[k]
 		if ok {
 			addField(fields, FieldType, TypePopular)

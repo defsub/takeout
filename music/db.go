@@ -19,11 +19,12 @@ package music
 
 import (
 	"errors"
+	"time"
+
 	"github.com/defsub/takeout/auth"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"time"
 )
 
 func (m *Music) openDB() (err error) {
@@ -200,6 +201,7 @@ func (m *Music) tracksWithoutReleases() []Track {
 // release name contains underscores which match nicely with 'like'.
 func (m *Music) artistReleasesLike(a *Artist, pattern string, trackCount, discCount int) []Release {
 	var releases []Release
+	// TODO ignore release name case
 	m.db.Where("artist = ? and name like ? and track_count = ? and disc_count = ?",
 		a.Name, pattern, trackCount, discCount).Find(&releases)
 	if len(releases) == 0 {
@@ -384,8 +386,19 @@ func (m *Music) artistSingleTracks(a Artist, limit ...int) []Track {
 	// title in (select name from releases where artist = 'Rage Against the
 	// Machine' and type = 'Single') group by tracks.title having
 	// releases.date = min(releases.date) order by releases.date;
+	//
+	// singles can also be named 'a-side / b-side'
+	// find the a-sides:
+	// select distinct substr(name, 0, instr(name, ' / ')) from releases where type = 'Single' and name like '% / %';
+	//
+	// Example:
+	//  Metronomic Underground / Percolations
+	//  Jumpsuit / Nico and the Niners
+	//  She's Lost Control / Atmosphere
 	m.db.Where("tracks.artist = ?"+
-		" and tracks.title in (select distinct name from releases where artist = ? and type = 'Single')", a.Name, a.Name).
+		" and (tracks.title in (select distinct name from releases where artist = ? and type = 'Single')"+
+		" or tracks.title in (select distinct substr(name, 0, instr(name, ' / ')) from releases where artist = ? and type = 'Single' and name like '% / %'))",
+		a.Name, a.Name, a.Name).
 		Joins("inner join releases on tracks.re_id = releases.re_id").
 		Group("tracks.title").
 		Having("releases.date = min(releases.date)").

@@ -20,10 +20,6 @@ package music
 import (
 	"errors"
 	"fmt"
-	"github.com/defsub/takeout/auth"
-	"github.com/defsub/takeout/config"
-	"github.com/defsub/takeout/encoding/xspf"
-	"github.com/defsub/takeout/log"
 	"html/template"
 	"net/http"
 	"net/url"
@@ -32,6 +28,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/defsub/takeout/auth"
+	"github.com/defsub/takeout/config"
+	"github.com/defsub/takeout/encoding/xspf"
+	"github.com/defsub/takeout/log"
 )
 
 type MusicHandler struct {
