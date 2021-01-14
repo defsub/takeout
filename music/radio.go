@@ -69,7 +69,14 @@ func (m *Music) CreateStations() {
 	// 	m.createStation(&station)
 	// }
 
-	for _, g := range m.config.Music.RadioGenres {
+	genres := m.config.Music.RadioGenres
+	if len(m.config.Music.RadioGenres) == 0 {
+		genres = m.artistGenres()
+	}
+	for _, g := range genres {
+		if len(g) == 0 {
+			continue
+		}
 		station := Station{
 			User:   TakeoutUser,
 			Shared: true,

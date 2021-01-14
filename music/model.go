@@ -158,3 +158,12 @@ type ArtistBackground struct {
 	Source string `gorm:"uniqueIndex:idx_artist_bg"`
 	Rank   int
 }
+
+// type Scrobble struct {
+// 	gorm.Model
+// 	User    string
+// 	Artist  string
+// 	Release string
+// 	Title   string
+// 	Date    time.Time
+// }

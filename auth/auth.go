@@ -25,10 +25,10 @@ import (
 	"github.com/defsub/takeout"
 	"github.com/defsub/takeout/config"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/scrypt"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"golang.org/x/crypto/scrypt"
 	"net/http"
 	"time"
 )
@@ -165,7 +165,7 @@ func (a *Auth) ChangePass(email, newpass string) error {
 	u.Salt = salt
 	u.Key = key
 
-	return a.db.Model(u).Update("salt", salt).Update("pass", newpass).Error
+	return a.db.Model(u).Update("salt", u.Salt).Update("key", u.Key).Error
 }
 
 func (a *Auth) Expire(cookie *http.Cookie) {

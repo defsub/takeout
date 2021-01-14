@@ -75,6 +75,7 @@ func (s *Search) Search(q string, limit int) ([]string, error) {
 		return nil, err
 	}
 	var keys []string
+	fmt.Printf("search `%s` - %d hits %d\n", q, limit, len(searchResult.Hits))
 	for _, hit := range searchResult.Hits {
 		keys = append(keys, hit.ID)
 	}

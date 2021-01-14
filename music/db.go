@@ -779,6 +779,23 @@ func (m *Music) artistImage(a *Artist) string {
 	return imgs[0].URL
 }
 
+func (m *Music) artistGenres() []string {
+	var genres []string
+	rows, err := m.db.Table("artists").
+		Select("distinct(genre)").
+		Order("genre").Rows()
+	if err != nil {
+		return genres
+	}
+	for rows.Next() {
+		var v string
+		rows.Scan(&v)
+		genres = append(genres, v)
+	}
+	rows.Close()
+	return genres
+}
+
 func (m *Music) updateArtist(a *Artist) error {
 	return m.db.Save(a).Error
 }

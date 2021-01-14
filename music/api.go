@@ -332,6 +332,8 @@ func (handler *MusicHandler) apiSearch(w http.ResponseWriter, r *http.Request, m
 // GET /api/releases/1 > ReleaseView{}
 // GET /api/releases/1/playlist > spiff.Playlist{}
 //
+// POST /api/scrobble <
+//
 // 200: success
 // 500: error
 func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
