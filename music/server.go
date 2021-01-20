@@ -274,7 +274,7 @@ func (handler *MusicHandler) authorized(w http.ResponseWriter, r *http.Request) 
 	}
 
 	bucketName := list[0]
-	path := fmt.Sprintf("%s/%s", handler.config.DataDir, bucketName)
+	path := fmt.Sprintf("%s/%s/config.ini", handler.config.DataDir, bucketName)
 	fmt.Printf("bucket path %s\n", path)
 
 	handler.musicConfig, err = config.LoadConfig(path)

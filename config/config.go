@@ -20,9 +20,11 @@ package config
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/defsub/takeout"
@@ -223,6 +225,19 @@ func userAgent() string {
 func readConfig(v *viper.Viper) (*Config, error) {
 	var config Config
 	err := v.ReadInConfig()
+	fmt.Printf("used %s\n", v.ConfigFileUsed())
+	dir := filepath.Dir(v.ConfigFileUsed())
+	fmt.Printf("dir %s\n", dir)
+	for k, v := range v.AllSettings() {
+		fmt.Printf("key %s\n", k)
+		if strings.HasSuffix(k, "File") || strings.HasSuffix(k, "Dir") {
+			if strings.HasPrefix(v.(string), "/") == false {
+				fmt.Printf("* %s -> %s/%s\n", k, dir, v.(string))
+			} else {
+				fmt.Printf("  %s -> %s/%s\n", k, dir, v.(string))
+			}
+		}
+	}
 	if err == nil {
 		err = v.Unmarshal(&config)
 		config.Music.readMaps()
