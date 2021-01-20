@@ -60,7 +60,6 @@ type SyncOptions struct {
 }
 
 func NewSyncOptions() SyncOptions {
-
 	return SyncOptions{
 		Since:    time.Time{},
 		Tracks:   true,
@@ -306,6 +305,25 @@ func (m *Music) checkReleaseArtwork(r *Release) error {
 			if err != nil {
 				return err
 			}
+		}
+	} else if r.Artwork == false {
+		log.Printf("check artwork for %s / %s\n", r.Artist, r.Name)
+		art, err := m.coverArtArchive(r.REID)
+		if err != nil {
+			return err
+		}
+		front, back := false, false
+		for _, img := range art.Images {
+			if img.Front {
+				front = true
+			}
+			if img.Back {
+				back = true
+			}
+		}
+		err = m.updateArtwork(r, front, back)
+		if err != nil {
+			return err
 		}
 	}
 	return nil

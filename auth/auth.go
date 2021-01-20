@@ -22,6 +22,10 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/defsub/takeout"
 	"github.com/defsub/takeout/config"
 	"github.com/google/uuid"
@@ -29,8 +33,6 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"net/http"
-	"time"
 )
 
 const (
@@ -39,9 +41,21 @@ const (
 
 type User struct {
 	gorm.Model
-	Name string `gorm:"unique_index:idx_user_name"`
-	Key  []byte
-	Salt []byte
+	Name    string `gorm:"unique_index:idx_user_name"`
+	Key     []byte
+	Salt    []byte
+	Buckets string
+}
+
+func (u *User) BucketList() []string {
+	if len(u.Buckets) == 0 {
+		return make([]string, 0)
+	}
+	list := strings.Split(u.Buckets, ",")
+	for i := range list {
+		list[i] = strings.Trim(list[i], " ")
+	}
+	return list
 }
 
 type Session struct {
@@ -166,6 +180,18 @@ func (a *Auth) ChangePass(email, newpass string) error {
 	u.Key = key
 
 	return a.db.Model(u).Update("salt", u.Salt).Update("key", u.Key).Error
+}
+
+func (a *Auth) AssignBuckets(email, buckets string) error {
+	var u User
+	err := a.db.Where("name = ?", email).First(&u).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.New("user not found")
+	}
+
+	u.Buckets = buckets
+
+	return a.db.Model(u).Update("buckets", u.Buckets).Error
 }
 
 func (a *Auth) Expire(cookie *http.Cookie) {

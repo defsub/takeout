@@ -29,7 +29,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-type MusicBucket struct {
+type BucketConfig struct {
 	Endpoint        string
 	Region          string
 	AccessKeyID     string
@@ -40,15 +40,14 @@ type MusicBucket struct {
 	URLExpiration   time.Duration
 }
 
-type MusicDB struct {
+type DatabaseConfig struct {
 	Driver  string
 	Source  string
 	LogMode bool
 }
 
 type MusicConfig struct {
-	Bucket               MusicBucket
-	DB                   MusicDB
+	DB                   DatabaseConfig
 	ArtistFile           string
 	ReleaseFile          string
 	artistMap            map[string]string
@@ -81,14 +80,8 @@ type FanartAPIConfig struct {
 	PersonalKey string
 }
 
-type AuthDB struct {
-	Driver  string
-	Source  string
-	LogMode bool
-}
-
 type AuthConfig struct {
-	DB            AuthDB
+	DB            DatabaseConfig
 	MaxAge        time.Duration
 	SecureCookies bool
 }
@@ -111,13 +104,15 @@ type ClientConfig struct {
 }
 
 type Config struct {
-	Auth   AuthConfig
-	Music  MusicConfig
-	LastFM LastFMAPIConfig
-	Fanart FanartAPIConfig
-	Search SearchConfig
-	Server ServerConfig
-	Client ClientConfig
+	Auth    AuthConfig
+	Bucket  BucketConfig
+	Client  ClientConfig
+	DataDir string
+	Fanart  FanartAPIConfig
+	LastFM  LastFMAPIConfig
+	Music   MusicConfig
+	Search  SearchConfig
+	Server  ServerConfig
 }
 
 func (mc *MusicConfig) UserArtistID(name string) (string, bool) {
@@ -140,77 +135,60 @@ func (mc *MusicConfig) readMaps() {
 	}
 }
 
-func configDefaults() {
-	viper.SetDefault("Auth.MaxAge", "24h")
-	viper.SetDefault("Auth.SecureCookies", "true")
-	viper.SetDefault("Auth.DB.Driver", "sqlite3")
-	viper.SetDefault("Auth.DB.Source", "auth.db")
-	viper.SetDefault("Auth.DB.LogMode", "false")
+func configDefaults(v *viper.Viper) {
+	v.SetDefault("Auth.DB.Driver", "sqlite3")
+	v.SetDefault("Auth.DB.LogMode", "false")
+	v.SetDefault("Auth.DB.Source", "auth.db")
+	v.SetDefault("Auth.MaxAge", "24h")
+	v.SetDefault("Auth.SecureCookies", "true")
 
-	viper.SetDefault("Music.Recent", "8760h") // 1 year
-	viper.SetDefault("Music.RecentLimit", "50")
-	viper.SetDefault("Music.SearchLimit", "100")
-	viper.SetDefault("Music.PopularLimit", "50")
-	viper.SetDefault("Music.SinglesLimit", "50")
-	viper.SetDefault("Music.DeepLimit", "50")
-	viper.SetDefault("Music.SimilarArtistsLimit", "10")
-	viper.SetDefault("Music.SimilarReleases", "8760h") // +/- 1 year
-	viper.SetDefault("Music.SimilarReleasesLimit", "10")
+	v.SetDefault("Bucket.URLExpiration", "72h")
+	v.SetDefault("Bucket.UseSSL", "true")
 
-	viper.SetDefault("Music.RadioLimit", "25")
-	viper.SetDefault("Music.RadioSearchLimit", "1000")
-	viper.SetDefault("Music.ArtistRadioBreadth", "10")
-	viper.SetDefault("Music.ArtistRadioDepth", "10")
+	v.SetDefault("Client.CacheDir", ".httpcache")
+	v.SetDefault("Client.MaxAge", 86400*30) // 30 days in seconds
+	v.SetDefault("Client.UseCache", "false")
+	v.SetDefault("Client.UserAgent", userAgent())
+
+	v.SetDefault("DataDir", ".")
+
+	v.SetDefault("Fanart.ProjectKey", "93ede276ba6208318031727060b697c8")
+
+	v.SetDefault("LastFM.Key", "77033164cfcda2acc4c58681dcba3cf8")
+	v.SetDefault("LastFM.Secret", "8f43410e8e81c33d4542738ee84dc39b")
+
+	v.SetDefault("Music.ArtistRadioBreadth", "10")
+	v.SetDefault("Music.ArtistRadioDepth", "10")
+	v.SetDefault("Music.DeepLimit", "50")
+	v.SetDefault("Music.PopularLimit", "50")
+	v.SetDefault("Music.RadioLimit", "25")
+	v.SetDefault("Music.RadioSearchLimit", "1000")
+	v.SetDefault("Music.Recent", "8760h") // 1 year
+	v.SetDefault("Music.RecentLimit", "50")
+	v.SetDefault("Music.SearchLimit", "100")
+	v.SetDefault("Music.SimilarArtistsLimit", "10")
+	v.SetDefault("Music.SimilarReleases", "8760h") // +/- 1 year
+	v.SetDefault("Music.SimilarReleasesLimit", "10")
+	v.SetDefault("Music.SinglesLimit", "50")
 
 	// see https://wiki.musicbrainz.org/Release_Country
-	viper.SetDefault("Music.ReleaseContries", []string{
+	v.SetDefault("Music.ReleaseContries", []string{
 		"US", // United States
 		"XW", // Worldwide
 		"XE", // Europe
 	})
 
-	// see https://musicbrainz.org/genres
-	// viper.SetDefault("Music.RadioGenres", []string{
-	// 	"alternative rock",
-	// 	"alternative",
-	// 	"ambient",
-	// 	"big beat",
-	// 	"blues rock",
-	// 	"blues",
-	// 	"classic rock",
-	// 	"contemporary r&b",
-	// 	"country rock",
-	// 	"dance-pop",
-	// 	"disco",
-	// 	"dream pop",
-	// 	"electronic",
-	// 	"gothic rock",
-	// 	"grunge",
-	// 	"hard rock",
-	// 	"heavy metal",
-	// 	"hip hop",
-	// 	"house",
-	// 	"indie pop",
-	// 	"indie rock",
-	// 	"indie",
-	// 	"krautrock",
-	// 	"latin",
-	// 	"metal",
-	// 	"new wave",
-	// 	"pop rock",
-	// 	"pop",
-	// 	"post-punk",
-	// 	"post-rock",
-	// 	"progressive rock",
-	// 	"r&b",
-	// 	"rock",
-	// 	"shoegaze",
-	// 	"stoner metal",
-	// 	"stoner rock",
-	// })
+	v.SetDefault("Music.DB.Driver", "sqlite3")
+	v.SetDefault("Music.DB.Source", "music.db")
+	v.SetDefault("Music.DB.LogMode", "false")
+
+	v.SetDefault("Search.BleveDir", ".")
+
+	v.SetDefault("Server.WebDir", "web")
+	v.SetDefault("Server.URL", "https://example.com") // w/o trailing slash
 
 	// see https://musicbrainz.org/search (series)
-	viper.SetDefault("Music.RadioSeries", []string{
+	v.SetDefault("Music.RadioSeries", []string{
 		"Billboard Year-End Hot 100 singles of 2019",
 		"Billboard Year-End Hot 100 singles of 2020",
 		"Indie 88: Top 500 Indie Rock Songs",
@@ -220,57 +198,35 @@ func configDefaults() {
 		"Stereogum: The 200 Best Songs Of The 2010s",
 	})
 
-	viper.SetDefault("Music.RadioOther", map[string]string{
-		"Series Hits": "+series:*",
-		"Top Hits": "+popularity:1",
-		"Top 3 Hits": "+popularity:<4",
-		"Top 5 Hits": "+popularity:<6",
-		"Top 10 Hits": "+popularity:<11",
+	v.SetDefault("Music.RadioOther", map[string]string{
+		"Series Hits":            "+series:*",
+		"Top Hits":               "+popularity:1",
+		"Top 3 Hits":             "+popularity:<4",
+		"Top 5 Hits":             "+popularity:<6",
+		"Top 10 Hits":            "+popularity:<11",
 		"Epic 10+ Minute Tracks": "+length:>600 -silence",
 		"Epic 20+ Minute Tracks": "+length:>1200 -silence",
-		"Deep Tracks": "+track:>10 -silence",
-		"4AD: Hits": "+label:4ad +popularity:<4",
-		"Def Jam: Hits": `+label:"def jam" +popularity:<4`,
-		"Sub Pop Records: Hits": `+label:"sub pop" +popularity:<4`,
-		"Beggars Banquet: Hits": `+label:"beggars banquet" +popularity:<4`,
-		"Hits with Violin": `+violin:* +popularity:<4`,
+		"Deep Tracks":            "+track:>10 -silence",
+		"4AD: Hits":              "+label:4ad +popularity:<4",
+		"Def Jam: Hits":          `+label:"def jam" +popularity:<4`,
+		"Sub Pop Records: Hits":  `+label:"sub pop" +popularity:<4`,
+		"Beggars Banquet: Hits":  `+label:"beggars banquet" +popularity:<4`,
+		"Hits with Violin":       `+violin:* +popularity:<4`,
 	})
 
-	viper.SetDefault("Music.Bucket.UseSSL", "true")
-	viper.SetDefault("Music.Bucket.URLExpiration", "72h")
-
-	viper.SetDefault("Music.DB.Driver", "sqlite3")
-	viper.SetDefault("Music.DB.Source", "music.db")
-	viper.SetDefault("Music.DB.LogMode", "false")
-
-	viper.SetDefault("LastFM.Key", "77033164cfcda2acc4c58681dcba3cf8")
-	viper.SetDefault("LastFM.Secret", "8f43410e8e81c33d4542738ee84dc39b")
-
-	viper.SetDefault("Fanart.ProjectKey", "93ede276ba6208318031727060b697c8")
-
-	viper.SetDefault("Search.BleveDir", ".")
-
-	viper.SetDefault("Server.WebDir", "web")
-	viper.SetDefault("Server.URL", "https://example.com") // w/o trailing slash
-
-	viper.SetDefault("Client.UseCache", "false")
-	viper.SetDefault("Client.MaxAge", 86400*30) // 30 days in seconds
-	viper.SetDefault("Client.CacheDir", ".httpcache")
-	viper.SetDefault("Client.UserAgent", userAgent())
 }
 
 func userAgent() string {
 	return takeout.AppName + "/" + takeout.Version + " ( " + takeout.Contact + " ) "
 }
 
-func readConfig() (*Config, error) {
+func readConfig(v *viper.Viper) (*Config, error) {
 	var config Config
-
-	err := viper.ReadInConfig()
+	err := v.ReadInConfig()
 	if err == nil {
-		err = viper.Unmarshal(&config)
+		err = v.Unmarshal(&config)
+		config.Music.readMaps()
 	}
-	config.Music.readMaps()
 	return &config, err
 }
 
@@ -279,11 +235,12 @@ func TestConfig() (*Config, error) {
 	if testDir == "" {
 		return nil, errors.New("missing test config")
 	}
-	configDefaults()
-	viper.SetConfigFile(filepath.Join(testDir, "test.ini"))
-	viper.SetDefault("Music.DB.Source", filepath.Join(testDir, "music.db"))
-	viper.SetDefault("Auth.DB.Source", filepath.Join(testDir, "auth.db"))
-	return readConfig()
+	v := viper.New()
+	configDefaults(v)
+	v.SetConfigFile(filepath.Join(testDir, "test.ini"))
+	v.SetDefault("Music.DB.Source", filepath.Join(testDir, "music.db"))
+	v.SetDefault("Auth.DB.Source", filepath.Join(testDir, "auth.db"))
+	return readConfig(v)
 }
 
 func SetConfigFile(path string) {
@@ -299,6 +256,14 @@ func SetConfigName(name string) {
 }
 
 func GetConfig() (*Config, error) {
-	configDefaults()
-	return readConfig()
+	v := viper.New()
+	configDefaults(v)
+	return readConfig(v)
+}
+
+func LoadConfig(path string) (*Config, error) {
+	v := viper.New()
+	configDefaults(v)
+	v.SetConfigFile(path)
+	return readConfig(v)
 }

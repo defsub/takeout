@@ -340,6 +340,13 @@ func (m *Music) updateOtherArtwork(r *Release, id string) error {
 	return m.db.Model(r).Update("other_artwork", id).Error
 }
 
+func (m *Music) updateArtwork(r *Release, front, back bool) error {
+	return m.db.Model(r).
+		Update("artwork", front || back).
+		Update("front_artwork", front).
+		Update("back_artwork", back).Error
+}
+
 // At this point a release couldn't be found easily. Like Weezer has
 // multiple albums called Weezer with the same number of tracks. Use
 // MusicBrainz disambiguate to look further. This returns all artist

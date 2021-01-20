@@ -30,8 +30,8 @@ import (
 	"github.com/defsub/takeout/config"
 )
 
-func (m *Music) bucketConfig() config.MusicBucket {
-	return m.config.Music.Bucket
+func (m *Music) bucketConfig() config.BucketConfig {
+	return m.config.Bucket
 }
 
 // Connect to the configured S3 bucket.
@@ -194,9 +194,9 @@ func matchTrack(file string, t *Track) bool {
 // Generate a presigned url which expires based on config settings.
 func (m *Music) bucketURL(t *Track) *url.URL {
 	req, _ := m.s3.GetObjectRequest(&s3.GetObjectInput{
-		Bucket: aws.String(m.config.Music.Bucket.BucketName),
+		Bucket: aws.String(m.config.Bucket.BucketName),
 		Key: aws.String(t.Key)})
-	urlStr, _ := req.Presign(m.config.Music.Bucket.URLExpiration)
+	urlStr, _ := req.Presign(m.config.Bucket.URLExpiration)
 	url, _ := url.Parse(urlStr)
 	return url
 }

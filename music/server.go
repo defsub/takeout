@@ -36,12 +36,13 @@ import (
 )
 
 type MusicHandler struct {
-	config *config.Config
-	user   *auth.User
+	user        *auth.User
+	config      *config.Config
+	musicConfig *config.Config
 }
 
 func (handler *MusicHandler) NewMusic(w http.ResponseWriter, r *http.Request) *Music {
-	music := NewMusic(handler.config)
+	music := NewMusic(handler.musicConfig)
 	if music.Open() != nil {
 		http.Error(w, "bummer", http.StatusInternalServerError)
 		return nil
@@ -265,6 +266,22 @@ func (handler *MusicHandler) authorized(w http.ResponseWriter, r *http.Request) 
 
 	a.Refresh(cookie)
 	http.SetCookie(w, cookie)
+
+	list := handler.user.BucketList()
+	if len(list) == 0 {
+		http.Error(w, "bummer", http.StatusServiceUnavailable)
+		return false
+	}
+
+	bucketName := list[0]
+	path := fmt.Sprintf("%s/%s", handler.config.DataDir, bucketName)
+	fmt.Printf("bucket path %s\n", path)
+
+	handler.musicConfig, err = config.LoadConfig(path)
+	if err != nil {
+		http.Error(w, "bummer", http.StatusInternalServerError)
+		return false
+	}
 
 	return true
 }

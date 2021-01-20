@@ -28,13 +28,13 @@ type FieldMap map[string]interface{}
 type IndexMap map[string]FieldMap
 
 type Search struct {
-	config   *config.Config
+	config   config.SearchConfig
 	index    bleve.Index
 	Keywords []string
 }
 
 func NewSearch(config *config.Config) *Search {
-	return &Search{config: config}
+	return &Search{config: config.Search}
 }
 
 func (s *Search) Open(name string) error {
@@ -47,7 +47,7 @@ func (s *Search) Open(name string) error {
 	}
 	mapping.AddDocumentMapping("_default", keywordMapping)
 
-	path := fmt.Sprintf("%s/%s.bleve", s.config.Search.BleveDir, name)
+	path := fmt.Sprintf("%s/%s.bleve", s.config.BleveDir, name)
 	index, err := bleve.New(path, mapping)
 	if err == bleve.ErrorIndexPathExists {
 		index, err = bleve.Open(path)
