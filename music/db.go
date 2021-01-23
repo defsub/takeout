@@ -347,6 +347,14 @@ func (m *Music) updateArtwork(r *Release, front, back bool) error {
 		Update("back_artwork", back).Error
 }
 
+// select count(*) from releases where artwork = false and re_id in (select distinct re_id from tracks);
+func (m *Music) releasesWithoutArtwork() []Release {
+	var releases []Release
+	m.db.Where("artwork is false and re_id in (select distinct re_id from tracks)").
+		Find(&releases)
+	return releases
+}
+
 // At this point a release couldn't be found easily. Like Weezer has
 // multiple albums called Weezer with the same number of tracks. Use
 // MusicBrainz disambiguate to look further. This returns all artist

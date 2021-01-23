@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -49,27 +50,27 @@ type DatabaseConfig struct {
 }
 
 type MusicConfig struct {
-	DB                   DatabaseConfig
 	ArtistFile           string
-	ReleaseFile          string
-	artistMap            map[string]string
+	ArtistRadioBreadth   int
+	ArtistRadioDepth     int
+	DB                   DatabaseConfig
+	DeepLimit            int
+	PopularLimit         int
+	RadioGenres          []string
+	RadioLimit           int
+	RadioOther           map[string]string
+	RadioSearchLimit     int
+	RadioSeries          []string
 	Recent               time.Duration
 	RecentLimit          int
+	ReleaseCountries     []string
+	ReleaseFile          string
 	SearchLimit          int
-	PopularLimit         int
-	SinglesLimit         int
-	DeepLimit            int
 	SimilarArtistsLimit  int
 	SimilarReleases      time.Duration
 	SimilarReleasesLimit int
-	RadioGenres          []string
-	RadioSeries          []string
-	RadioOther           map[string]string
-	RadioLimit           int
-	RadioSearchLimit     int
-	ArtistRadioBreadth   int
-	ArtistRadioDepth     int
-	ReleaseCountries     []string
+	SinglesLimit         int
+	artistMap            map[string]string
 }
 
 type LastFMAPIConfig struct {
@@ -99,22 +100,22 @@ type ServerConfig struct {
 }
 
 type ClientConfig struct {
-	UseCache  bool
-	MaxAge    int
 	CacheDir  string
+	MaxAge    int
+	UseCache  bool
 	UserAgent string
 }
 
 type Config struct {
-	Auth    AuthConfig
-	Bucket  BucketConfig
-	Client  ClientConfig
-	DataDir string
-	Fanart  FanartAPIConfig
-	LastFM  LastFMAPIConfig
-	Music   MusicConfig
-	Search  SearchConfig
-	Server  ServerConfig
+	Auth           AuthConfig
+	Bucket         BucketConfig
+	Client         ClientConfig
+	DataDir        string
+	Fanart         FanartAPIConfig
+	LastFM         LastFMAPIConfig
+	Music          MusicConfig
+	Search         SearchConfig
+	Server         ServerConfig
 }
 
 func (mc *MusicConfig) UserArtistID(name string) (string, bool) {
@@ -186,6 +187,7 @@ func configDefaults(v *viper.Viper) {
 
 	v.SetDefault("Search.BleveDir", ".")
 
+	v.SetDefault("Server.Listen", "127.0.0.1:3000")
 	v.SetDefault("Server.WebDir", "web")
 	v.SetDefault("Server.URL", "https://example.com") // w/o trailing slash
 
@@ -224,17 +226,15 @@ func userAgent() string {
 
 func readConfig(v *viper.Viper) (*Config, error) {
 	var config Config
+	var pathRegexp = regexp.MustCompile(`(file|dir|source)$`)
 	err := v.ReadInConfig()
-	fmt.Printf("used %s\n", v.ConfigFileUsed())
 	dir := filepath.Dir(v.ConfigFileUsed())
-	fmt.Printf("dir %s\n", dir)
-	for k, v := range v.AllSettings() {
-		fmt.Printf("key %s\n", k)
-		if strings.HasSuffix(k, "File") || strings.HasSuffix(k, "Dir") {
-			if strings.HasPrefix(v.(string), "/") == false {
-				fmt.Printf("* %s -> %s/%s\n", k, dir, v.(string))
-			} else {
-				fmt.Printf("  %s -> %s/%s\n", k, dir, v.(string))
+	for _, k := range v.AllKeys() {
+		if pathRegexp.MatchString(k) {
+			val := v.Get(k)
+			if strings.HasPrefix(val.(string), "/") == false {
+				val = fmt.Sprintf("%s/%s", dir, val.(string))
+				v.Set(k, val)
 			}
 		}
 	}
@@ -258,27 +258,38 @@ func TestConfig() (*Config, error) {
 	return readConfig(v)
 }
 
+var configFile, configPath, configName string
+
 func SetConfigFile(path string) {
-	viper.SetConfigFile(path)
+	configFile = path
 }
 
 func AddConfigPath(path string) {
-	viper.AddConfigPath(path)
+	configPath = path
 }
 
 func SetConfigName(name string) {
-	viper.SetConfigName(name)
+	configName = name
 }
 
 func GetConfig() (*Config, error) {
 	v := viper.New()
+	if configFile != "" {
+		v.SetConfigFile(configFile)
+	}
+	if configPath != "" {
+		v.AddConfigPath(configPath)
+	}
+	if configName != "" {
+		v.SetConfigName(configName)
+	}
 	configDefaults(v)
 	return readConfig(v)
 }
 
-func LoadConfig(path string) (*Config, error) {
+func LoadConfig(dir string) (*Config, error) {
 	v := viper.New()
+	v.AddConfigPath(dir)
 	configDefaults(v)
-	v.SetConfigFile(path)
 	return readConfig(v)
 }

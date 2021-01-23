@@ -58,6 +58,11 @@ func (u *User) BucketList() []string {
 	return list
 }
 
+func (u *User) Bucket() string {
+	list := u.BucketList()
+	return list[0]
+}
+
 type Session struct {
 	gorm.Model
 	User    string
@@ -95,7 +100,7 @@ func (a *Auth) Open() (err error) {
 		return
 	}
 
-	a.db.AutoMigrate(&Session{}, &User{})
+	err = a.db.AutoMigrate(&Session{}, &User{})
 	return
 }
 

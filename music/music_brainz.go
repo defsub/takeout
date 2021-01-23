@@ -471,6 +471,7 @@ func (m *Music) coverArtArchive(reid string) (*coverArt, error) {
 	url := fmt.Sprintf(`https://coverartarchive.org/release/%s`, reid)
 	err := m.client.GetJson(url, &result)
 	if err != nil {
+		// can get 404 for direct checks
 		return &result, err
 	}
 	for i, img := range result.Images {
