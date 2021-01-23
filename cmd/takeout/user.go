@@ -32,7 +32,7 @@ var userCmd = &cobra.Command{
 	},
 }
 
-var user, pass string
+var user, pass, buckets string
 var add, change bool
 
 func doit() {
@@ -50,12 +50,18 @@ func doit() {
 			log.CheckError(err)
 		}
 	}
+
+	if user != "" && buckets != "" {
+		err := a.AssignBuckets(user, buckets)
+		log.CheckError(err)
+	}
 }
 
 func init() {
 	userCmd.Flags().StringVarP(&configFile, "config", "c", "takeout.ini", "config file")
 	userCmd.Flags().StringVarP(&user, "user", "u", "", "user")
 	userCmd.Flags().StringVarP(&pass, "pass", "p", "", "pass")
+	userCmd.Flags().StringVarP(&buckets, "buckets", "b", "", "music")
 	userCmd.Flags().BoolVarP(&add, "add", "a", false, "add")
 	userCmd.Flags().BoolVarP(&change, "change", "n", false, "change")
 	rootCmd.AddCommand(userCmd)

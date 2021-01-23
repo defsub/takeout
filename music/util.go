@@ -30,7 +30,7 @@ func split(s string) []string {
 		return make([]string, 0)
 	}
 	a := strings.Split(s, ",")
-	for i, _ := range a {
+	for i := range a {
 		a[i] = strings.Trim(a[i], " ")
 	}
 	return a

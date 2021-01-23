@@ -20,6 +20,7 @@ package client
 import (
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/log"
@@ -99,11 +100,11 @@ func (c *Client) doGet(headers map[string]string, urlStr string) (*http.Response
 		}
 		if cachedResp != nil {
 			throttle = false
-			log.Printf("is cached\n")
+			//log.Printf("is cached\n")
 		}
 	}
 	if throttle {
-		log.Printf("rate limit\n")
+		//log.Printf("rate limit\n")
 		RateLimit(url.Hostname())
 	}
 
@@ -114,7 +115,7 @@ func (c *Client) doGet(headers map[string]string, urlStr string) (*http.Response
 	}
 
 	if resp.StatusCode != 200 {
-		log.Printf("resp %d!\n", resp.StatusCode)
+		return nil, errors.New(fmt.Sprintf("http error %d", resp.StatusCode))
 	}
 
 	// if resp.Header.Get(httpcache.XFromCache) != "" {
@@ -131,7 +132,7 @@ func (c *Client) GetJson(url string, result interface{}) error {
 func (c *Client) GetJsonWith(headers map[string]string, url string, result interface{}) error {
 	resp, err := c.doGet(headers, url)
 	if err != nil {
-		return nil
+		return err
 	}
 	defer resp.Body.Close()
 	decoder := json.NewDecoder(resp.Body)
@@ -144,7 +145,7 @@ func (c *Client) GetJsonWith(headers map[string]string, url string, result inter
 func (c *Client) GetXML(url string, result interface{}) error {
 	resp, err := c.doGet(nil, url)
 	if err != nil {
-		return nil
+		return err
 	}
 	defer resp.Body.Close()
 	decoder := xml.NewDecoder(resp.Body)

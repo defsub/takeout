@@ -52,7 +52,7 @@ func sync() {
 }
 
 func init() {
-	syncCmd.Flags().StringVarP(&configFile, "config", "c", "takeout.ini", "config file")
+	syncCmd.Flags().StringVarP(&configFile, "config", "c", "config.ini", "config file")
 	syncCmd.Flags().DurationVarP(&syncBack, "back", "b", 0, "Back duration")
 	syncCmd.Flags().BoolVarP(&syncOptions.Tracks, "tracks", "t", true, "sync tracks")
 	syncCmd.Flags().BoolVarP(&syncOptions.Releases, "releases", "r", true, "sync releases")

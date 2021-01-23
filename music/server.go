@@ -36,12 +36,13 @@ import (
 )
 
 type MusicHandler struct {
-	config *config.Config
-	user   *auth.User
+	user        *auth.User
+	config      *config.Config
+	musicConfig *config.Config
 }
 
 func (handler *MusicHandler) NewMusic(w http.ResponseWriter, r *http.Request) *Music {
-	music := NewMusic(handler.config)
+	music := NewMusic(handler.musicConfig)
 	if music.Open() != nil {
 		http.Error(w, "bummer", http.StatusInternalServerError)
 		return nil
@@ -51,7 +52,9 @@ func (handler *MusicHandler) NewMusic(w http.ResponseWriter, r *http.Request) *M
 
 func (handler *MusicHandler) NewAuth() *auth.Auth {
 	a := auth.NewAuth(handler.config)
-	if a.Open() != nil {
+	err := a.Open()
+	log.CheckError(err)
+	if err != nil {
 		return nil
 	}
 	return a
@@ -194,7 +197,7 @@ func (handler *MusicHandler) render(music *Music, temp string, view interface{},
 	}
 
 	var templates = parseTemplates(template.New("").Funcs(funcMap),
-		fmt.Sprintf("%s/template", music.config.Server.WebDir))
+		fmt.Sprintf("%s/template", handler.config.Server.WebDir))
 
 	err := templates.ExecuteTemplate(w, temp, view)
 	if err != nil {
@@ -265,6 +268,19 @@ func (handler *MusicHandler) authorized(w http.ResponseWriter, r *http.Request) 
 
 	a.Refresh(cookie)
 	http.SetCookie(w, cookie)
+
+	bucketName := handler.user.Bucket()
+	if bucketName == "" {
+		http.Error(w, "bummer", http.StatusServiceUnavailable)
+		return false
+	}
+	path := fmt.Sprintf("%s/%s", handler.config.DataDir, bucketName)
+
+	handler.musicConfig, err = config.LoadConfig(path)
+	if err != nil {
+		http.Error(w, "bummer", http.StatusInternalServerError)
+		return false
+	}
 
 	return true
 }
