@@ -105,6 +105,11 @@ h3 {
     opacity: 0.5;
 }
 
+.artist-subtitle {
+    font-size: small;
+    opacity: 0.5;
+}
+
 .similar-artist {
     font-size: medium;
 }

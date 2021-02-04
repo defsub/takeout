@@ -396,7 +396,7 @@ func (m *Music) assignTrackReleases() error {
 				err := m.checkReleaseArtwork(assignedRelease)
 				if err != nil {
 					log.Println(err)
-					return err
+					//return err -- could be 404 continue
 				}
 				artChecked[assignedRelease.REID] = true
 			}

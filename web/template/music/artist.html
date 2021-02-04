@@ -1,5 +1,12 @@
 <div>
   <h1>{{ .Artist.Name }}</h1>
+  {{ if .Image }}
+  <div class="parent3">
+    <div class="middle">
+      <img width="300" heigth="300" src="{{ .Image }}"/>
+    </div>
+  </div>
+  {{ end }}
   <div>
     <h2>Releases</h2>
     {{ range .Releases }}

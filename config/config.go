@@ -107,15 +107,15 @@ type ClientConfig struct {
 }
 
 type Config struct {
-	Auth           AuthConfig
-	Bucket         BucketConfig
-	Client         ClientConfig
-	DataDir        string
-	Fanart         FanartAPIConfig
-	LastFM         LastFMAPIConfig
-	Music          MusicConfig
-	Search         SearchConfig
-	Server         ServerConfig
+	Auth    AuthConfig
+	Bucket  BucketConfig
+	Client  ClientConfig
+	DataDir string
+	Fanart  FanartAPIConfig
+	LastFM  LastFMAPIConfig
+	Music   MusicConfig
+	Search  SearchConfig
+	Server  ServerConfig
 }
 
 func (mc *MusicConfig) UserArtistID(name string) (string, bool) {

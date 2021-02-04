@@ -281,6 +281,7 @@ func (handler *MusicHandler) authorized(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "bummer", http.StatusInternalServerError)
 		return false
 	}
+	handler.musicConfig.Server.URL = handler.config.Server.URL // TODO FIXME
 
 	return true
 }
@@ -311,6 +312,10 @@ func (handler *MusicHandler) viewHandler(w http.ResponseWriter, r *http.Request)
 		artist, _ := music.lookupArtist(id)
 		view = music.ArtistView(artist)
 		temp = "artist.html"
+	} else if v := r.URL.Query().Get("artists"); v != "" {
+		// /v?artists=x
+		view = music.ArtistsView()
+		temp = "artists.html"
 	} else if v := r.URL.Query().Get("popular"); v != "" {
 		// /v?popular={artist-id}
 		id, _ := strconv.Atoi(v)
