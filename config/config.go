@@ -175,11 +175,11 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Music.SinglesLimit", "50")
 
 	// see https://wiki.musicbrainz.org/Release_Country
-	v.SetDefault("Music.ReleaseContries", []string{
-		"US", // United States
-		"XW", // Worldwide
-		"XE", // Europe
-	})
+	// v.SetDefault("Music.ReleaseCountries", []string{
+	// 	"US", // United States
+	// 	"XW", // Worldwide
+	// 	"XE", // Europe
+	// })
 
 	v.SetDefault("Music.DB.Driver", "sqlite3")
 	v.SetDefault("Music.DB.Source", "music.db")
@@ -193,13 +193,7 @@ func configDefaults(v *viper.Viper) {
 
 	// see https://musicbrainz.org/search (series)
 	v.SetDefault("Music.RadioSeries", []string{
-		"Billboard Year-End Hot 100 singles of 2019",
-		"Billboard Year-End Hot 100 singles of 2020",
-		"Indie 88: Top 500 Indie Rock Songs",
-		`NME: Greatest "Indie" Anthems Ever: 2007`,
-		"Rolling Stone: The 100 Best Songs of the 2010s",
 		"The Rolling Stone Magazine's 500 Greatest Songs of All Time",
-		"Stereogum: The 200 Best Songs Of The 2010s",
 	})
 
 	v.SetDefault("Music.RadioOther", map[string]string{
@@ -208,14 +202,6 @@ func configDefaults(v *viper.Viper) {
 		"Top 3 Hits":             "+popularity:<4",
 		"Top 5 Hits":             "+popularity:<6",
 		"Top 10 Hits":            "+popularity:<11",
-		"Epic 10+ Minute Tracks": "+length:>600 -silence",
-		"Epic 20+ Minute Tracks": "+length:>1200 -silence",
-		"Deep Tracks":            "+track:>10 -silence",
-		"4AD: Hits":              "+label:4ad +popularity:<4",
-		"Def Jam: Hits":          `+label:"def jam" +popularity:<4`,
-		"Sub Pop Records: Hits":  `+label:"sub pop" +popularity:<4`,
-		"Beggars Banquet: Hits":  `+label:"beggars banquet" +popularity:<4`,
-		"Hits with Violin":       `+violin:* +popularity:<4`,
 	})
 
 }
@@ -252,7 +238,7 @@ func TestConfig() (*Config, error) {
 	}
 	v := viper.New()
 	configDefaults(v)
-	v.SetConfigFile(filepath.Join(testDir, "test.ini"))
+	v.SetConfigFile(filepath.Join(testDir, "test.yaml"))
 	v.SetDefault("Music.DB.Source", filepath.Join(testDir, "music.db"))
 	v.SetDefault("Auth.DB.Source", filepath.Join(testDir, "auth.db"))
 	return readConfig(v)

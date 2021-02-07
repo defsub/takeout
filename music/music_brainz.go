@@ -103,13 +103,13 @@ type mbzSeries struct {
 // release recording series: type="part of", target-type="series", see series
 // single: type="single from", target-type="release_group", see release_group
 type mbzRelation struct {
-	Type        string    `json:"type"`
-	TargetType  string    `json:"target-type"`
-	Artist      mbzArtist `json:"artist"`
-	Attributes  []string  `json:"attributes"`
-	Work        mbzWork   `json:"work"`
-	URL         mbzURL    `json:"url"`
-	Series      mbzSeries `json:"series"`
+	Type       string    `json:"type"`
+	TargetType string    `json:"target-type"`
+	Artist     mbzArtist `json:"artist"`
+	Attributes []string  `json:"attributes"`
+	Work       mbzWork   `json:"work"`
+	URL        mbzURL    `json:"url"`
+	Series     mbzSeries `json:"series"`
 }
 
 type mbzLabelInfo struct {
@@ -277,7 +277,10 @@ func release(a *Artist, r mbzRelease) Release {
 		FrontArtwork:   r.CoverArtArchive.Front,
 		BackArtwork:    r.CoverArtArchive.Back,
 		Media:          media,
-		Date:           r.ReleaseGroup.firstReleaseDate()}
+		Date:           r.ReleaseGroup.firstReleaseDate(),
+		ReleaseDate:    parseDate(r.Date),
+		Status:         r.Status,
+	}
 }
 
 // Get all releases for an artist from MusicBrainz.
@@ -462,17 +465,27 @@ type coverArtImage struct {
 }
 
 type coverArt struct {
-	Release string          `json:"release"`
-	Images  []coverArtImage `json:"images"`
+	fromGroup bool
+	Release   string          `json:"release"`
+	Images    []coverArtImage `json:"images"`
 }
 
-func (m *Music) coverArtArchive(reid string) (*coverArt, error) {
+func (m *Music) coverArtArchive(reid string, rgid string) (*coverArt, error) {
 	var result coverArt
+	result.fromGroup = false
+	// try release first
 	url := fmt.Sprintf(`https://coverartarchive.org/release/%s`, reid)
 	err := m.client.GetJson(url, &result)
 	if err != nil {
 		// can get 404 for direct checks
-		return &result, err
+		// try release-group instead
+		url = fmt.Sprintf(`https://coverartarchive.org/release-group/%s`, rgid)
+		err = m.client.GetJson(url, &result)
+		if err != nil {
+			// can get 404 for direct checks
+			return &result, err
+		}
+		result.fromGroup = true
 	}
 	for i, img := range result.Images {
 		// api has ID with both int and string types

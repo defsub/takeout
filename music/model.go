@@ -18,6 +18,7 @@
 package music
 
 import (
+	"fmt"
 	"gorm.io/gorm"
 	"time"
 )
@@ -40,21 +41,28 @@ type Artist struct {
 type Release struct {
 	gorm.Model
 	Artist         string `gorm:"uniqueIndex:idx_release"`
-	Name           string `gorm:"uniqueIndex:idx_release;index:idx_release_name"` // collate nocase?
+	Name           string `gorm:"uniqueIndex:idx_release;index:idx_release_name" sql:"collate:nocase"`
 	RGID           string `gorm:"index:idx_release_rgid"`
 	REID           string `gorm:"uniqueIndex:idx_release;index:idx_release_reid"`
 	Disambiguation string
 	Asin           string
 	Country        string
 	Type           string
-	Date           time.Time
+	Date           time.Time // rg first release
+	ReleaseDate    time.Time // re release date
+	Status         string
 	TrackCount     int
 	DiscCount      int
 	Artwork        bool
 	FrontArtwork   bool
 	BackArtwork    bool
 	OtherArtwork   string
+	GroupArtwork   bool
 	Media          []Media `gorm:"-"`
+}
+
+func (r Release) official() bool {
+	return r.Status == "Official"
 }
 
 // Release Media from MusicBrainz.
@@ -121,10 +129,15 @@ type Track struct {
 	RGID         string `gorm:"index:idx_track_rgid"`
 	MediaTitle   string
 	ReleaseTitle string `spiff:"album"`
+	ReleaseDate  time.Time
 	Artwork      bool
 	FrontArtwork bool
 	BackArtwork  bool
 	OtherArtwork string
+}
+
+func (t Track) releaseKey() string {
+	return fmt.Sprintf("%s/%s/%d/%d", t.Artist, t.Release, t.TrackCount, t.DiscCount)
 }
 
 type Playlist struct {

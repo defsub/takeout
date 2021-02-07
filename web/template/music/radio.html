@@ -140,4 +140,32 @@
     </div>
     {{ end }}
   </div>
+  <div>
+    {{ if .Other }}
+    <div>
+      {{ range .Other }}
+      <div class="parent">
+	<div class="left" style="cursor: pointer;">
+	  <div class="parent2">
+	    <a data-playlist="add-ref" data-ref="{{.|ref}}">
+	      {{ .Name }}
+	    </a>
+	  </div>
+	</div>
+	<div class="separator"></div>
+	<div class="right">
+	  <a data-playlist="append-ref" data-ref="{{.|ref}}">
+	    <img src="/static/playlist_add-white-24dp.svg">
+	  </a>
+	</div>
+	<div class="right">
+	  <a data-playlist="add-ref" data-ref="{{.|ref}}">
+	    <img src="/static/play_arrow-white-24dp.svg">
+	  </a>
+	</div>
+      </div>
+      {{ end }}
+    </div>
+    {{ end }}
+  </div>
 </div>

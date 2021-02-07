@@ -66,14 +66,18 @@ func (m *Music) Close() {
 //
 // See https://musicbrainz.org/doc/Cover_Art_Archive/API
 func (m *Music) cover(r Release, size string) string {
+	var url string
+	if r.GroupArtwork {
+		url = fmt.Sprintf("https://coverartarchive.org/release-group/%s", r.RGID)
+	} else {
+		url = fmt.Sprintf("https://coverartarchive.org/release/%s", r.REID)
+	}
 	if r.Artwork && r.FrontArtwork {
 		// user front-250, front-500, front-1200
-		return fmt.Sprintf("https://coverartarchive.org/release/%s/front-%s",
-			r.REID, size)
+		return fmt.Sprintf("%s/front-%s", url, size)
 	} else if r.Artwork && r.OtherArtwork != "" {
 		// use id-250, id-500, id-1200
-		return fmt.Sprintf("https://coverartarchive.org/release/%s/%s-%s",
-			r.REID, r.OtherArtwork, size)
+		return fmt.Sprintf("%s/%s-%s", url, r.OtherArtwork, size)
 	} else {
 		return "/static/album-white-36dp.svg"
 	}

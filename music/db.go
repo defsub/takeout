@@ -201,7 +201,6 @@ func (m *Music) tracksWithoutReleases() []Track {
 // release name contains underscores which match nicely with 'like'.
 func (m *Music) artistReleasesLike(a *Artist, pattern string, trackCount, discCount int) []Release {
 	var releases []Release
-	// TODO ignore release name case
 	m.db.Where("artist = ? and name like ? and track_count = ? and disc_count = ?",
 		a.Name, pattern, trackCount, discCount).Find(&releases)
 	if len(releases) == 0 {
@@ -234,6 +233,8 @@ func (m *Music) assignTrackRelease(t *Track, r *Release) error {
 	err := m.db.Model(t).
 		Update("re_id", r.REID).
 		Update("rg_id", r.RGID).
+		Update("date", r.Date.Year()).
+		Update("release_date", r.ReleaseDate).
 		Update("artwork", r.Artwork).
 		Update("front_artwork", r.FrontArtwork).
 		Update("back_artwork", r.BackArtwork).
@@ -275,9 +276,9 @@ func (m *Music) trackReleases(t *Track) []Release {
 	var releases []Release
 	m.db.Where("artist = ? and name = ? and track_count = ? and disc_count = ?",
 		t.Artist, t.Release, t.TrackCount, t.DiscCount).
-		Having("date = min(date)").
-		Group("name").
-		Order("date").Find(&releases)
+		// Having("date = min(date)").
+		// Group("name").
+		Order("release_date").Find(&releases)
 	return releases
 }
 
@@ -286,20 +287,26 @@ func (m *Music) trackReleasesWithFrontArtwork(t *Track) []Release {
 	var releases []Release
 	m.db.Where("artist = ? and name = ? and track_count = ? and disc_count = ? and front_artwork = 1",
 		t.Artist, t.Release, t.TrackCount, t.DiscCount).
-		Having("date = min(date)").
-		Group("name").
-		Order("date").Find(&releases)
+		// Having("date = min(date)").
+		// Group("name").
+		Order("release_date").Find(&releases)
+	return releases
+}
+
+// During sync try to find releases choices, preferring those with artwork
+func (m *Music) trackReleaseChoices(t *Track) []Release {
+	releases := m.trackReleasesWithFrontArtwork(t)
+	if len(releases) == 0 {
+		releases = m.trackReleases(t)
+	}
 	return releases
 }
 
 // During sync try to find a single release with artwork to match a track.
 func (m *Music) trackRelease(t *Track) *Release {
-	releases := m.trackReleasesWithFrontArtwork(t)
+	releases := m.trackReleaseChoices(t)
 	if len(releases) == 0 {
-		releases = m.trackReleases(t)
-		if len(releases) == 0 {
-			return nil
-		}
+		return nil
 	}
 	return &releases[0]
 }
@@ -340,11 +347,12 @@ func (m *Music) updateOtherArtwork(r *Release, id string) error {
 	return m.db.Model(r).Update("other_artwork", id).Error
 }
 
-func (m *Music) updateArtwork(r *Release, front, back bool) error {
+func (m *Music) updateArtwork(r *Release, front, back, fromGroup bool) error {
 	return m.db.Model(r).
 		Update("artwork", front || back).
 		Update("front_artwork", front).
-		Update("back_artwork", back).Error
+		Update("back_artwork", back).
+		Update("group_artwork", fromGroup).Error
 }
 
 // select count(*) from releases where artwork = false and re_id in (select distinct re_id from tracks);
@@ -363,7 +371,7 @@ func (m *Music) disambiguate(artist string, trackCount, discCount int) []Release
 	var releases []Release
 	m.db.Where("releases.artist = ? and releases.track_count = ? and releases.disc_count = ? and releases.disambiguation != ''",
 		artist, trackCount, discCount).
-		Order("date desc").Find(&releases)
+		Order("release_date").Find(&releases)
 	return releases
 }
 
@@ -372,7 +380,7 @@ func (m *Music) disambiguate(artist string, trackCount, discCount int) []Release
 func (m *Music) releases(a *Artist) []Release {
 	var releases []Release
 	m.db.Where("artist = ?", a.Name).
-		Order("date").Find(&releases)
+		Order("release_date").Find(&releases)
 	return releases
 }
 

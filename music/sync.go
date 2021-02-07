@@ -20,7 +20,6 @@ package music
 import (
 	"errors"
 	"fmt"
-	"math"
 	"regexp"
 	"sort"
 	"strings"
@@ -151,7 +150,7 @@ func (m *Music) Sync(options SyncOptions) {
 
 func (m *Music) syncBucketTracks() error {
 	m.deleteTracks() // !!!
-	_, err :=  m.syncBucketTracksSince(time.Time{})
+	_, err := m.syncBucketTracksSince(time.Time{})
 	return err
 }
 
@@ -273,7 +272,7 @@ func (m *Music) checkReleaseArtwork(r *Release) error {
 	if r.Artwork && r.FrontArtwork == false {
 		log.Printf("need artwork for %s / %s\n", r.Artist, r.Name)
 		// have artwork but no front cover
-		art, err := m.coverArtArchive(r.REID)
+		art, err := m.coverArtArchive(r.REID, r.RGID)
 		if err != nil {
 			return err
 		}
@@ -287,7 +286,7 @@ func (m *Music) checkReleaseArtwork(r *Release) error {
 		}
 	} else if r.Artwork == false {
 		log.Printf("check artwork for %s / %s\n", r.Artist, r.Name)
-		art, err := m.coverArtArchive(r.REID)
+		art, err := m.coverArtArchive(r.REID, r.RGID)
 		if err != nil {
 			return err
 		}
@@ -300,7 +299,7 @@ func (m *Music) checkReleaseArtwork(r *Release) error {
 				back = true
 			}
 		}
-		err = m.updateArtwork(r, front, back)
+		err = m.updateArtwork(r, front, back, art.fromGroup)
 		if err != nil {
 			return err
 		}
@@ -345,65 +344,155 @@ func fixName(name string) string {
 //   ★ (Blackstar)
 //   Blackstar
 func (m *Music) assignTrackReleases() error {
-	notfound := make(map[string]int)
+	notfound := make(map[string]bool)
 	artChecked := make(map[string]bool)
+	cache := make(map[string]*Release)
+
 	tracks := m.tracksWithoutAssignedRelease()
-	// TODO this could be more efficient
+
 	for _, t := range tracks {
-		var assignedRelease *Release
-		// TODO prefer no disamb., and countries, and CDs
-		r := m.trackRelease(&t)
+		cacheKey := t.releaseKey()
+		if _, ok := notfound[cacheKey]; ok {
+			continue
+		}
+
+		r, ok := cache[cacheKey]
+		if !ok {
+			r = m.findTrackRelease(&t)
+			if r != nil {
+				cache[cacheKey] = r
+			}
+		}
 		if r == nil {
-			// try using disambiguation
-			releases := m.disambiguate(t.Artist, t.TrackCount, t.DiscCount)
-			for _, r := range releases {
-				if r.Disambiguation != "" {
-					name1 := fmt.Sprintf("%s (%s)", r.Name, r.Disambiguation)
-					name2 := fmt.Sprintf("%s - %s", r.Name, r.Disambiguation)
-					name3 := fmt.Sprintf("%s %s", r.Name, r.Disambiguation)
-					name4 := fmt.Sprintf("%s [%s]", r.Name, r.Disambiguation)
-					name5 := fmt.Sprintf("%s", r.Disambiguation)
-					if name1 == t.Release || name2 == t.Release ||
-						name3 == t.Release || name4 == t.Release ||
-						name5 == t.Release {
-						err := m.assignTrackRelease(&t, &r)
-						if err != nil {
-							return err
-						}
-						assignedRelease = &r
-						break
-					}
-				}
+			r = m.findTrackReleaseDisambiguate(&t)
+			if r != nil {
+				cache[cacheKey] = r
+			} else {
+				notfound[cacheKey] = true
+				log.Printf("track release not found: %s\n", cacheKey)
 			}
-			if assignedRelease == nil {
-				v := fmt.Sprintf("%s/%s/%d", t.Artist, t.Release, t.TrackCount)
-				notfound[v] += 1
-				if notfound[v] == 1 {
-					log.Printf("release not found for %s\n", v)
-				}
-			}
-		} else {
+		}
+		if r != nil {
+			//log.Printf("assign track release %s\n", cacheKey)
 			err := m.assignTrackRelease(&t, r)
 			if err != nil {
 				return err
 			}
-			assignedRelease = r
-		}
-
-		if assignedRelease != nil {
 			// ensure releases assigned to tracks have artwork
-			if _, ok := artChecked[assignedRelease.REID]; !ok {
-				err := m.checkReleaseArtwork(assignedRelease)
+			if _, ok := artChecked[r.REID]; !ok {
+				err := m.checkReleaseArtwork(r)
 				if err != nil {
 					log.Println(err)
 					//return err -- could be 404 continue
 				}
-				artChecked[assignedRelease.REID] = true
+				artChecked[r.REID] = true
 			}
 		}
-
 	}
 	return nil
+}
+
+var cachedCountryMap map[string]int
+
+func (m *Music) countryMap() map[string]int {
+	if len(cachedCountryMap) == 0 {
+		cachedCountryMap = make(map[string]int)
+		for i, v := range m.config.Music.ReleaseCountries {
+			cachedCountryMap[v] = i
+		}
+		for k, _ := range cachedCountryMap {
+			log.Printf("countryMap %s\n", k)
+		}
+	}
+	return cachedCountryMap
+}
+
+var unwantedDisambRegexp = regexp.MustCompile(`(exclusive|deluxe|edition)`)
+
+func (m *Music) pickRelease(releases []Release) *Release {
+	first, second, third, fourth := -1, -1, -1, -1
+	countryMap := m.countryMap()
+	for i, r := range releases {
+		_, prefCountry := countryMap[r.Country]
+		if prefCountry && r.FrontArtwork && r.Disambiguation == "" && r.official() {
+			first = i
+			break
+		} else if r.FrontArtwork && r.Disambiguation == "" && r.official() {
+			second = i
+		} else if r.FrontArtwork && prefCountry {
+			if unwantedDisambRegexp.MatchString(r.Disambiguation) {
+				fourth = i
+			} else {
+				third = i
+			}
+		} else if r.FrontArtwork {
+			fourth = i
+		}
+	}
+	//log.Printf("%d: %d, %d, %d - %s/%s\n", len(releases), first, second, third, t.Artist, t.Release)
+
+	var r *Release
+	if first != -1 {
+		r = &releases[first]
+	} else if second != -1 {
+		r = &releases[second]
+	} else if third != -1 {
+		r = &releases[third]
+	} else if fourth != -1 {
+		r = &releases[fourth]
+	} else if len(releases) > 0 {
+		r = &releases[0]
+	} else {
+		r = nil
+	}
+	return r
+}
+
+func (m *Music) pickDisambiguation(t *Track, releases []Release) *Release {
+	countryMap := m.countryMap()
+	first, second, third := -1, -1, -1
+	for i, r := range releases {
+		name1 := fmt.Sprintf("%s (%s)", r.Name, r.Disambiguation)
+		name2 := fmt.Sprintf("%s - %s", r.Name, r.Disambiguation)
+		name3 := fmt.Sprintf("%s %s", r.Name, r.Disambiguation)
+		name4 := fmt.Sprintf("%s [%s]", r.Name, r.Disambiguation)
+		name5 := fmt.Sprintf("%s", r.Disambiguation)
+		if name1 == t.Release || name2 == t.Release ||
+			name3 == t.Release || name4 == t.Release ||
+			name5 == t.Release {
+			_, prefCountry := countryMap[r.Country]
+			if prefCountry && r.FrontArtwork && r.official() {
+				first = i
+				break
+			} else if r.FrontArtwork {
+				second = i
+			} else {
+				third = i
+			}
+		}
+	}
+	var r *Release
+	if first != -1 {
+		r = &releases[first]
+	} else if second != -1 {
+		r = &releases[second]
+	} else if third != -1 {
+		r = &releases[third]
+	} else {
+		r = nil
+	}
+	return r
+}
+
+func (m *Music) findTrackRelease(t *Track) *Release {
+	releases := m.trackReleases(t)
+	return m.pickRelease(releases)
+}
+
+// try using disambiguation
+func (m *Music) findTrackReleaseDisambiguate(t *Track) *Release {
+	releases := m.disambiguate(t.Artist, t.TrackCount, t.DiscCount)
+	return m.pickDisambiguation(t, releases)
 }
 
 // Fix track release names using various pattern matching and name variants.
@@ -435,36 +524,19 @@ func (m *Music) fixTrackReleases() error {
 		}
 
 		if len(releases) > 0 {
+			var r *Release
 			if len(releases) > 1 {
-				// more than one matching release so reorder
-				// releases by country ordered user preference;
-				// lower is better
-				lowest := math.MaxUint32
-				priority := make(map[string]int)
-				for i, v := range m.config.Music.ReleaseCountries {
-					priority[v] = i
-				}
-				sort.Slice(releases, func(i, j int) bool {
-					var p1, p2 int
-					if p1, ok = priority[releases[i].Country]; !ok {
-						p1 = lowest
-					}
-					if p2, ok = priority[releases[j].Country]; !ok {
-						p2 = lowest
-					}
-					return p1 < p2
-				})
-				// log.Printf("picking [%s] %s/%s/%d/%d\n",
-				// 	releases[0].Artist, releases[0].Name,
-				// 	releases[0].TrackCount, releases[0].DiscCount)
+				r = m.pickRelease(releases)
+			} else {
+				r = &releases[0]
 			}
 			fixReleases[t.Release] = true
 			fixTracks = append(fixTracks, map[string]interface{}{
 				"artist":     artist.Name,
 				"from":       t.Release,
-				"to":         releases[0].Name,
-				"trackCount": releases[0].TrackCount,
-				"discCount":  releases[0].DiscCount,
+				"to":         r.Name,
+				"trackCount": r.TrackCount,
+				"discCount":  r.DiscCount,
 			})
 		} else {
 			releases = m.releases(artist)
