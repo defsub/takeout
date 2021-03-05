@@ -25,8 +25,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/defsub/takeout/log"
-	"github.com/defsub/takeout/search"
+	"github.com/defsub/takeout/lib/log"
+	"github.com/defsub/takeout/lib/musicbrainz"
+	"github.com/defsub/takeout/lib/date"
+	"github.com/defsub/takeout/lib/search"
+	"github.com/defsub/takeout/lib/str"
 )
 
 type SyncOptions struct {
@@ -100,7 +103,7 @@ func (m *Music) Sync(options SyncOptions) {
 		}
 		var artists []Artist
 		if options.Artist != "" {
-			artists = []Artist{*m.artist(options.Artist)}
+			artists = []Artist{*m.Artist(options.Artist)}
 		} else {
 			artists = m.trackArtistsSince(options.Since)
 		}
@@ -182,7 +185,7 @@ func (m *Music) trackArtistsSince(lastSync time.Time) []Artist {
 			continue
 		}
 		h[t.Artist] = true
-		a := m.artist(t.Artist)
+		a := m.Artist(t.Artist)
 		if a != nil {
 			artists = append(artists, *a)
 		}
@@ -194,7 +197,7 @@ func (m *Music) trackArtistsSince(lastSync time.Time) []Artist {
 // Obtain all releases for each track artist. This will update
 // existing releases as well.
 func (m *Music) syncReleases() error {
-	return m.syncReleasesFor(m.artists())
+	return m.syncReleasesFor(m.Artists())
 }
 
 func (m *Music) syncReleasesFor(artists []Artist) error {
@@ -207,14 +210,19 @@ func (m *Music) syncReleasesFor(artists []Artist) error {
 			// name and then get releases
 			names := m.artistTrackReleases(a.Name)
 			for _, name := range names {
-				result, _ := m.MusicBrainzSearchReleaseGroup(a.ARID, name)
+				result, _ := m.mbz.SearchReleaseGroup(a.ARID, name)
 				for _, rg := range result.ReleaseGroups {
-					r, _ := m.MusicBrainzReleases(&a, rg.ID)
-					releases = append(releases, r...)
+					r, _ := m.mbz.Releases(rg.ID)
+					for _, v := range r {
+						releases = append(releases, doRelease(a.Name, v))
+					}
 				}
 			}
 		} else {
-			releases, _ = m.MusicBrainzArtistReleases(&a)
+			r, _ := m.mbz.ArtistReleases(a.Name, a.ARID)
+			for _, v := range r {
+				releases = append(releases, doRelease(a.Name, v))
+			}
 		}
 		for _, r := range releases {
 			r.Name = fixName(r.Name)
@@ -272,7 +280,7 @@ func (m *Music) checkReleaseArtwork(r *Release) error {
 	if r.Artwork && r.FrontArtwork == false {
 		log.Printf("need artwork for %s / %s\n", r.Artist, r.Name)
 		// have artwork but no front cover
-		art, err := m.coverArtArchive(r.REID, r.RGID)
+		art, err := m.mbz.CoverArtArchive(r.REID, r.RGID)
 		if err != nil {
 			return err
 		}
@@ -286,7 +294,7 @@ func (m *Music) checkReleaseArtwork(r *Release) error {
 		}
 	} else if r.Artwork == false {
 		log.Printf("check artwork for %s / %s\n", r.Artist, r.Name)
-		art, err := m.coverArtArchive(r.REID, r.RGID)
+		art, err := m.mbz.CoverArtArchive(r.REID, r.RGID)
 		if err != nil {
 			return err
 		}
@@ -299,7 +307,7 @@ func (m *Music) checkReleaseArtwork(r *Release) error {
 				back = true
 			}
 		}
-		err = m.updateArtwork(r, front, back, art.fromGroup)
+		err = m.updateArtwork(r, front, back, art.FromGroup)
 		if err != nil {
 			return err
 		}
@@ -503,7 +511,7 @@ func (m *Music) fixTrackReleases() error {
 	tracks := m.tracksWithoutAssignedRelease()
 
 	for _, t := range tracks {
-		artist := m.artist(t.Artist)
+		artist := m.Artist(t.Artist)
 		if artist == nil {
 			log.Printf("artist not found: %s\n", t.Artist)
 			continue
@@ -584,10 +592,10 @@ func (m *Music) fixTrackReleases() error {
 // release name. In multi-disc sets the individual media may have a more
 // specific name so that is included also.
 func (m *Music) fixTrackReleaseTitles() error {
-	artists := m.artists()
+	artists := m.Artists()
 	for _, a := range artists {
 		//log.Printf("release titles for %s\n", a.Name)
-		releases := m.artistReleases(&a)
+		releases := m.ArtistReleases(&a)
 		for _, r := range releases {
 			media := m.releaseMedia(r)
 			names := make(map[int]Media)
@@ -595,7 +603,7 @@ func (m *Music) fixTrackReleaseTitles() error {
 				names[media[i].Position] = media[i]
 			}
 
-			tracks := m.releaseTracks(r)
+			tracks := m.ReleaseTracks(r)
 			for i := range tracks {
 				name := names[tracks[i].DiscNum].Name
 				if name != "" && name != r.Name {
@@ -619,16 +627,21 @@ func (m *Music) fixTrackReleaseTitles() error {
 
 // Sync popular tracks for each artist from Last.fm.
 func (m *Music) syncPopular() error {
-	return m.syncPopularFor(m.artists())
+	return m.syncPopularFor(m.Artists())
 }
 
 func (m *Music) syncPopularFor(artists []Artist) error {
 	for _, a := range artists {
 		log.Printf("popular for %s\n", a.Name)
-		popular := m.lastfmArtistTopTracks(&a)
-		for _, p := range popular {
+		tracks := m.lastfm.ArtistTopTracks(a.ARID)
+		for _, t := range tracks {
 			// TODO how to check for specific error?
 			// - UNIQUE constraint failed
+			p := Popular{
+				Artist: a.Name,
+				Title:  t.Track,
+				Rank:   t.Rank,
+			}
 			m.createPopular(&p)
 		}
 	}
@@ -637,13 +650,33 @@ func (m *Music) syncPopularFor(artists []Artist) error {
 
 // Sync similar artists for each artist from Last.fm.
 func (m *Music) syncSimilar() error {
-	return m.syncSimilarFor(m.artists())
+	return m.syncSimilarFor(m.Artists())
 }
 
 func (m *Music) syncSimilarFor(artists []Artist) error {
 	for _, a := range artists {
 		log.Printf("similar for %s\n", a.Name)
-		similar := m.lastfmSimilarArtists(&a)
+		rank := m.lastfm.SimilarArtists(a.ARID)
+
+		mbids := make([]string, 0, len(rank))
+		for k := range rank {
+			mbids = append(mbids, k)
+		}
+
+		artists := m.artistsByMBID(mbids)
+		sort.Slice(artists, func(i, j int) bool {
+			return rank[artists[i].ARID] > rank[artists[j].ARID]
+		})
+
+		var similar []Similar
+		for index, a := range artists {
+			similar = append(similar, Similar{
+				Artist: a.Name,
+				ARID:   a.ARID,
+				Rank:   index,
+			})
+		}
+
 		for _, s := range similar {
 			// TODO how to check for specific error?
 			// - UNIQUE constraint failed
@@ -659,13 +692,13 @@ func (m *Music) syncMissingArtwork() error {
 
 // Sync artwork from Fanart
 func (m *Music) syncArtwork() error {
-	return m.syncArtworkFor(m.artists())
+	return m.syncArtworkFor(m.Artists())
 }
 
 func (m *Music) syncArtworkFor(artists []Artist) error {
 	for _, a := range artists {
 		log.Printf("artwork for %s\n", a.Name)
-		artwork := m.fanartArtistArt(&a)
+		artwork := m.fanart.ArtistArt(a.ARID)
 		if artwork == nil {
 			continue
 		}
@@ -675,7 +708,7 @@ func (m *Music) syncArtworkFor(artists []Artist) error {
 				Artist: a.Name,
 				URL:    art.URL,
 				Source: source,
-				Rank:   atoi(art.Likes),
+				Rank:   str.Atoi(art.Likes),
 			}
 			m.createArtistBackground(&bg)
 		}
@@ -684,7 +717,7 @@ func (m *Music) syncArtworkFor(artists []Artist) error {
 				Artist: a.Name,
 				URL:    art.URL,
 				Source: source,
-				Rank:   atoi(art.Likes),
+				Rank:   str.Atoi(art.Likes),
 			}
 			m.createArtistImage(&img)
 		}
@@ -699,7 +732,7 @@ func (m *Music) syncArtists() error {
 	artists := m.trackArtistNames()
 	for _, name := range artists {
 		var tags []ArtistTag
-		artist := m.artist(name)
+		artist := m.Artist(name)
 		if artist == nil {
 			artist, tags = m.resolveArtist(name)
 			if artist != nil {
@@ -725,7 +758,7 @@ func (m *Music) syncArtists() error {
 			m.updateTrackArtist(name, artist.Name)
 		}
 
-		detail, err := m.MusicBrainzArtistDetail(artist)
+		detail, err := m.mbz.ArtistDetail(artist.ARID)
 		if err != nil {
 			log.Printf("%s\n", err)
 			continue
@@ -733,8 +766,8 @@ func (m *Music) syncArtists() error {
 		artist.Disambiguation = detail.Disambiguation
 		artist.Country = detail.Country
 		artist.Area = detail.Area.Name
-		artist.Date = parseDate(detail.LifeSpan.Begin)
-		artist.EndDate = parseDate(detail.LifeSpan.End)
+		artist.Date = date.ParseDate(detail.LifeSpan.Begin)
+		artist.EndDate = date.ParseDate(detail.LifeSpan.End)
 		if len(detail.Genres) > 0 {
 			sort.Slice(detail.Genres, func(i, j int) bool {
 				return detail.Genres[i].Count > detail.Genres[j].Count
@@ -751,27 +784,34 @@ func (m *Music) syncArtists() error {
 func (m *Music) resolveArtist(name string) (artist *Artist, tags []ArtistTag) {
 	arid, ok := m.config.Music.UserArtistID(name)
 	if ok {
-		artist, tags = m.MusicBrainzSearchArtistID(arid)
+		v := m.mbz.SearchArtistID(arid)
+		if v != nil {
+			artist, tags = doArtist(v)
+		}
 	} else {
-		artist, tags = m.MusicBrainzSearchArtist(name)
+		v := m.mbz.SearchArtist(name)
+		if v != nil {
+			artist, tags = doArtist(v)
+		}
 	}
 	if artist == nil {
 		// try again
 		fuzzy := fuzzyArtist(name)
 		if fuzzy != name {
-			artist, tags = m.MusicBrainzSearchArtist(fuzzy)
+			v := m.mbz.SearchArtist(fuzzy)
+			if v != nil {
+				artist, tags = doArtist(v)
+			}
 		}
 	}
 	if artist == nil {
 		// try lastfm
-		artist = m.lastfmArtistSearch(name)
-		if artist != nil {
-			log.Printf("try lastfm got %s mbid:'%s'\n", artist.Name, artist.ARID)
-			// resolve with mbz
-			if artist.ARID != "" {
-				artist, tags = m.MusicBrainzSearchArtistID(artist.ARID)
-			} else {
-				artist = nil
+		lastName, lastID := m.lastfm.ArtistSearch(name)
+		if lastName != "" && lastID != "" {
+			log.Printf("try lastfm got %s mbid:'%s'\n", lastName, lastID)
+			v := m.mbz.SearchArtistID(artist.ARID)
+			if v != nil {
+				artist, tags = doArtist(v)
 			}
 		}
 	}
@@ -779,14 +819,14 @@ func (m *Music) resolveArtist(name string) (artist *Artist, tags []ArtistTag) {
 }
 
 func (m *Music) findRelease(rgid string, trackCount int) (string, error) {
-	group, err := m.MusicBrainzReleaseGroup(rgid)
+	group, err := m.mbz.ReleaseGroup(rgid)
 	//log.Printf("got %+v\n", group)
 	if err != nil {
 		return "", err
 	}
 	for _, r := range group.Releases {
-		log.Printf("find %d vs %d\n", r.totalTracks(), trackCount)
-		if r.totalTracks() == trackCount {
+		log.Printf("find %d vs %d\n", r.TotalTracks(), trackCount)
+		if r.TotalTracks() == trackCount {
 			return r.ID, nil
 		}
 	}
@@ -795,7 +835,7 @@ func (m *Music) findRelease(rgid string, trackCount int) (string, error) {
 
 func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 	var err error
-	tracks := m.releaseTracks(release)
+	tracks := m.ReleaseTracks(release)
 
 	reid := release.REID
 	if reid == "" {
@@ -819,8 +859,8 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 			log.Printf("no re match %s\n", k)
 			continue
 		}
-		discNum := atoi(matches[1])
-		trackNum := atoi(matches[2])
+		discNum := str.Atoi(matches[1])
+		trackNum := str.Atoi(matches[2])
 		trackTitle := matches[3]
 		matched := false
 		for _, t := range tracks {
@@ -844,16 +884,16 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 	// appeared. If this is that release, add popularty fields for those
 	// tracks below.
 	popularityMap := make(map[string]int)
-	a := m.artist(release.Artist)
+	a := m.Artist(release.Artist)
 	if a != nil {
-		for rank, t := range m.artistPopularTracks(*a) {
+		for rank, t := range m.ArtistPopularTracks(*a) {
 			popularityMap[t.Key] = rank + 1
 		}
 	}
 
 	// update type field with single
 	singles := make(map[string]bool)
-	for _, t := range m.releaseSingles(release) {
+	for _, t := range m.ReleaseSingles(release) {
 		singles[t.Key] = true
 	}
 	for k := range singles {
@@ -865,7 +905,7 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 
 	// update type field with popular
 	popular := make(map[string]bool)
-	for _, t := range m.releasePopular(release) {
+	for _, t := range m.ReleasePopular(release) {
 		popular[t.Key] = true
 	}
 	for k := range popular {
@@ -898,7 +938,7 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 
 func (m *Music) artistIndex(a *Artist) ([]search.IndexMap, error) {
 	var indices []search.IndexMap
-	releases := m.artistReleases(a)
+	releases := m.ArtistReleases(a)
 	//log.Printf("got %d releases\n", len(releases))
 	for _, r := range releases {
 		//log.Printf("%s\n", r.Name)
@@ -929,6 +969,58 @@ func (m *Music) syncIndexFor(artists []Artist) error {
 }
 
 func (m *Music) syncIndex() error {
-	artists := m.artists()
+	artists := m.Artists()
 	return m.syncIndexFor(artists)
+}
+
+func doArtist(artist *musicbrainz.Artist) (a *Artist, tags []ArtistTag) {
+	a = &Artist{
+		Name:     artist.Name,
+		SortName: artist.SortName,
+		ARID:     string(artist.ID)}
+	for _, t := range artist.Tags {
+		at := ArtistTag{
+			Artist: a.Name,
+			Tag:    t.Name,
+			Count:  t.Count}
+		tags = append(tags, at)
+	}
+	return
+}
+
+func doRelease(artist string, r musicbrainz.Release) Release {
+	disambiguation := r.Disambiguation
+	if disambiguation == "" {
+		disambiguation = r.ReleaseGroup.Disambiguation
+	}
+
+	var media []Media
+	for _, m := range r.Media {
+		media = append(media, Media{
+			REID:       string(r.ID),
+			Name:       m.Title,
+			Position:   m.Position,
+			Format:     m.Format,
+			TrackCount: m.TrackCount})
+	}
+
+	return Release{
+		Artist:         artist,
+		Name:           r.Title,
+		Disambiguation: disambiguation,
+		REID:           string(r.ID),
+		RGID:           string(r.ReleaseGroup.ID),
+		Type:           r.ReleaseGroup.PrimaryType,
+		Asin:           r.Asin,
+		Country:        r.Country,
+		TrackCount:     r.TotalTracks(),
+		DiscCount:      r.TotalDiscs(),
+		Artwork:        r.CoverArtArchive.Artwork,
+		FrontArtwork:   r.CoverArtArchive.Front,
+		BackArtwork:    r.CoverArtArchive.Back,
+		Media:          media,
+		Date:           r.ReleaseGroup.FirstReleaseTime(),
+		ReleaseDate:    date.ParseDate(r.Date),
+		Status:         r.Status,
+	}
 }

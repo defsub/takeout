@@ -15,44 +15,27 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
-package log
+package fanart
 
 import (
-	"log"
-	"os"
+	"github.com/defsub/takeout/config"
+	"testing"
+	"fmt"
 )
 
-type Logger interface {
-	Fatalf(format string, v ...interface{})
-	Fatalln(v ...interface{})
-	Printf(format string, v ...interface{})
-	Println(v ...interface{})
-}
+func TestFanart(t *testing.T) {
+	// radiohead
+	artist := Artist{ARID: "a74b1b7f-71a5-4011-9441-d0b5e4122711"}
 
-var logger = defaultLogger()
-
-func defaultLogger() Logger {
-	return log.New(os.Stdout, "", log.LstdFlags)
-}
-
-func CheckError(err error) {
+	config, err := config.TestConfig()
 	if err != nil {
-		logger.Fatalln(err)
+		t.Errorf("GetConfig %s\n", err)
 	}
-}
 
-func Fatalf(format string, v ...interface{}) {
-	logger.Fatalf(format, v...)
-}
+	m := NewMusic(config)
+	m.Open()
+	defer m.Close()
 
-func Fatalln(v ...interface{}) {
-	logger.Fatalln(v...)
-}
-
-func Printf(format string, v ...interface{}) {
-	logger.Printf(format, v...)
-}
-
-func Println(v ...interface{}) {
-	logger.Println(v...)
+	result := m.fanartArtistArt(&artist)
+	fmt.Printf("%+v\n", result)
 }

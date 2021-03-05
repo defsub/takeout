@@ -19,7 +19,7 @@ package main
 
 import (
 	"github.com/defsub/takeout/auth"
-	"github.com/defsub/takeout/log"
+	"github.com/defsub/takeout/lib/log"
 	"github.com/spf13/cobra"
 )
 
@@ -58,7 +58,7 @@ func doit() {
 }
 
 func init() {
-	userCmd.Flags().StringVarP(&configFile, "config", "c", "takeout.ini", "config file")
+	userCmd.Flags().StringVarP(&configFile, "config", "c", "", "config file")
 	userCmd.Flags().StringVarP(&user, "user", "u", "", "user")
 	userCmd.Flags().StringVarP(&pass, "pass", "p", "", "pass")
 	userCmd.Flags().StringVarP(&buckets, "buckets", "b", "", "music")

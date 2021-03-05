@@ -15,27 +15,33 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
-package music
+package str
 
 import (
-	"github.com/defsub/takeout/config"
-	"testing"
-	"fmt"
+	"strconv"
+	"strings"
 )
 
-func TestFanart(t *testing.T) {
-	// radiohead
-	artist := Artist{ARID: "a74b1b7f-71a5-4011-9441-d0b5e4122711"}
-
-	config, err := config.TestConfig()
-	if err != nil {
-		t.Errorf("GetConfig %s\n", err)
+func Split(s string) []string {
+	if len(s) == 0 {
+		// TODO fix this
+		return make([]string, 0)
 	}
+	a := strings.Split(s, ",")
+	for i := range a {
+		a[i] = strings.Trim(a[i], " ")
+	}
+	return a
+}
 
-	m := NewMusic(config)
-	m.Open()
-	defer m.Close()
+func Atoi(a string) int {
+	i, err := strconv.Atoi(a)
+	if err != nil {
+		i = 0
+	}
+	return i
+}
 
-	result := m.fanartArtistArt(&artist)
-	fmt.Printf("%+v\n", result)
+func Itoa(i int) string {
+	return strconv.Itoa(i)
 }

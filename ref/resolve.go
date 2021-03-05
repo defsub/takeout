@@ -15,26 +15,47 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
-package music
+package ref
 
 import (
+	"fmt"
 	"net/url"
 	"regexp"
 	"strconv"
 
 	"github.com/defsub/takeout/auth"
-	"github.com/defsub/takeout/log"
-	"github.com/defsub/takeout/spiff"
+	"github.com/defsub/takeout/config"
+	"github.com/defsub/takeout/lib/log"
+	"github.com/defsub/takeout/lib/spiff"
+	"github.com/defsub/takeout/music"
 )
 
-func (m *Music) addTrackEntries(tracks []Track, entries []spiff.Entry) []spiff.Entry {
+type Locator interface {
+	Locate(t music.Track) string
+}
+
+type Resolver struct {
+	config *config.Config
+	music  *music.Music
+	loc    Locator
+}
+
+func NewResolver(c *config.Config, m *music.Music, l Locator) *Resolver {
+	return &Resolver{
+		config: c,
+		music:  m,
+		loc:    l,
+	}
+}
+
+func (r *Resolver) addTrackEntries(tracks []music.Track, entries []spiff.Entry) []spiff.Entry {
 	for _, t := range tracks {
 		e := spiff.Entry{
 			Creator:    t.Artist,
 			Album:      t.ReleaseTitle,
 			Title:      t.Title,
-			Image:      m.TrackImage(t).String(),
-			Location:   []string{trackLocation(t)},
+			Image:      r.music.TrackImage(t).String(),
+			Location:   []string{r.loc.Locate(t)},
 			Identifier: []string{t.ETag},
 			Size:       []int64{t.Size}}
 		entries = append(entries, e)
@@ -49,70 +70,70 @@ func (m *Music) addTrackEntries(tracks []Track, entries []spiff.Entry) []spiff.E
 // /music/artists/{id}/similar - artist and similar artist tracks (radio)
 // /music/artists/{id}/shuffle - selection of shuffled artist tracks
 // /music/artists/{id}/deep - atrist deep tracks
-func (m *Music) resolveArtistRef(id, res string, entries []spiff.Entry) ([]spiff.Entry, error) {
+func (r *Resolver) resolveArtistRef(id, res string, entries []spiff.Entry) ([]spiff.Entry, error) {
 	n, err := strconv.Atoi(id)
 	if err != nil {
 		return entries, err
 	}
-	artist, err := m.lookupArtist(n)
+	artist, err := r.music.LookupArtist(n)
 	if err != nil {
 		return entries, err
 	}
-	var tracks []Track
+	var tracks []music.Track
 	switch res {
 	case "singles":
-		tracks = m.artistSingleTracks(artist)
+		tracks = r.music.ArtistSingleTracks(artist)
 	case "popular":
-		tracks = m.artistPopularTracks(artist)
+		tracks = r.music.ArtistPopularTracks(artist)
 	case "tracks":
-		tracks = m.artistTracks(artist)
+		tracks = r.music.ArtistTracks(artist)
 	case "shuffle":
-		tracks = m.artistShuffle(artist, m.config.Music.RadioLimit)
+		tracks = r.music.ArtistShuffle(artist, r.config.Music.RadioLimit)
 	case "similar":
-		tracks = m.artistSimilar(artist,
-			m.config.Music.ArtistRadioDepth,
-			m.config.Music.ArtistRadioBreadth)
-		if len(tracks) > m.config.Music.RadioLimit {
-			tracks = tracks[:m.config.Music.RadioLimit]
+		tracks = r.music.ArtistSimilar(artist,
+			r.config.Music.ArtistRadioDepth,
+			r.config.Music.ArtistRadioBreadth)
+		if len(tracks) > r.config.Music.RadioLimit {
+			tracks = tracks[:r.config.Music.RadioLimit]
 		}
 	case "deep":
-		tracks = m.artistDeep(artist, m.config.Music.RadioLimit)
+		tracks = r.music.ArtistDeep(artist, r.config.Music.RadioLimit)
 	}
-	entries = m.addTrackEntries(tracks, entries)
+	entries = r.addTrackEntries(tracks, entries)
 	return entries, nil
 }
 
 // /music/releases/{id}/tracks
-func (m *Music) resolveReleaseRef(id string, entries []spiff.Entry) ([]spiff.Entry, error) {
+func (r *Resolver) resolveReleaseRef(id string, entries []spiff.Entry) ([]spiff.Entry, error) {
 	n, err := strconv.Atoi(id)
 	if err != nil {
 		return entries, err
 	}
-	release, err := m.lookupRelease(n)
+	release, err := r.music.LookupRelease(n)
 	if err != nil {
 		return entries, err
 	}
-	tracks := m.releaseTracks(release)
-	entries = m.addTrackEntries(tracks, entries)
+	tracks := r.music.ReleaseTracks(release)
+	entries = r.addTrackEntries(tracks, entries)
 	return entries, nil
 }
 
 // /music/tracks/{id}
-func (m *Music) resolveTrackRef(id string, entries []spiff.Entry) ([]spiff.Entry, error) {
+func (r *Resolver) resolveTrackRef(id string, entries []spiff.Entry) ([]spiff.Entry, error) {
 	n, err := strconv.Atoi(id)
 	if err != nil {
 		return entries, err
 	}
-	t, err := m.lookupTrack(n)
+	t, err := r.music.LookupTrack(n)
 	if err != nil {
 		return entries, err
 	}
-	entries = m.addTrackEntries([]Track{t}, entries)
+	entries = r.addTrackEntries([]music.Track{t}, entries)
 	return entries, nil
 }
 
 // /music/search?q={q}[&radio=1]
-func (m *Music) resolveSearchRef(uri string, entries []spiff.Entry) ([]spiff.Entry, error) {
+func (r *Resolver) resolveSearchRef(uri string, entries []spiff.Entry) ([]spiff.Entry, error) {
 	u, err := url.Parse(uri)
 	if err != nil {
 		log.Println(err)
@@ -122,48 +143,65 @@ func (m *Music) resolveSearchRef(uri string, entries []spiff.Entry) ([]spiff.Ent
 	q := u.Query().Get("q")
 	radio := u.Query().Get("radio")
 
-	var tracks []Track
+	var tracks []music.Track
 	if q != "" {
-		limit := m.config.Music.SearchLimit
+		limit := r.config.Music.SearchLimit
 		if radio != "" {
-			limit = m.config.Music.RadioSearchLimit
+			limit = r.config.Music.RadioSearchLimit
 		}
-		tracks = m.Search(q, limit)
+		tracks = r.music.Search(q, limit)
 	}
 
 	if radio != "" {
-		tracks = shuffle(tracks)
-		if len(tracks) > m.config.Music.RadioLimit {
-			tracks = tracks[:m.config.Music.RadioLimit]
+		tracks = music.Shuffle(tracks)
+		if len(tracks) > r.config.Music.RadioLimit {
+			tracks = tracks[:r.config.Music.RadioLimit]
 		}
 	}
 
-	entries = m.addTrackEntries(tracks, entries)
+	entries = r.addTrackEntries(tracks, entries)
 	return entries, nil
 }
 
 // /music/radio/{id}
-func (m *Music) resolveRadioRef(id string, entries []spiff.Entry, user *auth.User) ([]spiff.Entry, error) {
+func (r *Resolver) resolveRadioRef(id string, entries []spiff.Entry, user *auth.User) ([]spiff.Entry, error) {
 	n, err := strconv.Atoi(id)
 	if err != nil {
 		return entries, err
 	}
-	s, err := m.lookupStation(n)
+	s, err := r.music.LookupStation(n)
 	if err != nil {
 		return entries, err
 	}
-	if !s.visible(user) {
+	if !s.Visible(user) {
 		return entries, err
 	}
 
-	m.stationRefresh(&s, user)
+	//r.music.StationRefresh(&s, user)
+	r.RefreshStation(&s, user)
+
 	plist, _ := spiff.Unmarshal(s.Playlist)
 	entries = append(entries, plist.Spiff.Entries...)
 
 	return entries, nil
 }
 
-func (m *Music) Resolve(user *auth.User, plist *spiff.Playlist) (err error) {
+func (r *Resolver) RefreshStation(s *music.Station, user *auth.User) {
+	plist := spiff.NewPlaylist()
+	// Image
+	plist.Spiff.Location = fmt.Sprintf("%s/api/radio/%d", r.config.Server.URL, s.ID)
+	plist.Spiff.Title = s.Name
+	plist.Spiff.Creator = "Radio"
+	plist.Entries = []spiff.Entry{{Ref: s.Ref}}
+	r.Resolve(user, plist)
+	if plist.Entries == nil {
+		plist.Entries = []spiff.Entry{}
+	}
+	s.Playlist, _ = plist.Marshal()
+	r.music.UpdateStation(s)
+}
+
+func (r *Resolver) Resolve(user *auth.User, plist *spiff.Playlist) (err error) {
 	var entries []spiff.Entry
 
 	artistsRegexp := regexp.MustCompile(`/music/artists/([\d]+)/([\w]+)`)
@@ -182,7 +220,7 @@ func (m *Music) Resolve(user *auth.User, plist *spiff.Playlist) (err error) {
 
 		matches := artistsRegexp.FindStringSubmatch(pathRef)
 		if matches != nil {
-			entries, err = m.resolveArtistRef(matches[1], matches[2], entries)
+			entries, err = r.resolveArtistRef(matches[1], matches[2], entries)
 			if err != nil {
 				return err
 			}
@@ -191,7 +229,7 @@ func (m *Music) Resolve(user *auth.User, plist *spiff.Playlist) (err error) {
 
 		matches = releasesRegexp.FindStringSubmatch(pathRef)
 		if matches != nil {
-			entries, err = m.resolveReleaseRef(matches[1], entries)
+			entries, err = r.resolveReleaseRef(matches[1], entries)
 			if err != nil {
 				return err
 			}
@@ -200,7 +238,7 @@ func (m *Music) Resolve(user *auth.User, plist *spiff.Playlist) (err error) {
 
 		matches = tracksRegexp.FindStringSubmatch(pathRef)
 		if matches != nil {
-			entries, err = m.resolveTrackRef(matches[1], entries)
+			entries, err = r.resolveTrackRef(matches[1], entries)
 			if err != nil {
 				return err
 			}
@@ -208,7 +246,7 @@ func (m *Music) Resolve(user *auth.User, plist *spiff.Playlist) (err error) {
 		}
 
 		if searchRegexp.MatchString(pathRef) {
-			entries, err = m.resolveSearchRef(pathRef, entries)
+			entries, err = r.resolveSearchRef(pathRef, entries)
 			if err != nil {
 				return err
 			}
@@ -217,7 +255,7 @@ func (m *Music) Resolve(user *auth.User, plist *spiff.Playlist) (err error) {
 
 		matches = radioRegexp.FindStringSubmatch(pathRef)
 		if matches != nil {
-			entries, err = m.resolveRadioRef(matches[1], entries, user)
+			entries, err = r.resolveRadioRef(matches[1], entries, user)
 			if err != nil {
 				return err
 			}

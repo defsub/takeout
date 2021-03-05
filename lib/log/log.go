@@ -15,30 +15,44 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
-package main
+package log
 
 import (
-	"github.com/defsub/takeout/server"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+	l "log"
+	"os"
 )
 
-var serveCmd = &cobra.Command{
-	Use:   "serve",
-	Short: "serve music metadata",
-	Long:  `TODO`,
-	Run: func(cmd *cobra.Command, args []string) {
-		serve()
-	},
+type Logger interface {
+	Fatalf(format string, v ...interface{})
+	Fatalln(v ...interface{})
+	Printf(format string, v ...interface{})
+	Println(v ...interface{})
 }
 
-func serve() {
-	server.Serve(getConfig())
+var logger = defaultLogger()
+
+func defaultLogger() Logger {
+	return l.New(os.Stdout, "", l.LstdFlags)
 }
 
-func init() {
-	serveCmd.Flags().StringVarP(&configFile, "config", "c", "", "config file")
-	serveCmd.Flags().String("listen", "127.0.0.1:3000", "Address to listen on")
-	rootCmd.AddCommand(serveCmd)
-	viper.BindPFlag("Server.Listen", serveCmd.Flags().Lookup("listen"))
+func CheckError(err error) {
+	if err != nil {
+		logger.Fatalln(err)
+	}
+}
+
+func Fatalf(format string, v ...interface{}) {
+	logger.Fatalf(format, v...)
+}
+
+func Fatalln(v ...interface{}) {
+	logger.Fatalln(v...)
+}
+
+func Printf(format string, v ...interface{}) {
+	logger.Printf(format, v...)
+}
+
+func Println(v ...interface{}) {
+	logger.Println(v...)
 }

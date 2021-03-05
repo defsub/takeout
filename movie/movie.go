@@ -1,4 +1,4 @@
-// Copyright (C) 2020 The Takeout Authors.
+// Copyright (C) 2021 The Takeout Authors.
 //
 // This file is part of Takeout.
 //
@@ -15,30 +15,21 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
-package main
+package movie
 
 import (
-	"github.com/defsub/takeout/server"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+	"github.com/defsub/takeout/config"
+	"github.com/defsub/takeout/lib/client"
 )
 
-var serveCmd = &cobra.Command{
-	Use:   "serve",
-	Short: "serve music metadata",
-	Long:  `TODO`,
-	Run: func(cmd *cobra.Command, args []string) {
-		serve()
-	},
+type Movie struct {
+	config *config.Config
+	client *client.Client
 }
 
-func serve() {
-	server.Serve(getConfig())
-}
-
-func init() {
-	serveCmd.Flags().StringVarP(&configFile, "config", "c", "", "config file")
-	serveCmd.Flags().String("listen", "127.0.0.1:3000", "Address to listen on")
-	rootCmd.AddCommand(serveCmd)
-	viper.BindPFlag("Server.Listen", serveCmd.Flags().Lookup("listen"))
+func NewMovie(config *config.Config) *Movie {
+	return &Movie{
+		config: config,
+		client: client.NewClient(config),
+	}
 }

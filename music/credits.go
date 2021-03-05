@@ -21,8 +21,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/defsub/takeout/log"
-	"github.com/defsub/takeout/search"
+	"github.com/defsub/takeout/lib/log"
+	"github.com/defsub/takeout/lib/musicbrainz"
+	"github.com/defsub/takeout/lib/search"
 )
 
 const (
@@ -60,7 +61,7 @@ const (
 )
 
 func (m *Music) creditsIndex(reid string) (search.IndexMap, error) {
-	rel, err := m.MusicBrainzRelease(reid)
+	rel, err := m.mbz.Release(reid)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +200,7 @@ func addField(c search.FieldMap, key string, value interface{}) search.FieldMap 
 	return c
 }
 
-func relationCredits(c search.FieldMap, relations []mbzRelation) search.FieldMap {
+func relationCredits(c search.FieldMap, relations []musicbrainz.Relation) search.FieldMap {
 	for _, r := range relations {
 		if "performance" == r.Type {
 			for _, wr := range r.Work.Relations {

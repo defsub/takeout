@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
-package music
+package server
 
 import (
 	"errors"
@@ -31,8 +31,9 @@ import (
 
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
-	"github.com/defsub/takeout/encoding/xspf"
-	"github.com/defsub/takeout/log"
+	"github.com/defsub/takeout/lib/encoding/xspf"
+	"github.com/defsub/takeout/lib/log"
+	"github.com/defsub/takeout/music"
 )
 
 type MusicHandler struct {
@@ -41,8 +42,8 @@ type MusicHandler struct {
 	musicConfig *config.Config
 }
 
-func (handler *MusicHandler) NewMusic(w http.ResponseWriter, r *http.Request) *Music {
-	music := NewMusic(handler.musicConfig)
+func (handler *MusicHandler) NewMusic(w http.ResponseWriter, r *http.Request) *music.Music {
+	music := music.NewMusic(handler.musicConfig)
 	if music.Open() != nil {
 		http.Error(w, "bummer", http.StatusInternalServerError)
 		return nil
@@ -61,33 +62,33 @@ func (handler *MusicHandler) NewAuth() *auth.Auth {
 }
 
 func (handler *MusicHandler) doit(w http.ResponseWriter, r *http.Request) {
-	music := handler.NewMusic(w, r)
-	if music == nil {
+	m := handler.NewMusic(w, r)
+	if m == nil {
 		return
 	}
-	defer music.Close()
+	defer m.Close()
 
-	var tracks []Track
+	var tracks []music.Track
 	if v := r.URL.Query().Get("q"); v != "" {
-		tracks = music.Search(strings.TrimSpace(v))
+		tracks = m.Search(strings.TrimSpace(v))
 	}
 
 	if len(tracks) > 0 {
-		handler.doSpiff(music, "Takeout", tracks, w, r)
+		handler.doSpiff(m, "Takeout", tracks, w, r)
 	} else {
 		http.Error(w, "bummer", http.StatusInternalServerError)
 		return
 	}
 }
 
-func (handler *MusicHandler) doSpiff(music *Music, title string, tracks []Track,
+func (handler *MusicHandler) doSpiff(m *music.Music, title string, tracks []music.Track,
 	w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", xspf.XMLContentType)
 
 	encoder := xspf.NewXMLEncoder(w)
 	encoder.Header(title)
 	for _, t := range tracks {
-		t.Location = []string{music.TrackURL(&t).String()}
+		t.Location = []string{m.TrackURL(&t).String()}
 		encoder.Encode(t)
 	}
 	encoder.Footer()
@@ -113,51 +114,51 @@ func parseTemplates(templ *template.Template, dir string) *template.Template {
 	return templ
 }
 
-func (handler *MusicHandler) render(music *Music, temp string, view interface{},
+func (handler *MusicHandler) render(m *music.Music, temp string, view interface{},
 	w http.ResponseWriter, r *http.Request) {
 	funcMap := template.FuncMap{
 		"link": func(o interface{}) string {
 			var link string
 			switch o.(type) {
-			case Release:
-				link = fmt.Sprintf("/v?release=%d", o.(Release).ID)
-			case Artist:
-				link = fmt.Sprintf("/v?artist=%d", o.(Artist).ID)
-			case Track:
-				t := o.(Track)
-				link = trackLocation(t)
+			case music.Release:
+				link = fmt.Sprintf("/v?release=%d", o.(music.Release).ID)
+			case music.Artist:
+				link = fmt.Sprintf("/v?artist=%d", o.(music.Artist).ID)
+			case music.Track:
+				t := o.(music.Track)
+				link = handler.Locate(t)
 			}
 			return link
 		},
 		"popular": func(o interface{}) string {
 			var link string
 			switch o.(type) {
-			case Artist:
-				link = fmt.Sprintf("/v?popular=%d", o.(Artist).ID)
+			case music.Artist:
+				link = fmt.Sprintf("/v?popular=%d", o.(music.Artist).ID)
 			}
 			return link
 		},
 		"singles": func(o interface{}) string {
 			var link string
 			switch o.(type) {
-			case Artist:
-				link = fmt.Sprintf("/v?singles=%d", o.(Artist).ID)
+			case music.Artist:
+				link = fmt.Sprintf("/v?singles=%d", o.(music.Artist).ID)
 			}
 			return link
 		},
 		"ref": func(o interface{}, args ...string) string {
 			var ref string
 			switch o.(type) {
-			case Release:
-				ref = fmt.Sprintf("/music/releases/%d/tracks", o.(Release).ID)
-			case Artist:
-				ref = fmt.Sprintf("/music/artists/%d/%s", o.(Artist).ID, args[0])
-			case Track:
-				ref = fmt.Sprintf("/music/tracks/%d", o.(Track).ID)
+			case music.Release:
+				ref = fmt.Sprintf("/music/releases/%d/tracks", o.(music.Release).ID)
+			case music.Artist:
+				ref = fmt.Sprintf("/music/artists/%d/%s", o.(music.Artist).ID, args[0])
+			case music.Track:
+				ref = fmt.Sprintf("/music/tracks/%d", o.(music.Track).ID)
 			case string:
 				ref = fmt.Sprintf("/music/search?q=%s", url.QueryEscape(o.(string)))
-			case Station:
-				ref = fmt.Sprintf("/music/radio/%d", o.(Station).ID)
+			case music.Station:
+				ref = fmt.Sprintf("/music/radio/%d", o.(music.Station).ID)
 			}
 			return ref
 		},
@@ -166,32 +167,32 @@ func (handler *MusicHandler) render(music *Music, temp string, view interface{},
 		},
 		"coverSmall": func(o interface{}) string {
 			switch o.(type) {
-			case Release:
-				return music.cover(o.(Release), "250")
-			case Track:
-				return music.trackCover(o.(Track), "250")
+			case music.Release:
+				return m.Cover(o.(music.Release), "250")
+			case music.Track:
+				return m.TrackCover(o.(music.Track), "250")
 			}
 			return ""
 		},
 		"coverLarge": func(o interface{}) string {
 			switch o.(type) {
-			case Release:
-				return music.cover(o.(Release), "500")
-			case Track:
-				return music.trackCover(o.(Track), "500")
+			case music.Release:
+				return m.Cover(o.(music.Release), "500")
+			case music.Track:
+				return m.TrackCover(o.(music.Track), "500")
 			}
 			return ""
 		},
 		"coverExtraLarge": func(o interface{}) string {
 			switch o.(type) {
-			case Release:
-				return music.cover(o.(Release), "1200")
-			case Track:
-				return music.trackCover(o.(Track), "1200")
+			case music.Release:
+				return m.Cover(o.(music.Release), "1200")
+			case music.Track:
+				return m.TrackCover(o.(music.Track), "1200")
 			}
 			return ""
 		},
-		"letter": func(a Artist) string {
+		"letter": func(a music.Artist) string {
 			return a.SortName[0:1]
 		},
 	}
@@ -291,11 +292,11 @@ func (handler *MusicHandler) viewHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	music := handler.NewMusic(w, r)
-	if music == nil {
+	m := handler.NewMusic(w, r)
+	if m == nil {
 		return
 	}
-	defer music.Close()
+	defer m.Close()
 
 	var view interface{}
 	var temp string
@@ -303,49 +304,49 @@ func (handler *MusicHandler) viewHandler(w http.ResponseWriter, r *http.Request)
 	if v := r.URL.Query().Get("release"); v != "" {
 		// /v?release={release-id}
 		id, _ := strconv.Atoi(v)
-		release, _ := music.lookupRelease(id)
-		view = music.ReleaseView(release)
+		release, _ := m.LookupRelease(id)
+		view = handler.releaseView(m, release)
 		temp = "release.html"
 	} else if v := r.URL.Query().Get("artist"); v != "" {
 		// /v?artist={artist-id}
 		id, _ := strconv.Atoi(v)
-		artist, _ := music.lookupArtist(id)
-		view = music.ArtistView(artist)
+		artist, _ := m.LookupArtist(id)
+		view = handler.artistView(m, artist)
 		temp = "artist.html"
 	} else if v := r.URL.Query().Get("artists"); v != "" {
 		// /v?artists=x
-		view = music.ArtistsView()
+		view = handler.artistsView(m)
 		temp = "artists.html"
 	} else if v := r.URL.Query().Get("popular"); v != "" {
 		// /v?popular={artist-id}
 		id, _ := strconv.Atoi(v)
-		artist, _ := music.lookupArtist(id)
-		view = music.PopularView(artist)
+		artist, _ := m.LookupArtist(id)
+		view = handler.popularView(m, artist)
 		temp = "popular.html"
 	} else if v := r.URL.Query().Get("singles"); v != "" {
 		// /v?singles={artist-id}
 		id, _ := strconv.Atoi(v)
-		artist, _ := music.lookupArtist(id)
-		view = music.SinglesView(artist)
+		artist, _ := m.LookupArtist(id)
+		view = handler.singlesView(m, artist)
 		temp = "singles.html"
 	} else if v := r.URL.Query().Get("music"); v != "" {
 		// /v?music=x
-		view = music.HomeView()
+		view = handler.homeView(m)
 		temp = "music.html"
 	} else if v := r.URL.Query().Get("q"); v != "" {
 		// /v?q={pattern}
-		view = music.SearchView(strings.TrimSpace(v))
+		view = handler.searchView(m, strings.TrimSpace(v))
 		temp = "search.html"
 	} else if v := r.URL.Query().Get("radio"); v != "" {
 		// /v?radio=x
-		view = music.RadioView(handler.user)
+		view = handler.radioView(m, handler.user)
 		temp = "radio.html"
 	} else {
 		view = time.Now().Unix()
 		temp = "index.html"
 	}
 
-	handler.render(music, temp, view, w, r)
+	handler.render(m, temp, view, w, r)
 }
 
 func Serve(config *config.Config) {

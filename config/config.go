@@ -73,6 +73,9 @@ type MusicConfig struct {
 	artistMap            map[string]string
 }
 
+type MovieConfig struct {
+}
+
 type LastFMAPIConfig struct {
 	Key    string
 	Secret string
@@ -81,6 +84,10 @@ type LastFMAPIConfig struct {
 type FanartAPIConfig struct {
 	ProjectKey  string
 	PersonalKey string
+}
+
+type TMDBAPIConfig struct {
+	Key string
 }
 
 type AuthConfig struct {
@@ -106,6 +113,11 @@ type ClientConfig struct {
 	UserAgent string
 }
 
+type MediaConfig struct {
+	MovieTemplate  string
+	PosterTemplate string
+}
+
 type Config struct {
 	Auth    AuthConfig
 	Bucket  BucketConfig
@@ -113,7 +125,10 @@ type Config struct {
 	DataDir string
 	Fanart  FanartAPIConfig
 	LastFM  LastFMAPIConfig
+	Media   MediaConfig
 	Music   MusicConfig
+	TMDB    TMDBAPIConfig
+	Movie   MovieConfig
 	Search  SearchConfig
 	Server  ServerConfig
 }
@@ -185,6 +200,8 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Music.DB.Source", "music.db")
 	v.SetDefault("Music.DB.LogMode", "false")
 
+	v.SetDefault("TMDB.Key", "903a776b0638da68e9ade38ff538e1d3")
+
 	v.SetDefault("Search.BleveDir", ".")
 
 	v.SetDefault("Server.Listen", "127.0.0.1:3000")
@@ -197,11 +214,11 @@ func configDefaults(v *viper.Viper) {
 	})
 
 	v.SetDefault("Music.RadioOther", map[string]string{
-		"Series Hits":            "+series:*",
-		"Top Hits":               "+popularity:1",
-		"Top 3 Hits":             "+popularity:<4",
-		"Top 5 Hits":             "+popularity:<6",
-		"Top 10 Hits":            "+popularity:<11",
+		"Series Hits": "+series:*",
+		"Top Hits":    "+popularity:1",
+		"Top 3 Hits":  "+popularity:<4",
+		"Top 5 Hits":  "+popularity:<6",
+		"Top 10 Hits": "+popularity:<11",
 	})
 
 }

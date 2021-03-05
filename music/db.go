@@ -80,7 +80,7 @@ func (m *Music) createTrack(track *Track) error {
 }
 
 // Find an artist by name.
-func (m *Music) artist(artist string) *Artist {
+func (m *Music) Artist(artist string) *Artist {
 	var a Artist
 	err := m.db.Where("name = ?", artist).First(&a).Error
 	if err != nil {
@@ -397,7 +397,7 @@ func (m *Music) trackArtistNames() []string {
 	return artists
 }
 
-func (m *Music) artistSingleTracks(a Artist, limit ...int) []Track {
+func (m *Music) ArtistSingleTracks(a Artist, limit ...int) []Track {
 	var tracks []Track
 	l := m.config.Music.SinglesLimit
 	if len(limit) == 1 {
@@ -431,7 +431,7 @@ func (m *Music) artistSingleTracks(a Artist, limit ...int) []Track {
 	return tracks
 }
 
-func (m *Music) artistPopularTracks(a Artist, limit ...int) []Track {
+func (m *Music) ArtistPopularTracks(a Artist, limit ...int) []Track {
 	var tracks []Track
 	l := m.config.Music.PopularLimit
 	if len(limit) == 1 {
@@ -473,7 +473,7 @@ func (m *Music) artistDeepTracks(a Artist, limit ...int) []Track {
 	return tracks
 }
 
-func (m *Music) artistTracks(a Artist) []Track {
+func (m *Music) ArtistTracks(a Artist) []Track {
 	var tracks []Track
 	m.db.Where("artist = ?", a.Name).
 		Order("release, date, disc_num, track_num").
@@ -482,7 +482,7 @@ func (m *Music) artistTracks(a Artist) []Track {
 }
 
 // All artist names ordered by sortName from MusicBrainz.
-func (m *Music) artists() []Artist {
+func (m *Music) Artists() []Artist {
 	var artists []Artist
 	m.db.Order("sort_name asc").Find(&artists)
 	return artists
@@ -506,7 +506,7 @@ func (m *Music) similarArtistsByTags(a *Artist) []Artist {
 }
 
 // Similar artists based on similarity rank from Last.fm.
-func (m *Music) similarArtists(a *Artist, limit ...int) []Artist {
+func (m *Music) SimilarArtists(a *Artist, limit ...int) []Artist {
 	var artists []Artist
 	l := m.config.Music.SimilarArtistsLimit
 	if len(limit) == 1 {
@@ -522,8 +522,8 @@ func (m *Music) similarArtists(a *Artist, limit ...int) []Artist {
 
 // Similar releases based on releases from similar artists in the
 // previous and following year.
-func (m *Music) similarReleases(a *Artist, r Release) []Release {
-	artists := m.similarArtists(a)
+func (m *Music) SimilarReleases(a *Artist, r Release) []Release {
+	artists := m.SimilarArtists(a)
 	var names []string
 	for _, sa := range artists {
 		names = append(names, sa.Name)
@@ -543,7 +543,7 @@ func (m *Music) similarReleases(a *Artist, r Release) []Release {
 }
 
 // All releases for an artist that have corresponing tracks.
-func (m *Music) artistReleases(a *Artist) []Release {
+func (m *Music) ArtistReleases(a *Artist) []Release {
 	var releases []Release
 	m.db.Where("releases.re_id in (select distinct re_id from tracks where artist = ?)",
 		a.Name).Order("date asc").Find(&releases)
@@ -553,7 +553,7 @@ func (m *Music) artistReleases(a *Artist) []Release {
 // Recently added releases are ordered by LastModified which comes
 // from the track object in the S3 bucket.  Use config Recent and
 // RecentLimit to tune the result count.
-func (m *Music) recentlyAdded() []Release {
+func (m *Music) RecentlyAdded() []Release {
 	var releases []Release
 	m.db.Joins("inner join tracks on tracks.re_id = releases.re_id").
 		Group("releases.artist, releases.name").
@@ -567,7 +567,7 @@ func (m *Music) recentlyAdded() []Release {
 // Recently released releases are ordered by the MusicBrainz first
 // release date of the release, newest first.  Use config Recent and
 // RecentLimit to tune the result count.
-func (m *Music) recentlyReleased() []Release {
+func (m *Music) RecentlyReleased() []Release {
 	var releases []Release
 	m.db.Joins("inner join tracks on tracks.re_id = releases.re_id").
 		Group("releases.artist, releases.name").
@@ -612,7 +612,7 @@ func (m *Music) release(reid string) (*Release, error) {
 
 // Obtain all the tracks for this release, ordered by disc and track
 // number.
-func (m *Music) releaseTracks(release Release) []Track {
+func (m *Music) ReleaseTracks(release Release) []Track {
 	var tracks []Track
 	m.db.Where("re_id = ?", release.REID).Order("disc_num, track_num").Find(&tracks)
 	return tracks
@@ -624,7 +624,7 @@ func (m *Music) releaseMedia(release Release) []Media {
 	return media
 }
 
-func (m *Music) releaseSingles(release Release) []Track {
+func (m *Music) ReleaseSingles(release Release) []Track {
 	var tracks []Track
 	m.db.Where("tracks.re_id = ? and"+
 		" exists (select releases.name from releases where tracks.artist = releases.artist"+
@@ -634,7 +634,7 @@ func (m *Music) releaseSingles(release Release) []Track {
 	return tracks
 }
 
-func (m *Music) releasePopular(release Release) []Track {
+func (m *Music) ReleasePopular(release Release) []Track {
 	var tracks []Track
 	m.db.Where("re_id = ? and"+
 		" exists (select popular.title from popular where"+
@@ -645,7 +645,7 @@ func (m *Music) releasePopular(release Release) []Track {
 }
 
 // Lookup a release given the internal record ID.
-func (m *Music) lookupRelease(id int) (Release, error) {
+func (m *Music) LookupRelease(id int) (Release, error) {
 	var release Release
 	err := m.db.First(&release, id).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
@@ -655,7 +655,7 @@ func (m *Music) lookupRelease(id int) (Release, error) {
 }
 
 // Lookup an artist given the internal record ID.
-func (m *Music) lookupArtist(id int) (Artist, error) {
+func (m *Music) LookupArtist(id int) (Artist, error) {
 	var artist Artist
 	err := m.db.First(&artist, id).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
@@ -665,7 +665,7 @@ func (m *Music) lookupArtist(id int) (Artist, error) {
 }
 
 // Lookup a track given the internal record ID.
-func (m *Music) lookupTrack(id int) (Track, error) {
+func (m *Music) LookupTrack(id int) (Track, error) {
 	var track Track
 	err := m.db.First(&track, id).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
@@ -684,7 +684,7 @@ func (m *Music) tracksFor(keys []string) []Track {
 // Lookup a track given the etag from the S3 bucket object. Etag can
 // be used as a good external identifier (for playlists) since the
 // interal record ID can change.
-func (m *Music) lookupETag(etag string) (*Track, error) {
+func (m *Music) LookupETag(etag string) (*Track, error) {
 	track := Track{ETag: etag}
 	err := m.db.First(&track, &track).Error
 	return &track, err
@@ -692,7 +692,7 @@ func (m *Music) lookupETag(etag string) (*Track, error) {
 
 // Simple sql search for artists, releases and tracks. Use config
 // SearchLimit to change the result count.
-func (m *Music) search(query string) ([]Artist, []Release, []Track) {
+func (m *Music) Query(query string) ([]Artist, []Release, []Track) {
 	var artists []Artist
 	var releases []Release
 	var tracks []Track
@@ -716,7 +716,7 @@ func (m *Music) search(query string) ([]Artist, []Release, []Track) {
 }
 
 // Lookup user playlist.
-func (m *Music) lookupPlaylist(user *auth.User) *Playlist {
+func (m *Music) LookupPlaylist(user *auth.User) *Playlist {
 	var p Playlist
 	err := m.db.Where("user = ?", user.Name).First(&p).Error
 	if err != nil {
@@ -726,12 +726,12 @@ func (m *Music) lookupPlaylist(user *auth.User) *Playlist {
 }
 
 // Save a playlist.
-func (m *Music) updatePlaylist(p *Playlist) error {
+func (m *Music) UpdatePlaylist(p *Playlist) error {
 	return m.db.Save(p).Error
 }
 
 // Obtain user stations.
-func (m *Music) stations(user *auth.User) []Station {
+func (m *Music) Stations(user *auth.User) []Station {
 	var stations []Station
 	m.db.Where("user = ? or shared = 1", user.Name).Find(&stations)
 	return stations
@@ -742,7 +742,7 @@ func (m *Music) clearStationPlaylists() {
 }
 
 // Obtain user station by id.
-func (m *Music) lookupStation(id int) (Station, error) {
+func (m *Music) LookupStation(id int) (Station, error) {
 	var s Station
 	err := m.db.First(&s, id).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
@@ -752,11 +752,11 @@ func (m *Music) lookupStation(id int) (Station, error) {
 }
 
 // Update a station.
-func (m *Music) updateStation(s *Station) error {
+func (m *Music) UpdateStation(s *Station) error {
 	return m.db.Save(s).Error
 }
 
-func (m *Music) deleteStation(s *Station) error {
+func (m *Music) DeleteStation(s *Station) error {
 	return m.db.Unscoped().Delete(s).Error
 }
 
@@ -780,7 +780,7 @@ func (m *Music) favoriteArtists(limit int) ([]string, error) {
 	return artists, nil
 }
 
-func (m *Music) artistBackground(a *Artist) string {
+func (m *Music) ArtistBackground(a *Artist) string {
 	var backgrounds []ArtistBackground
 	m.db.Where("artist = ?", a.Name).
 		Order("rank desc").
@@ -791,7 +791,7 @@ func (m *Music) artistBackground(a *Artist) string {
 	return backgrounds[0].URL
 }
 
-func (m *Music) artistImage(a *Artist) string {
+func (m *Music) ArtistImage(a *Artist) string {
 	var imgs []ArtistImage
 	m.db.Where("artist = ?", a.Name).
 		Order("rank desc").
@@ -847,11 +847,11 @@ func (m *Music) createArtistTag(t *ArtistTag) error {
 	return m.db.Create(t).Error
 }
 
-func (m *Music) createPlaylist(p *Playlist) error {
+func (m *Music) CreatePlaylist(p *Playlist) error {
 	return m.db.Create(p).Error
 }
 
-func (m *Music) createStation(s *Station) error {
+func (m *Music) CreateStation(s *Station) error {
 	return m.db.Create(s).Error
 }
 

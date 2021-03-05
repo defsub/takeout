@@ -22,7 +22,7 @@ import (
 	"os"
 
 	"github.com/defsub/takeout/config"
-	"github.com/defsub/takeout/log"
+	"github.com/defsub/takeout/lib/log"
 	"github.com/spf13/cobra"
 )
 
@@ -40,6 +40,12 @@ var configPath string
 var configName string
 
 func getConfig() *config.Config {
+	if configPath == "" {
+		configPath = os.Getenv("TAKEOUT_HOME")
+	}
+	if configName == "" {
+		configName = os.Getenv("TAKEOUT_CONFIG")
+	}
 	if configFile != "" {
 		config.SetConfigFile(configFile)
 	} else {

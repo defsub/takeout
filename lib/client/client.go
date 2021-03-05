@@ -23,7 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/defsub/takeout/config"
-	"github.com/defsub/takeout/log"
+	"github.com/defsub/takeout/lib/log"
 	"github.com/gregjones/httpcache"
 	"github.com/gregjones/httpcache/diskcache"
 	"net/http"

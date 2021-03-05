@@ -1,4 +1,4 @@
-// Copyright (C) 2020 The Takeout Authors.
+// Copyright (C) 2021 The Takeout Authors.
 //
 // This file is part of Takeout.
 //
@@ -18,38 +18,54 @@
 package main
 
 import (
+	"fmt"
+	"os"
+
+	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/lib/log"
-	"github.com/defsub/takeout/music"
 	"github.com/spf13/cobra"
 )
 
-var radioCreate bool
-var radioClear bool
-
-var radioCmd = &cobra.Command{
-	Use:   "radio",
-	Short: "radio",
-	Long:  `TODO`,
+var rootCmd = &cobra.Command{
+	Use:   "tmdb",
+	Short: "",
+	Long:  `https://defsub.github.io/`,
 	Run: func(cmd *cobra.Command, args []string) {
-		radio()
+		// TODO
 	},
 }
 
-func radio() {
-	m := music.NewMusic(getConfig())
-	err := m.Open()
-	log.CheckError(err)
-	defer m.Close()
-	if radioCreate {
-		m.CreateStations()
-	} else if radioClear {
-		m.ClearStations()
+var configFile string
+var configPath string
+var configName string
+
+func getConfig() *config.Config {
+	if configPath == "" {
+		configPath = os.Getenv("TAKEOUT_HOME")
 	}
+	if configName == "" {
+		configName = os.Getenv("TAKEOUT_CONFIG")
+	}
+	if configFile != "" {
+		config.SetConfigFile(configFile)
+	} else {
+		if configPath == "" {
+			configPath = "."
+		}
+		if configName == "" {
+			configName = "takeout"
+		}
+		config.AddConfigPath(configPath)
+		config.SetConfigName(configName)
+	}
+	config, err := config.GetConfig()
+	log.CheckError(err)
+	return config
 }
 
-func init() {
-	radioCmd.Flags().StringVarP(&configFile, "config", "c", "", "config file")
-	radioCmd.Flags().BoolVarP(&radioCreate, "create", "n", true, "(re)create radio stations")
-	radioCmd.Flags().BoolVarP(&radioClear, "clear", "x", false, "clear cached radio stations")
-	rootCmd.AddCommand(radioCmd)
+func main() {
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
