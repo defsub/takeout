@@ -174,6 +174,7 @@ func (m *Music) Search(q string, limit ...int) []Track {
 }
 
 const (
+	// rename to Radio* or Station*
 	TypeArtist  = "artist"  // Songs by single artist
 	TypeGenre   = "genre"   // Songs from one or more genres
 	TypeSimilar = "similar" // Songs from similar artists

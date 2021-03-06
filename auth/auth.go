@@ -138,8 +138,6 @@ func (a *Auth) Login(email, pass string) (http.Cookie, error) {
 		return http.Cookie{}, errors.New("user not found")
 	}
 
-	fmt.Printf("got %+v\n", u)
-
 	key, err := a.key(pass, u.Salt)
 	if err != nil {
 		fmt.Printf("err %s\n", err)
