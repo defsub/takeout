@@ -16,6 +16,9 @@ Screens running on Chrome 85 for Android 10:
 
 ## Features
 
+* and this too
+
+
 * Powerful search and playlists using [Bleve](https://blevesearch.com/). See [SEARCH.md](SEARCH.md).
 * Metadata from [MusicBrainz](https://musicbrainz.org/) and [Last.fm](https://last.fm/)
 * Album covers from the [Cover Art Archive](https://coverartarchive.org/)

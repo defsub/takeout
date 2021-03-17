@@ -35,7 +35,7 @@ func (m *Music) bucketConfig() config.BucketConfig {
 }
 
 // Connect to the configured S3 bucket.
-// Tested: Wasabi
+// Tested: Wasabi, Backblaze, Minio
 func (m *Music) openBucket() error {
 	bucket := m.bucketConfig()
 	creds := credentials.NewStaticCredentials(

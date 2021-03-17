@@ -68,12 +68,20 @@ Takeout.music = (function() {
 
     const updateTitle = function(track) {
 	if (track["creator"] !== undefined && track["title"] !== undefined) {
-	    let title = track["creator"] + " ~ " + track["title"];
-	    document.getElementsByTagName("title")[0].innerText = title;
-	    audioTag().setAttribute("title", title);
-	} else {
-	    document.getElementsByTagName("title")[0].innerText = "Takeout";
-	    audioTag().setAttribute("title", "");
+	    if ("mediaSession" in navigator) {
+		navigator.mediaSession.metadata = new MediaMetadata({
+                    title: track["title"],
+                    artist: track["creator"],
+                    album: track["album"],
+                    artwork: [
+			{ src: track["image"], type: "image/jpeg" }
+                    ]
+		});
+            } else {
+		let title = track["creator"] + " ~ " + track["title"];
+		document.getElementsByTagName("title")[0].innerText = title;
+		audioTag().setAttribute("title", title);
+            }
 	}
     };
 
