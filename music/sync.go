@@ -830,7 +830,7 @@ func (m *Music) resolveArtist(name string) (artist *Artist, tags []ArtistTag) {
 		lastName, lastID := m.lastfm.ArtistSearch(name)
 		if lastName != "" && lastID != "" {
 			log.Printf("try lastfm got %s mbid:'%s'\n", lastName, lastID)
-			v := m.mbz.SearchArtistID(artist.ARID)
+			v := m.mbz.SearchArtistID(lastID)
 			if v != nil {
 				artist, tags = doArtist(v)
 			}

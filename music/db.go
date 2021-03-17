@@ -238,7 +238,8 @@ func (m *Music) assignTrackRelease(t *Track, r *Release) error {
 		Update("artwork", r.Artwork).
 		Update("front_artwork", r.FrontArtwork).
 		Update("back_artwork", r.BackArtwork).
-		Update("other_artwork", r.OtherArtwork).Error
+		Update("other_artwork", r.OtherArtwork).
+		Update("group_artwork", r.GroupArtwork).Error
 	if err != nil {
 		return err
 	}

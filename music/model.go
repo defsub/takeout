@@ -134,6 +134,7 @@ type Track struct {
 	FrontArtwork bool
 	BackArtwork  bool
 	OtherArtwork string
+	GroupArtwork bool
 }
 
 func (t Track) releaseKey() string {
