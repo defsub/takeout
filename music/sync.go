@@ -682,15 +682,16 @@ func (m *Music) syncSimilarFor(artists []Artist) error {
 		mbids := make([]string, 0, len(rank))
 		for k := range rank {
 			mbids = append(mbids, k)
+			fmt.Printf("similar %s\n", k)
 		}
 
-		artists := m.artistsByMBID(mbids)
-		sort.Slice(artists, func(i, j int) bool {
-			return rank[artists[i].ARID] > rank[artists[j].ARID]
+		list := m.artistsByMBID(mbids)
+		sort.Slice(list, func(i, j int) bool {
+			return rank[list[i].ARID] > rank[list[j].ARID]
 		})
 
 		var similar []Similar
-		for index, a := range artists {
+		for index, a := range list {
 			similar = append(similar, Similar{
 				Artist: a.Name,
 				ARID:   a.ARID,
