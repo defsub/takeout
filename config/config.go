@@ -176,7 +176,7 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("LastFM.Secret", "8f43410e8e81c33d4542738ee84dc39b")
 
 	v.SetDefault("Music.ArtistRadioBreadth", "10")
-	v.SetDefault("Music.ArtistRadioDepth", "10")
+	v.SetDefault("Music.ArtistRadioDepth", "3")
 	v.SetDefault("Music.DeepLimit", "50")
 	v.SetDefault("Music.PopularLimit", "50")
 	v.SetDefault("Music.RadioLimit", "25")

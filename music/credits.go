@@ -95,22 +95,28 @@ func (m *Music) creditsIndex(reid string) (search.IndexMap, error) {
 			// this has many genres and tags so don't add
 			continue
 		}
-		for _, g := range a.Artist.Genres {
-			if g.Count > 0 {
+
+		// use top 3 genres; could also just use PrimaryGenre()
+		for i, g := range a.Artist.SortedGenres() {
+			if i < 3 && g.Count > 0 {
 				addField(fields, FieldGenre, g.Name)
 			}
 		}
+
 		for _, t := range a.Artist.Tags {
 			if t.Count > 0 {
 				addField(fields, FieldTag, t.Name)
 			}
 		}
 	}
-	for _, g := range rel.ReleaseGroup.Genres {
-		if g.Count > 0 {
+
+	// use top 3 genres
+	for i, g := range rel.ReleaseGroup.SortedGenres() {
+		if i < 3 && g.Count > 0 {
 			addField(fields, FieldGenre, g.Name)
 		}
 	}
+
 	for _, t := range rel.ReleaseGroup.Tags {
 		if t.Count > 0 {
 			addField(fields, FieldTag, t.Name)

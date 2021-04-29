@@ -206,7 +206,7 @@ func (m *Music) CreateStations() {
 			Type:   TypeGenre,
 			Name:   strings.Title(g),
 			Ref: fmt.Sprintf(`/music/search?q=%s&radio=1`,
-				url.QueryEscape(fmt.Sprintf(`+genre:"%s" +popularity:<11 -artist:"Various Artists"`, g)))}
+				url.QueryEscape(fmt.Sprintf(`+genre:"%s" +popularity:<4 -artist:"Various Artists"`, g)))}
 		m.CreateStation(&station)
 	}
 
@@ -219,7 +219,7 @@ func (m *Music) CreateStations() {
 			Name:   fmt.Sprintf("%ds Top Tracks", d),
 			Ref: fmt.Sprintf(`/music/search?q=%s&radio=1`,
 				url.QueryEscape(fmt.Sprintf(
-					`+date:>="%d-01-01" +date:<="%d-12-31" +popularity:<11`, d, d+9)))}
+					`+date:>="%d-01-01" +date:<="%d-12-31" +popularity:<4`, d, d+9)))}
 		m.CreateStation(&station)
 	}
 
@@ -252,7 +252,7 @@ func (m *Music) ArtistSimilar(artist Artist, depth int, breadth int) []Track {
 	station = append(station, tracks...)
 	artists := m.SimilarArtists(&artist, breadth)
 	for _, a := range artists {
-		tracks = m.ArtistPopularTracks(a)
+		tracks = m.ArtistPopularTracks(a, depth)
 		station = append(station, tracks...)
 	}
 	return Shuffle(station)
@@ -260,8 +260,8 @@ func (m *Music) ArtistSimilar(artist Artist, depth int, breadth int) []Track {
 
 func (m *Music) ArtistShuffle(artist Artist, depth int) []Track {
 	var tracks []Track
-	// add 50% popular
-	pop := int(float32(depth) * 0.50)
+	// add 75% popular
+	pop := int(float32(depth) * 0.75)
 	tracks = append(tracks, Shuffle(m.ArtistPopularTracks(artist, pop))...)
 	// randomly add some unique tracks
 	// TODO consider other algorithms
