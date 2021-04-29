@@ -427,6 +427,7 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 			if matches != nil {
 				id := str.Atoi(matches[1])
 				artist, _ := m.LookupArtist(id)
+				image := m.ArtistImage(&artist)
 				sub := matches[2]
 				switch sub {
 				case "popular":
@@ -434,14 +435,14 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 					handler.apiRefPlaylist(w, r, m,
 						artist.Name,
 						fmt.Sprintf("%s \u2013 Popular", artist.Name),
-						"",
+						image,
 						fmt.Sprintf("/music/artists/%d/popular", id))
 				case "singles":
 					// /api/artists/id/singles/playlist
 					handler.apiRefPlaylist(w, r, m,
 						artist.Name,
 						fmt.Sprintf("%s \u2013 Singles", artist.Name),
-						"",
+						image,
 						fmt.Sprintf("/music/artists/%d/singles", id))
 				default:
 					http.Error(w, "bummer", http.StatusNotFound)
@@ -459,19 +460,20 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 				switch v {
 				case "artists":
 					artist, _ := m.LookupArtist(id)
+					image := m.ArtistImage(&artist)
 					if res == "playlist" {
 						// /api/artists/1/playlist
 						handler.apiRefPlaylist(w, r, m,
 							artist.Name,
 							fmt.Sprintf("%s \u2013 Shuffle", artist.Name),
-							"",
+							image,
 							fmt.Sprintf("/music/artists/%d/shuffle", id))
 					} else if res == "radio" {
 						// /api/artists/1/radio
 						handler.apiRefPlaylist(w, r, m,
 							"Radio",
 							fmt.Sprintf("%s \u2013 Radio", artist.Name),
-							"",
+							image,
 							fmt.Sprintf("/music/artists/%d/similar", id))
 					} else if res == "popular" {
 						// /api/artists/1/popular

@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -85,6 +86,24 @@ type Artist struct {
 	EndArea        Area       `json:"end-area"`
 	LifeSpan       LifeSpan   `json:"life-span"`
 	Relations      []Relation `json:"relations"`
+}
+
+func doSort(genres []Genre) []Genre {
+	sort.Slice(genres, func(i, j int) bool {
+		return genres[i].Count > genres[j].Count
+	})
+	return genres
+}
+
+func (a Artist) SortedGenres() []Genre {
+	return doSort(a.Genres)
+}
+
+func (a Artist) PrimaryGenre() string {
+	if len(a.Genres) > 0 {
+		return doSort(a.Genres)[0].Name
+	}
+	return "" // TODO default to something?
 }
 
 type ArtistCredit struct {
@@ -258,6 +277,10 @@ type ReleaseGroup struct {
 
 func (rg ReleaseGroup) FirstReleaseTime() time.Time {
 	return date.ParseDate(rg.FirstReleaseDate)
+}
+
+func (rg ReleaseGroup) SortedGenres() []Genre {
+	return doSort(rg.Genres)
 }
 
 // func release(artist string, r Release) music.Release {

@@ -127,7 +127,7 @@ func (m *Music) Sync(options SyncOptions) {
 		}
 		if options.Artwork {
 			log.CheckError(m.syncArtworkFor(artists))
-			//log.CheckError(m.syncMissingArtwork())
+			log.CheckError(m.syncMissingArtwork())
 		}
 		if options.Index {
 			log.CheckError(m.syncIndexFor(artists))
@@ -789,12 +789,7 @@ func (m *Music) syncArtists() error {
 		artist.Area = detail.Area.Name
 		artist.Date = date.ParseDate(detail.LifeSpan.Begin)
 		artist.EndDate = date.ParseDate(detail.LifeSpan.End)
-		if len(detail.Genres) > 0 {
-			sort.Slice(detail.Genres, func(i, j int) bool {
-				return detail.Genres[i].Count > detail.Genres[j].Count
-			})
-			artist.Genre = detail.Genres[0].Name
-		}
+		artist.Genre = detail.PrimaryGenre()
 		m.updateArtist(artist)
 	}
 	return nil
