@@ -110,7 +110,7 @@ func (c *Client) doGet(headers map[string]string, urlStr string) (*http.Response
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		log.Printf("resp %d %s\n", resp.StatusCode, err)
+		log.Printf("client.Do err %s\n", err)
 		return nil, err
 	}
 
