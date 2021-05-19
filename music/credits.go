@@ -58,6 +58,7 @@ const (
 
 	TypePopular = "popular"
 	TypeSingle  = "single"
+	TypeCover   = "cover"
 )
 
 func (m *Music) creditsIndex(reid string) (search.IndexMap, error) {
@@ -85,9 +86,12 @@ func (m *Music) creditsIndex(reid string) (search.IndexMap, error) {
 	}
 
 	// dates
-	addField(fields, FieldDate, rel.Date) // refined later
+	//   date: first release date of any release associated with this track
+	//   release_date: date of the release associated with this track
+	//   first_date: first release date of this track
+	addField(fields, FieldDate, rel.ReleaseGroup.FirstReleaseDate)
 	addField(fields, FieldReleaseDate, rel.Date)
-	addField(fields, FieldFirstDate, rel.ReleaseGroup.FirstReleaseDate)
+	addField(fields, FieldFirstDate, rel.ReleaseGroup.FirstReleaseDate) // refined later
 
 	// genres for artist and release group
 	for _, a := range rel.ArtistCredit {
@@ -135,6 +139,8 @@ func (m *Music) creditsIndex(reid string) (search.IndexMap, error) {
 				addField(trackFields, FieldMediaTitle, m.Title)
 			}
 			addField(trackFields, FieldTrack, t.Position)
+			// replace with first release date of this track
+			setField(trackFields, FieldFirstDate, t.Recording.FirstReleaseDate)
 			addField(trackFields, FieldTitle, t.Recording.Title)
 			addField(trackFields, FieldLength, t.Recording.Length/1000)
 			relationCredits(trackFields, t.Recording.Relations)
@@ -147,6 +153,14 @@ func (m *Music) creditsIndex(reid string) (search.IndexMap, error) {
 	}
 
 	return index, nil
+}
+
+func setField(c search.FieldMap, key string, value interface{}) search.FieldMap {
+	// first remove
+	k := strings.Replace(key, " ", "_", -1)
+	delete(c, k)
+	// now add
+	return addField(c, key, value)
 }
 
 func addField(c search.FieldMap, key string, value interface{}) search.FieldMap {
@@ -224,6 +238,21 @@ func relationCredits(c search.FieldMap, relations []musicbrainz.Relation) search
 				default:
 					log.Printf("** ignore performance work relation '%s'\n", wr.Type)
 				}
+			}
+			// check if this song is a cover
+			isCover := false
+			if len(r.AttributeIds.Cover) > 0 {
+				isCover = true
+			} else {
+				for _, a := range r.Attributes {
+					if a == "cover" {
+						isCover = true
+						break
+					}
+				}
+			}
+			if isCover {
+				addField(c, FieldType, TypeCover)
 			}
 		} else if "instrument" == r.Type {
 			for _, a := range r.Attributes {
