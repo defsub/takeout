@@ -134,6 +134,7 @@ type Series struct {
 
 type AttributeIds struct {
 	Cover string `json:"cover"` // 1e8536bd-6eda-3822-8e78-1c0f4d3d2113
+	Live  string `json:"live"`  // 70007db6-a8bc-46d7-a770-80e6a0bb551a
 }
 
 // release-group series: type="part of", target-type="series", see series

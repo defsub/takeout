@@ -59,6 +59,7 @@ const (
 	TypePopular = "popular"
 	TypeSingle  = "single"
 	TypeCover   = "cover"
+	TypeLive    = "live"
 )
 
 func (m *Music) creditsIndex(reid string) (search.IndexMap, error) {
@@ -140,7 +141,9 @@ func (m *Music) creditsIndex(reid string) (search.IndexMap, error) {
 			}
 			addField(trackFields, FieldTrack, t.Position)
 			// replace with first release date of this track
-			setField(trackFields, FieldFirstDate, t.Recording.FirstReleaseDate)
+			if len(t.Recording.FirstReleaseDate) > 0 {
+				setField(trackFields, FieldFirstDate, t.Recording.FirstReleaseDate)
+			}
 			addField(trackFields, FieldTitle, t.Recording.Title)
 			addField(trackFields, FieldLength, t.Recording.Length/1000)
 			relationCredits(trackFields, t.Recording.Relations)
@@ -240,19 +243,12 @@ func relationCredits(c search.FieldMap, relations []musicbrainz.Relation) search
 				}
 			}
 			// check if this song is a cover
-			isCover := false
-			if len(r.AttributeIds.Cover) > 0 {
-				isCover = true
-			} else {
-				for _, a := range r.Attributes {
-					if a == "cover" {
-						isCover = true
-						break
-					}
-				}
-			}
-			if isCover {
+			if len(r.AttributeIds.Cover) > 0 || hasAttribute(r.Attributes, "cover") {
 				addField(c, FieldType, TypeCover)
+			}
+			// check if this song is performed live
+			if len(r.AttributeIds.Live) > 0 || hasAttribute(r.Attributes, "live") {
+				addField(c, FieldType, TypeLive)
 			}
 		} else if "instrument" == r.Type {
 			for _, a := range r.Attributes {
@@ -277,4 +273,13 @@ func relationCredits(c search.FieldMap, relations []musicbrainz.Relation) search
 		}
 	}
 	return c
+}
+
+func hasAttribute(attrs []string, name string) bool {
+	for _, a := range attrs {
+		if a == name {
+			return true
+		}
+	}
+	return false
 }

@@ -219,7 +219,7 @@ func (m *Music) CreateStations() {
 			Name:   fmt.Sprintf("%ds Top Tracks", d),
 			Ref: fmt.Sprintf(`/music/search?q=%s&radio=1`,
 				url.QueryEscape(fmt.Sprintf(
-					`+date:>="%d-01-01" +date:<="%d-12-31" +type:single +popularity:<11`, d, d+9)))}
+					`+first_date:>="%d-01-01" +first_date:<="%d-12-31" +type:single +popularity:<11`, d, d+9)))}
 		m.CreateStation(&station)
 	}
 
