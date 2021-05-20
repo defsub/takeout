@@ -19,8 +19,8 @@ package search
 
 import (
 	"fmt"
-	"github.com/blevesearch/bleve"
-	"github.com/blevesearch/bleve/analysis/analyzer/keyword"
+	"github.com/blevesearch/bleve/v2"
+	"github.com/blevesearch/bleve/v2/analysis/analyzer/keyword"
 	"github.com/defsub/takeout/config"
 )
 

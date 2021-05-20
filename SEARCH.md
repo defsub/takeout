@@ -4,8 +4,8 @@
 
 * artist - Artist name(s) from artist credits within release (album) media tracks
 * asin - Amazon Standard Identifcation Number (optional)
-* date - First track release date (in any release) or same as release_date
-* first_date - First release (album) date
+* date - First release date
+* first_date - First track release date
 * genre - Genres associated with artist(s) and release (album)
 * media - Media (disc) index, 1 for single disc albums
 * media_title - Media (disc) specific title (optional)
@@ -17,7 +17,7 @@
 * tag - Tags associated with artists(s) and release (album)
 * title - Track title
 * track - Track number
-* type - Track types including: single
+* type - Track types including: single, popular, cover, live
 
 Note that date fields are YYYY-MM-DD and leading zeros are required.
 
@@ -44,7 +44,7 @@ Tracks by the artist Mogwai:
 
 Tracks with Ringo on lead vocals by The Beatles released between 1963 and 1970:
 
-    +lead_vocals:ringo +artist:beatles +date:>"1963-01-01" +date:<"1969-12-31"
+    +lead_vocals:ringo +artist:beatles +first_date:>"1963-01-01" +first_date:<"1969-12-31"
 
 Tracks with Tom Morello that aren't Rage or Audioslave:
 
@@ -60,7 +60,7 @@ And even more specific:
 
 80s alternative tracks released as singles:
 
-	+genre:"alternative" +type:single +date:>="1980-01-01" +date:<="1989-12-31"
+	+genre:"alternative" +type:single +first_date:>="1980-01-01" +first_date:<="1989-12-31"
 
 Tracks with flute and violin played by anyone:
 
@@ -73,6 +73,18 @@ Tracks longer than 15 minutes (60*15=900):
 Tracks produced by Butch Vig:
 
 	producer:"butch vig"
+
+Cover songs:
+
+	+type:cover
+
+Popular cover songs, performed live, that were released as singles:
+
+	+type:cover +type:live +type:single +type:popular
+
+Epic 20+ minute songs:
+
+	+length:>1200 -silence
 
 # Bleve
 

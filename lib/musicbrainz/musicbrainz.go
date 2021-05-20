@@ -107,8 +107,8 @@ func (a Artist) PrimaryGenre() string {
 }
 
 type ArtistCredit struct {
-	Name   string `json:name`
-	Join   string `json:joinphrase`
+	Name   string `json:"name"`
+	Join   string `json:"joinphrase"`
 	Artist Artist `json:"artist"`
 }
 
