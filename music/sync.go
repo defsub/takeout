@@ -937,17 +937,6 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 		}
 	}
 
-	// use first track release date for tracks index
-	for k, v := range newIndex {
-		tracks := m.tracksFor([]string{k})
-		date, err := m.trackFirstReleaseDate(&tracks[0])
-		if err != nil {
-			continue
-		}
-		s := fmt.Sprintf("%4d-%02d-%02d", date.Year(), date.Month(), date.Day())
-		addField(v, FieldDate, s)
-	}
-
 	return newIndex, nil
 }
 

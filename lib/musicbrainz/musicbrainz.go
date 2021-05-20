@@ -132,17 +132,23 @@ type Series struct {
 	Type           string `json:"type"`
 }
 
+type AttributeIds struct {
+	Cover string `json:"cover"` // 1e8536bd-6eda-3822-8e78-1c0f4d3d2113
+	Live  string `json:"live"`  // 70007db6-a8bc-46d7-a770-80e6a0bb551a
+}
+
 // release-group series: type="part of", target-type="series", see series
 // release recording series: type="part of", target-type="series", see series
 // single: type="single from", target-type="release_group", see release_group
 type Relation struct {
-	Type       string   `json:"type"`
-	TargetType string   `json:"target-type"`
-	Artist     Artist   `json:"artist"`
-	Attributes []string `json:"attributes"`
-	Work       Work     `json:"work"`
-	URL        URL      `json:"url"`
-	Series     Series   `json:"series"`
+	Type         string       `json:"type"`
+	TargetType   string       `json:"target-type"`
+	Artist       Artist       `json:"artist"`
+	Attributes   []string     `json:"attributes"`
+	AttributeIds AttributeIds `json:"attribute-ids"`
+	Work         Work         `json:"work"`
+	URL          URL          `json:"url"`
+	Series       Series       `json:"series"`
 }
 
 type LabelInfo struct {
@@ -172,11 +178,16 @@ func (m Media) video() bool {
 }
 
 type Recording struct {
-	ID           string         `json:"id"`
-	Length       int            `json:"length"`
-	Title        string         `json:"title"`
-	Relations    []Relation     `json:"relations"`
-	ArtistCredit []ArtistCredit `json:"artist-credit"`
+	ID               string         `json:"id"`
+	Length           int            `json:"length"`
+	Title            string         `json:"title"`
+	Relations        []Relation     `json:"relations"`
+	ArtistCredit     []ArtistCredit `json:"artist-credit"`
+	FirstReleaseDate string         `json:"first-release-date"`
+}
+
+func (r Recording) FirstReleaseTime() time.Time {
+	return date.ParseDate(r.FirstReleaseDate)
 }
 
 type Track struct {

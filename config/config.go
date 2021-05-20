@@ -219,6 +219,8 @@ func configDefaults(v *viper.Viper) {
 		"Top 3 Hits":  "+popularity:<4",
 		"Top 5 Hits":  "+popularity:<6",
 		"Top 10 Hits": "+popularity:<11",
+		"Covers":      "+type:cover",
+		"Live Hits":   "+type:live +popularity:<3",
 	})
 
 }
