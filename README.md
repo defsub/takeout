@@ -1,9 +1,11 @@
 # Takeout
 
 Takeout is media service that indexes organized media files in S3 buckets using
-MusicBrainz and Last.fm to make media available for streaming using a web
-interface and VLC. Media is browsed using the Takeout server and streamed
-directly from S3 using pre-signed time-based URLs.
+MusicBrainz, Last.fm and Fanart.tv to make media available for streaming using
+a [Flutter app|https://github.com/defsub/takeout_app], web interface and
+VLC. Media is browsed using the Takeout server and streamed directly from S3
+using pre-signed time-based URLs. REST APIs are available to build custom
+interfaces.
 
 Screens running on Chrome 85 for Android 10:
 
@@ -15,9 +17,6 @@ Screens running on Chrome 85 for Android 10:
 </p>
 
 ## Features
-
-
-* and this too
 
 
 * Powerful search and playlists using [Bleve](https://blevesearch.com/). See [SEARCH.md](SEARCH.md).
@@ -34,9 +33,10 @@ Screens running on Chrome 85 for Android 10:
 * Server-based playlist (using [jsonpatch](http://jsonpatch.com/))
 * Web and json views
 * Web playback using HTML5 audio - Chrome, Safari & Firefox tested on desktop & mobile
+* [Flutter app|https://github.com/defsub/takeout_app] available for Android and iOS
 * [XSPF ("spiff")](https://xspf.org/) and JSPF playlists
 * Written in [Go](https://golang.org/), using [SQLite3](https://sqlite.org/index.html) and [Bleve](https://blevesearch.com/)
-* Support [caching](https://github.com/gregjones/httpcache) of MusicBrainz data for faster syncing
+* Supports [caching](https://github.com/gregjones/httpcache) of MusicBrainz data for faster syncing
 
 ## Quick Start
 
@@ -49,10 +49,10 @@ Screens running on Chrome 85 for Android 10:
   * git clone https://github.com/defsub/takeout.git
   * cd takeout/cmd/takeout
   * go build
-  * ./takeout
+  * go install
 * Create your [takeout.ini](CONFIG.md)
 * Sync your data
   * ./takeout sync
-* Databases may need ~100MB and Bleve index ~1GB, depending on the media library
+* Databases may need ~100MB and Bleve index ~100MB, depending on the media library
 * Run the server
   * ./takeout serve
