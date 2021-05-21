@@ -2,7 +2,7 @@
 
 Takeout is media service that indexes organized media files in S3 buckets using
 MusicBrainz, Last.fm and Fanart.tv to make media available for streaming using
-a [Flutter app|https://github.com/defsub/takeout_app], web interface and
+a [Flutter app](https://github.com/defsub/takeout_app), web interface and
 VLC. Media is browsed using the Takeout server and streamed directly from S3
 using pre-signed time-based URLs. REST APIs are available to build custom
 interfaces.
@@ -33,7 +33,7 @@ Screens running on Chrome 85 for Android 10:
 * Server-based playlist (using [jsonpatch](http://jsonpatch.com/))
 * Web and json views
 * Web playback using HTML5 audio - Chrome, Safari & Firefox tested on desktop & mobile
-* [Flutter app|https://github.com/defsub/takeout_app] available for Android and iOS
+* [Flutter app](https://github.com/defsub/takeout_app) available for Android and iOS
 * [XSPF ("spiff")](https://xspf.org/) and JSPF playlists
 * Written in [Go](https://golang.org/), using [SQLite3](https://sqlite.org/index.html) and [Bleve](https://blevesearch.com/)
 * Supports [caching](https://github.com/gregjones/httpcache) of MusicBrainz data for faster syncing

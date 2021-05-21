@@ -52,7 +52,7 @@ Cover Art Archive APIs are used to obtain links to album covers.
 
 The configuration file _takeout.ini_ is used to store required configuration to
 setup and configure Takeout. Yaml and other formats supported by
-[Viper|https://github.com/spf13/viper] can be used as well.
+[Viper](https://github.com/spf13/viper) can be used as well.
 
 
 ### Auth
