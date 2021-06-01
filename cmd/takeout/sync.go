@@ -18,6 +18,7 @@
 package main
 
 import (
+	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/music"
 	"github.com/spf13/cobra"
 	"time"
@@ -37,10 +38,31 @@ var syncAll bool
 var syncBack time.Duration
 
 func sync() {
-	m := music.NewMusic(getConfig())
+	cfg := getConfig()
+
+	var musicBuckets []config.BucketConfig
+	var videoBuckets []config.BucketConfig
+
+	for _, b := range cfg.Buckets {
+		if b.Media == config.MediaMusic {
+			musicBuckets = append(musicBuckets, b)
+		}
+		if b.Media == config.MediaVideo {
+			videoBuckets = append(videoBuckets, b)
+		}
+	}
+
+	cfg.Buckets = musicBuckets
+	syncMusic(cfg)
+
+	cfg.Buckets = videoBuckets
+	///
+}
+
+func syncMusic(cfg *config.Config) {
+	m := music.NewMusic(cfg)
 	m.Open()
 	defer m.Close()
-
 	if syncAll {
 		syncOptions.Since = time.Time{}
 	} else if syncBack > 0 {

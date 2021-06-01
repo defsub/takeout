@@ -30,6 +30,7 @@ import (
 	"github.com/defsub/takeout/lib/spiff"
 	"github.com/defsub/takeout/lib/str"
 	"github.com/defsub/takeout/music"
+	"github.com/defsub/takeout/video"
 	"github.com/defsub/takeout/ref"
 )
 
@@ -48,7 +49,7 @@ type status struct {
 // 200: success + cookie
 // 401: fail
 // 500: error
-func (handler *MusicHandler) apiLogin(w http.ResponseWriter, r *http.Request) {
+func (handler *UserHandler) apiLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "bummer", http.StatusInternalServerError)
 		return
@@ -83,7 +84,7 @@ func (handler *MusicHandler) apiLogin(w http.ResponseWriter, r *http.Request) {
 	enc.Encode(result)
 }
 
-func (handler *MusicHandler) recvStation(w http.ResponseWriter, r *http.Request,
+func (handler *UserHandler) recvStation(w http.ResponseWriter, r *http.Request,
 	s *music.Station, m *music.Music) error {
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, s)
@@ -113,7 +114,7 @@ func (handler *MusicHandler) recvStation(w http.ResponseWriter, r *http.Request,
 // 201: created
 // 400: bad request
 // 500: error
-func (handler *MusicHandler) apiRadio(w http.ResponseWriter, r *http.Request, m *music.Music) {
+func (handler *UserHandler) apiRadio(w http.ResponseWriter, r *http.Request, m *music.Music) {
 	if r.Method == "GET" {
 		view := handler.radioView(m, handler.user)
 		enc := json.NewEncoder(w)
@@ -143,7 +144,7 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-func (handler *MusicHandler) apiLive(w http.ResponseWriter, r *http.Request, m *music.Music) {
+func (handler *UserHandler) apiLive(w http.ResponseWriter, r *http.Request, m *music.Music) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
@@ -182,7 +183,7 @@ func (handler *MusicHandler) apiLive(w http.ResponseWriter, r *http.Request, m *
 // 204: success, no content
 // 404: not found
 // 500: error
-func (handler *MusicHandler) apiStation(w http.ResponseWriter, r *http.Request, m *music.Music, id int) {
+func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, m *music.Music, id int) {
 	s, err := m.LookupStation(id)
 	if err != nil {
 		http.Error(w, "bummer", http.StatusNotFound)
@@ -247,7 +248,7 @@ func (handler *MusicHandler) apiStation(w http.ResponseWriter, r *http.Request, 
 
 // GET /api/{res}/id/playlist > spiff.Playlist{}
 // 200: success
-func (handler *MusicHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Request, m *music.Music,
+func (handler *UserHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Request, m *music.Music,
 	creator, title, image, nref string) {
 	plist := spiff.NewPlaylist()
 	plist.Spiff.Location = fmt.Sprintf("%s%s", handler.config.Server.URL, r.URL.Path)
@@ -273,7 +274,7 @@ func (handler *MusicHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Reque
 // 200: success
 // 204: no change to track entries
 // 500: error
-func (handler *MusicHandler) apiPlaylist(w http.ResponseWriter, r *http.Request, m *music.Music) {
+func (handler *UserHandler) apiPlaylist(w http.ResponseWriter, r *http.Request, m *music.Music) {
 	p := m.LookupPlaylist(handler.user)
 	if p == nil {
 		plist := spiff.NewPlaylist()
@@ -326,12 +327,12 @@ func (handler *MusicHandler) apiPlaylist(w http.ResponseWriter, r *http.Request,
 	}
 }
 
-func (handler *MusicHandler) apiView(w http.ResponseWriter, r *http.Request, view interface{}) {
+func (handler *UserHandler) apiView(w http.ResponseWriter, r *http.Request, view interface{}) {
 	enc := json.NewEncoder(w)
 	enc.Encode(view)
 }
 
-func (handler *MusicHandler) apiSearch(w http.ResponseWriter, r *http.Request, m *music.Music) {
+func (handler *UserHandler) apiSearch(w http.ResponseWriter, r *http.Request, m *music.Music) {
 	if v := r.URL.Query().Get("q"); v != "" {
 		// /api/search?q={pattern}
 		view := handler.searchView(m, strings.TrimSpace(v))
@@ -371,12 +372,13 @@ func (handler *MusicHandler) apiSearch(w http.ResponseWriter, r *http.Request, m
 //
 // 200: success
 // 500: error
-func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
+func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
 
 	if r.URL.Path == "/api/login" {
 		handler.apiLogin(w, r)
 	} else {
+		fmt.Printf("path %s\n", r.URL.Path)
 
 		if r.URL.Path == "/api/live" {
 			m := &music.Music{}
@@ -384,6 +386,18 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 			handler.apiLive(w, r, m)
 			return
 		}
+
+		// if r.URL.Path == "/api/watch" {
+		// 	v := video.NewVideo(handler.config)
+		// 	v.Open()
+		// 	movie, _ := v.Movie(11)
+		// 	fmt.Printf("%+v\n", movie)
+		// 	u := v.MovieURL(movie)
+		// 	fmt.Printf("url %s\n", u.String())
+		// 	w.WriteHeader(http.StatusOK)
+		// 	w.Write([]byte(u.String()))
+		// 	return
+		// }
 
 		if !handler.authorized(w, r) {
 			return
@@ -394,6 +408,12 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		defer m.Close()
+
+		vid := handler.NewVideo(w, r)
+		if vid == nil {
+			return
+		}
+		defer vid.Close()
 
 		switch r.URL.Path {
 		case "/api/playlist":
@@ -408,6 +428,8 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 			handler.apiView(w, r, handler.artistsView(m))
 		case "/api/search":
 			handler.apiSearch(w, r, m)
+		case "/api/movies":
+			handler.apiView(w, r, handler.moviesView(vid))
 		default:
 			// /api/tracks/id/location
 			locationRegexp := regexp.MustCompile(`/api/tracks/([0-9]+)/location`)
@@ -531,6 +553,10 @@ func (handler *MusicHandler) apiHandler(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func (MusicHandler) Locate(t music.Track) string {
+func (UserHandler) LocateTrack(t music.Track) string {
 	return fmt.Sprintf("/api/tracks/%d/location", t.ID)
+}
+
+func (UserHandler) LocateMovie(m video.Movie) string {
+	return fmt.Sprintf("/api/tracks/%d/location", m.ID)
 }

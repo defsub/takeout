@@ -1,0 +1,29 @@
+<div>
+  <h1>{{ .Movie.Title }}</h1>
+  <div>
+    {{ .Movie.Tagline }}
+  </div>
+  <div>
+    {{ .Movie.Overview }}
+  </div>
+  <div>
+    <h2>Cast</h2>
+    {{ range .Cast }}
+    <div>
+      <div class="">{{ .Character }} ~ {{ .Person.Name }}</div>
+    </div>
+    {{ end }}
+  </div>
+  <div>
+    <h2>Crew</h2>
+    {{ range .Crew }}
+    <div>
+      <div class="">{{ .Job }} ~ {{ .Person.Name }}</div>
+      </a>
+    </div>
+    {{ end }}
+  </div>
+  <h3>External Links</h3>
+  TMDB:
+  <a target="_blank" href="https://tmdb.org/{{ .TMID }}">Movie</a>
+</div>

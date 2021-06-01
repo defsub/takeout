@@ -67,3 +67,97 @@ func TestMovieSearch(t *testing.T) {
 		}
 	}
 }
+
+func TestMovieDetail(t *testing.T) {
+	config, err := config.TestConfig()
+	if err != nil {
+		t.Errorf("GetConfig %s\n", err)
+	}
+
+	if config.TMDB.Key == "" {
+		t.Errorf("no key\n")
+	}
+	m := NewTMDB(config)
+	movie, err := m.MovieDetail(503736) // arm of the dead
+	if err != nil {
+		t.Errorf("%s\n", err)
+	}
+	fmt.Printf("%s (%s)\n", movie.Title, movie.ReleaseDate)
+	fmt.Printf("%+v\n", movie)
+}
+
+func TestMovieCredits(t *testing.T) {
+	config, err := config.TestConfig()
+	if err != nil {
+		t.Errorf("GetConfig %s\n", err)
+	}
+
+	if config.TMDB.Key == "" {
+		t.Errorf("no key\n")
+	}
+	m := NewTMDB(config)
+	credits, err := m.MovieCredits(503736) // arm of the dead
+	if err != nil {
+		t.Errorf("%s\n", err)
+	}
+	for _, c := range credits.Cast {
+		fmt.Printf("%s - %s\n", c.Name, c.Character)
+	}
+	for _, c := range credits.Crew {
+		fmt.Printf("%s - %s\n", c.Name, c.Job)
+	}
+}
+
+func TestMovieReleases(t *testing.T) {
+	config, err := config.TestConfig()
+	if err != nil {
+		t.Errorf("GetConfig %s\n", err)
+	}
+
+	if config.TMDB.Key == "" {
+		t.Errorf("no key\n")
+	}
+	m := NewTMDB(config)
+	releases, err := m.MovieReleases(503736) // arm of the dead
+	if err != nil {
+		t.Errorf("%s\n", err)
+	}
+	for k, v := range releases {
+		fmt.Printf("%s - %+v\n", k, v)
+	}
+}
+
+func TestMovieReleaseType(t *testing.T) {
+	config, err := config.TestConfig()
+	if err != nil {
+		t.Errorf("GetConfig %s\n", err)
+	}
+
+	if config.TMDB.Key == "" {
+		t.Errorf("no key\n")
+	}
+	m := NewTMDB(config)
+	r, err := m.MovieReleaseType(503736, "US", TypeDigital) // arm of the dead
+	if err != nil {
+		t.Errorf("%s\n", err)
+	}
+	fmt.Printf("%s - %s\n", r.Certification, r.Date)
+}
+
+func TestPerson(t *testing.T) {
+	config, err := config.TestConfig()
+	if err != nil {
+		t.Errorf("GetConfig %s\n", err)
+	}
+
+	if config.TMDB.Key == "" {
+		t.Errorf("no key\n")
+	}
+	m := NewTMDB(config)
+	p, err := m.PersonDetail(287) // brad pitt
+	if err != nil {
+		t.Errorf("%s\n", err)
+	}
+	fmt.Printf("%s - %s\n", p.Name, p.Birthday)
+	fmt.Printf("%s\n", p.Biography)
+}

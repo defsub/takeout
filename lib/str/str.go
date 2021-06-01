@@ -18,6 +18,8 @@
 package str
 
 import (
+	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -44,4 +46,16 @@ func Atoi(a string) int {
 
 func Itoa(i int) string {
 	return strconv.Itoa(i)
+}
+
+var sortRegexp = regexp.MustCompile(`^(A|An|The)\s+(.+)$`)
+
+func SortTitle(s string) string {
+	matches := sortRegexp.FindStringSubmatch(s)
+	if matches != nil {
+		// The Matrix Reloaded -> Matrix Reloaded, The
+		// A Quiet Place -> Quiet Place, A
+		return fmt.Sprintf("%s, %s", matches[2], matches[1])
+	}
+	return s
 }

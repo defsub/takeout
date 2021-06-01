@@ -164,20 +164,22 @@ func (m *Music) syncBucketTracks() error {
 }
 
 func (m *Music) syncBucketTracksSince(lastSync time.Time) (modified bool, err error) {
-	trackCh, err := m.syncFromBucket(lastSync)
-	if err != nil {
-		return false, err
+	for _, b := range m.buckets {
+		trackCh, err := m.syncFromBucket(b, lastSync)
+		if err != nil {
+			return false, err
+		}
+		for t := range trackCh {
+			//log.Printf("sync: %s/%s/%s\n", t.Artist, t.Release, t.Title)
+			t.Artist = fixName(t.Artist)
+			t.Release = fixName(t.Release)
+			t.Title = fixName(t.Title)
+			// TODO: title may have underscores - picard
+			m.createTrack(t)
+			modified = true
+		}
+		err = m.updateTrackCount()
 	}
-	for t := range trackCh {
-		//log.Printf("sync: %s/%s/%s\n", t.Artist, t.Release, t.Title)
-		t.Artist = fixName(t.Artist)
-		t.Release = fixName(t.Release)
-		t.Title = fixName(t.Title)
-		// TODO: title may have underscores - picard
-		m.createTrack(t)
-		modified = true
-	}
-	err = m.updateTrackCount()
 	return
 }
 

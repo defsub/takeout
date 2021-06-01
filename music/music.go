@@ -24,9 +24,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
+	"github.com/defsub/takeout/lib/bucket"
 	"github.com/defsub/takeout/lib/client"
 	"github.com/defsub/takeout/lib/fanart"
 	"github.com/defsub/takeout/lib/lastfm"
@@ -43,7 +43,7 @@ const (
 type Music struct {
 	config     *config.Config
 	db         *gorm.DB
-	s3         *s3.S3
+	buckets    []*bucket.Bucket
 	client     *client.Client
 	coverCache map[string]string
 	lastfm     *lastfm.Lastfm
@@ -65,7 +65,7 @@ func NewMusic(config *config.Config) *Music {
 func (m *Music) Open() (err error) {
 	err = m.openDB()
 	if err == nil {
-		err = m.openBucket()
+		m.buckets, err = bucket.OpenMedia(m.config.Buckets, config.MediaMusic)
 	}
 	return
 }
