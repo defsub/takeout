@@ -64,6 +64,13 @@ func (v *Video) Movies() []Movie {
 	return movies
 }
 
+func (v *Video) Genre(name string) []Movie {
+	var movies []Movie
+	v.db.Where("movies.tm_id in (select tm_id from genres where name = ?)", name).
+		Order("movies.date").Find(&movies)
+	return movies
+}
+
 func (v *Video) RecentlyReleased() []Movie {
 	var movies []Movie
 	v.db.Order("date desc, sort_title").Find(&movies)
@@ -74,6 +81,16 @@ func (v *Video) RecentlyAdded() []Movie {
 	var movies []Movie
 	v.db.Order("last_modified desc, sort_title").Find(&movies)
 	return movies
+}
+
+func (v *Video) Genres(m *Movie) []string {
+	var genres []Genre
+	var list []string
+	v.db.Where("tm_id = ?", m.TMID).Order("name").Find(&genres)
+	for _, g := range genres {
+		list = append(list, g.Name)
+	}
+	return list
 }
 
 func (v *Video) Collections() []Collection {
@@ -101,10 +118,10 @@ func (v *Video) CollectionMovies(c *Collection) []Movie {
 func (v *Video) Cast(m *Movie) []Cast {
 	var cast []Cast
 	var people []Person
-	v.db.Debug().Order("rank asc").
+	v.db.Order("rank asc").
 		Joins(`inner join movies on "cast".tm_id = movies.tm_id`).
 		Where("movies.tm_id = ?", m.TMID).Find(&cast)
-	v.db.Debug().Joins(`inner join "cast" on people.pe_id = "cast".pe_id`).
+	v.db.Joins(`inner join "cast" on people.pe_id = "cast".pe_id`).
 		Joins(`inner join movies on movies.tm_id = "cast".tm_id`).
 		Where("movies.tm_id = ?", m.TMID).Find(&people)
 	pmap := make(map[int64]Person)
@@ -120,10 +137,9 @@ func (v *Video) Cast(m *Movie) []Cast {
 func (v *Video) Crew(m *Movie) []Crew {
 	var crew []Crew
 	var people []Person
-	v.db.Debug().
-		Joins(`inner join movies on "crew".tm_id = movies.tm_id`).
+	v.db.Joins(`inner join movies on "crew".tm_id = movies.tm_id`).
 		Where("movies.tm_id = ?", m.TMID).Find(&crew)
-	v.db.Debug().Joins(`inner join "crew" on people.pe_id = "crew".pe_id`).
+	v.db.Joins(`inner join "crew" on people.pe_id = "crew".pe_id`).
 		Joins(`inner join movies on movies.tm_id = "crew".tm_id`).
 		Where("movies.tm_id = ?", m.TMID).Find(&people)
 	pmap := make(map[int64]Person)
@@ -223,6 +239,33 @@ func (v *Video) LookupPerson(id int) (*Person, error) {
 		return nil, errors.New("person not found")
 	}
 	return &person, err
+}
+
+func (v *Video) Staring(p *Person) []Movie {
+	var movies []Movie
+	v.db.Where(`movies.tm_id in (select tm_id from "cast" where pe_id = ?)`, p.PEID).
+		Order("movies.date").Find(&movies)
+	return movies
+}
+
+func (v *Video) department(dept string, p *Person) []Movie {
+	var movies []Movie
+	v.db.Where(`movies.tm_id in (select tm_id from "crew" where department = ? and pe_id = ?)`,
+		dept, p.PEID).
+		Order("movies.date").Find(&movies)
+	return movies
+}
+
+func (v *Video) Directing(p *Person) []Movie {
+	return v.department("Directing", p)
+}
+
+func (v *Video) Producing(p *Person) []Movie {
+	return v.department("Production", p)
+}
+
+func (v *Video) Writing(p *Person) []Movie {
+	return v.department("Writing", p)
 }
 
 func (v *Video) createCast(c *Cast) error {

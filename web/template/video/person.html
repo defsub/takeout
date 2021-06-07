@@ -1,0 +1,42 @@
+<div>
+
+  {{ if .Staring }}
+  <h1>Staring: {{ .Person.Name }}</h1>
+  <div style="display: flex; text-align: center; width: 100%; justify-content: left; flex-wrap: wrap;">
+    {{ range .Staring }}
+    <div style="margin: 1em; flex: 0; min-width: 154px;">
+      <div><a data-link="{{.|link}}"><img src="{{.|posterSmall}}"></a></div>
+      <div><span style="max-width: 154px; text-overflow: ellipsis;">{{ .Title }}</span></div>
+      <div>{{ .Date.Year }}</div>
+    </div>
+    {{ end }}
+  </div>
+  {{ end }}
+
+  {{ if .Directing }}
+  <h1>Directing: {{ .Person.Name }}</h1>
+  <div style="display: flex; text-align: center; width: 100%; justify-content: left; flex-wrap: wrap;">
+    {{ range .Directing }}
+    <div style="margin: 1em; flex: 0; min-width: 154px;">
+      <div><a data-link="{{.|link}}"><img src="{{.|posterSmall}}"></a></div>
+      <div><span style="max-width: 154px; text-overflow: ellipsis;">{{ .Title }}</span></div>
+      <div>{{ .Date.Year }}</div>
+    </div>
+    {{ end }}
+  </div>
+  {{ end }}
+
+  {{ if .Writing }}
+  <h1>Writing: {{ .Person.Name }}</h1>
+  <div style="display: flex; text-align: center; width: 100%; justify-content: left; flex-wrap: wrap;">
+    {{ range .Writing }}
+    <div style="margin: 1em; flex: 0; min-width: 154px;">
+      <div><a data-link="{{.|link}}"><img src="{{.|posterSmall}}"></a></div>
+      <div><span style="max-width: 154px; text-overflow: ellipsis;">{{ .Title }}</span></div>
+      <div>{{ .Date.Year }}</div>
+    </div>
+    {{ end }}
+  </div>
+  {{ end }}
+
+</div>

@@ -1,0 +1,41 @@
+.tagline {
+    font-style: italic;
+    text-align: center;
+}
+
+.rating {
+    border: 1px solid rgba(255,255,255,0.6);
+    color: rgba(255,255,255,0.6);
+    text-transform: uppercase;
+    padding: 0.06em 4px 0.15em 4px;
+    line-height: 1;
+    border-radius: 2px;
+    margin-right: 7px;
+}
+
+.specs {
+    text-align: center;
+}
+
+.cred {
+    text-align: left;
+    vertical-align: top;
+    padding-right: 20px;
+}
+
+.card {
+    max-width: 185px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    margin-left: 10px;
+    margin-right: 4px;
+    padding-bottom: 10px;
+}
+
+.person {
+    font-weight: bold;
+}
+
+.character {
+    font-weight: lighter;
+}

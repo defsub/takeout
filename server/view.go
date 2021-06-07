@@ -85,8 +85,29 @@ type MoviesView struct {
 type MovieView struct {
 	Movie      video.Movie
 	Collection video.Collection
+	Other      []video.Movie
 	Cast       []video.Cast
 	Crew       []video.Crew
+	Staring    []video.Person
+	Directing  []video.Person
+	Writing    []video.Person
+	Genres     []string
+}
+
+type PersonView struct {
+	Person    video.Person
+	Staring   []video.Movie
+	Directing []video.Movie
+	Writing   []video.Movie
+}
+
+type GenreView struct {
+	Name   string
+	Movies []video.Movie
+}
+
+type WatchView struct {
+	Movie video.Movie
 }
 
 func (handler *UserHandler) homeView(m *music.Music) *HomeView {
@@ -195,8 +216,48 @@ func (handler *UserHandler) moviesView(v *video.Video) *MoviesView {
 func (handler *UserHandler) movieView(v *video.Video, m *video.Movie) *MovieView {
 	view := &MovieView{}
 	view.Movie = *m
-	view.Collection = *v.MovieCollection(m)
+	collection := v.MovieCollection(m)
+	if collection != nil {
+		view.Collection = *collection
+		view.Other = v.CollectionMovies(collection)
+	}
 	view.Cast = v.Cast(m)
 	view.Crew = v.Crew(m)
+	for _, c := range view.Crew {
+		if c.Job == "Director" {
+			view.Directing = append(view.Directing, c.Person)
+		} else if c.Job == "Novel" || c.Job == "Screenplay" || c.Job == "Story" {
+			view.Writing = append(view.Writing, c.Person)
+		}
+	}
+	for i, c := range view.Cast {
+		if i == 3 {
+			break
+		}
+		view.Staring = append(view.Staring, c.Person)
+	}
+	view.Genres = v.Genres(m)
+	return view
+}
+
+func (handler *UserHandler) personView(v *video.Video, p *video.Person) *PersonView {
+	view := &PersonView{}
+	view.Person = *p
+	view.Staring = v.Staring(p)
+	view.Writing = v.Writing(p)
+	view.Directing = v.Directing(p)
+	return view
+}
+
+func (handler *UserHandler) genreView(v *video.Video, name string) *GenreView {
+	view := &GenreView{}
+	view.Name = name
+	view.Movies = v.Genre(name)
+	return view
+}
+
+func (handler *UserHandler) watchView(v *video.Video, m *video.Movie) *WatchView {
+	view := &WatchView{}
+	view.Movie = *m
 	return view
 }

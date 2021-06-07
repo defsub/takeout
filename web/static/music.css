@@ -1,7 +1,10 @@
 * {
-    background-color: #222;
     color: #e6e6e6;
     border-color: #a6a6a6;
+}
+
+body {
+    background-color: #222;
 }
 
 a, a:visited, a:hover, a:active {

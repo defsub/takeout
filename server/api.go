@@ -22,16 +22,17 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 
-	"github.com/gorilla/websocket"
 	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/lib/spiff"
 	"github.com/defsub/takeout/lib/str"
 	"github.com/defsub/takeout/music"
-	"github.com/defsub/takeout/video"
 	"github.com/defsub/takeout/ref"
+	"github.com/defsub/takeout/video"
+	"github.com/gorilla/websocket"
 )
 
 type login struct {
@@ -431,14 +432,23 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 		case "/api/movies":
 			handler.apiView(w, r, handler.moviesView(vid))
 		default:
-			// /api/tracks/id/location
-			locationRegexp := regexp.MustCompile(`/api/tracks/([0-9]+)/location`)
+			// /api/(movies|tracks)/id/location
+			locationRegexp := regexp.MustCompile(`/api/(movies|tracks)/([0-9]+)/location`)
 			matches := locationRegexp.FindStringSubmatch(r.URL.Path)
 			if matches != nil {
-				id := str.Atoi(matches[1])
-				track, _ := m.LookupTrack(id)
-				url := m.TrackURL(&track)
+				var url *url.URL
+				src := matches[1]
+				if src == "tracks" {
+					id := str.Atoi(matches[2])
+					track, _ := m.LookupTrack(id)
+					url = m.TrackURL(&track)
+				} else if src == "movies" {
+					id := str.Atoi(matches[2])
+					movie, _ := vid.LookupMovie(id)
+					url = vid.MovieURL(movie)
+				}
 				// TODO use 307 instead?
+				fmt.Printf("location is %s\n", url.String())
 				http.Redirect(w, r, url.String(), http.StatusFound)
 				return
 			}
@@ -557,6 +567,6 @@ func (UserHandler) LocateTrack(t music.Track) string {
 	return fmt.Sprintf("/api/tracks/%d/location", t.ID)
 }
 
-func (UserHandler) LocateMovie(m video.Movie) string {
-	return fmt.Sprintf("/api/tracks/%d/location", m.ID)
+func (UserHandler) LocateMovie(v video.Movie) string {
+	return fmt.Sprintf("/api/movies/%d/location", v.ID)
 }

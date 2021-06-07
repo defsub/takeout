@@ -1,29 +1,96 @@
-<div>
-  <h1>{{ .Movie.Title }}</h1>
-  <div>
-    {{ .Movie.Tagline }}
+<div style="background-size: cover; background-position: center; background-repeat: no-repeat; background-image: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url('{{.Movie|backdrop}}');">
+  <div style="display: flex; padding-top: 10px;">
+    <div style="padding-left: 25px; padding-right: 25px;">
+      <img src="{{.Movie|poster}}">
+    </div>
+    <div style="padding-right: 25px;">
+      <div style="padding: 10px 0px 10px 0px;">
+	<h1>{{ .Movie.Title }}</h1>
+      </div>
+      <div class="tagline">
+	{{ .Movie.Tagline }}
+      </div>
+      <p/>
+      <div class="specs">
+	{{ if .Movie.Rating }}
+	<span class="rating">{{.Movie.Rating}}</span>
+	{{ else }}
+	<span class="rating">NR</span>
+	{{ end }}
+	{{ymd .Movie.Date}},
+	{{.Movie|runtime}}
+	&bull;
+	{{ range .Genres }}
+	<a data-link="/v?genre={{.|urlquery}}">{{.}}</a>
+	{{ end }}
+      </div>
+      <div style="padding-top: 50px;">
+	<table>
+	  {{ if .Staring }}
+	  <tr>
+	    <td class="cred"><h2>Staring</h2></td>
+	    <td class="cred">
+	      {{ range .Staring }}
+	      <a data-link="/v?person={{.ID}}">{{.Name}}</a>
+	      {{ end }}
+	    </td>
+	  </tr>
+	  {{ end }}
+	  {{ if .Directing }}
+	  <tr>
+	    <td class="cred"><h2>Directing</h2></td>
+	    <td class="cred">
+	      {{ range .Directing }}
+	      <a data-link="/v?person={{.ID}}">{{.Name}}</a>
+	      {{ end }}
+	    </td>
+	  </tr>
+	  {{ end }}
+	  {{ if .Writing }}
+	  <tr>
+	    <td class="cred"><h2>Writing</h2></td>
+	    <td class="cred">
+	      {{ range .Writing }}
+	      <a data-link="/v?person={{.ID}}">{{.Name}}</a>
+	      {{ end }}
+	    </td>
+	  </tr>
+	  {{ end }}
+	</table>
+      </div>
+      <h2>Overview</h2>
+      <div>
+	{{ .Movie.Overview }}
+	<a data-link="/v?watch={{ .Movie.ID }}">watch it</a>
+      </div>
+    </div>
   </div>
-  <div>
-    {{ .Movie.Overview }}
+  {{ if .Cast }}
+  <h2 style="padding-left: 25px; padding-top: 25px;">Cast</h2>
+  <div style="display: flex;">
+    {{ range $i, $c := .Cast }}
+    {{ if lt $i 5 }}
+    <div class="card">
+      <a data-link="/v?person={{ $c.Person.ID }}"><img src="{{$c.Person|profile}}"></a>
+      <p class="person">{{ $c.Person.Name }}</p>
+      <p class="character">{{ $c.Character }}</p>
+    </div>
+    {{ end }}
+    {{ end }}
   </div>
-  <div>
-    <h2>Cast</h2>
-    {{ range .Cast }}
-    <div>
-      <div class="">{{ .Character }} ~ {{ .Person.Name }}</div>
+  {{ end }}
+  {{ if .Collection }}
+  <h2>{{ .Collection.Name }}</h2>
+  <div style="display: flex;">
+    {{ range .Other }}
+    <div style="padding: 10px;">
+      <div><a data-link="{{.|link}}"><img src="{{.|posterSmall}}"></a></div>
+      <div style="padding-top: 10px; max-width: 154px;">{{ .Title }}</div>
     </div>
     {{ end }}
   </div>
-  <div>
-    <h2>Crew</h2>
-    {{ range .Crew }}
-    <div>
-      <div class="">{{ .Job }} ~ {{ .Person.Name }}</div>
-      </a>
-    </div>
-    {{ end }}
-  </div>
+  {{ end }}
   <h3>External Links</h3>
   TMDB:
-  <a target="_blank" href="https://tmdb.org/{{ .TMID }}">Movie</a>
+  <a target="_blank" href="https://tmdb.org/{{ .Movie.TMID }}">Movie</a>
 </div>

@@ -1,13 +1,12 @@
 <div>
   <h1>Movies</h1>
-  <div>
-    <ul style="list-style-type: none;">
-    {{ range .Movies }}
-    <li style="padding-bottom: 1em;">
-      <div><a data-link="{{.|link}}">{{ .Title }}</a></div>
-      <div class="artist-subtitle">{{ .Date.Year }}</div>
-    </li>
+  <div style="display: flex; text-align: center; width: 100%; justify-content: left; flex-wrap: wrap;">
+  {{ range .Movies }}
+  <div style="margin: 1em; flex: 0; min-width: 154px;">
+    <div><a data-link="{{.|link}}"><img src="{{.|posterSmall}}"></a></div>
+    <div><span style="max-width: 154px; text-overflow: ellipsis;">{{ .Title }}</span></div>
+    <div>{{ .Date.Year }}</div>
+  </div>
     {{ end }}
-    </ul>
   </div>
 </div>

@@ -36,13 +36,13 @@ func (d *DateRange) IsZero() bool {
 }
 
 func (d *DateRange) AfterDate() string {
-	return ymd(d.after)
+	return YMD(d.after)
 }
 
 func (d *DateRange) BeforeDate() string {
-	return ymd(d.before)
+	return YMD(d.before)
 }
 
-func ymd(t time.Time) string {
+func YMD(t time.Time) string {
 	return fmt.Sprintf("%04d-%02d-%02d", t.Year(), t.Month(), t.Day())
 }

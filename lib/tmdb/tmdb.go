@@ -25,6 +25,30 @@ import (
 	"github.com/defsub/takeout/lib/client"
 )
 
+const (
+	Backdrop300      = "w300"
+	Backdrop780      = "w780"
+	Backdrop1280     = "w1280"
+	BackdropOriginal = "original"
+)
+
+const (
+	Poster92       = "w92"
+	Poster154      = "w154"
+	Poster185      = "w185"
+	Poster342      = "w342"
+	Poster500      = "w500"
+	Poster780      = "w780"
+	PosterOriginal = "original"
+)
+
+const (
+	Profile45       = "w45"
+	Profile185      = "w185"
+	Profile632      = "h632"
+	ProfileOriginal = "original"
+)
+
 type TMDB struct {
 	config      *config.Config
 	client      *client.Client
@@ -314,17 +338,26 @@ func (m *TMDB) configuration() (*apiConfig, error) {
    https://image.tmdb.org/t/p/w500/8uO0gUM8aNqYLs1OsTBQiXu0fEv.jpg
 */
 
-func moviePoster(c *apiConfig, size string, r *MovieResult) string {
-	url := fmt.Sprintf("%s%s%s", c.Images.SecureBaseURL, size, r.PosterPath)
+func moviePoster(c *apiConfig, size string, posterPath string) string {
+	url := fmt.Sprintf("%s%s%s", c.Images.SecureBaseURL, size, posterPath)
 	return url
 }
 
-func movieBackdrop(c *apiConfig, size string, r *MovieResult) string {
-	url := fmt.Sprintf("%s%s%s", c.Images.SecureBaseURL, size, r.BackdropPath)
+func movieBackdrop(c *apiConfig, size string, backdropPath string) string {
+	url := fmt.Sprintf("%s%s%s", c.Images.SecureBaseURL, size, backdropPath)
 	return url
 }
 
-func (m *TMDB) MovieOriginalPoster(r *MovieResult) *url.URL {
+func profile(c *apiConfig, size string, profilePath string) string {
+	url := fmt.Sprintf("%s%s%s", c.Images.SecureBaseURL, size, profilePath)
+	return url
+}
+
+func (m *TMDB) MovieOriginalPoster(posterPath string) *url.URL {
+	return m.MoviePoster(posterPath, PosterOriginal)
+}
+
+func (m *TMDB) MoviePoster(posterPath string, size string) *url.URL {
 	var err error
 	if m.configCache == nil {
 		m.configCache, err = m.configuration()
@@ -332,7 +365,39 @@ func (m *TMDB) MovieOriginalPoster(r *MovieResult) *url.URL {
 	if err != nil {
 		return nil
 	}
-	v := moviePoster(m.configCache, "original", r)
+	v := moviePoster(m.configCache, size, posterPath)
+	url, err := url.Parse(v)
+	if err != nil {
+		return nil
+	}
+	return url
+}
+
+func (m *TMDB) MovieBackdrop(backdropPath string, size string) *url.URL {
+	var err error
+	if m.configCache == nil {
+		m.configCache, err = m.configuration()
+	}
+	if err != nil {
+		return nil
+	}
+	v := movieBackdrop(m.configCache, size, backdropPath)
+	url, err := url.Parse(v)
+	if err != nil {
+		return nil
+	}
+	return url
+}
+
+func (m *TMDB) PersonProfile(profilePath string, size string) *url.URL {
+	var err error
+	if m.configCache == nil {
+		m.configCache, err = m.configuration()
+	}
+	if err != nil {
+		return nil
+	}
+	v := profile(m.configCache, size, profilePath)
 	url, err := url.Parse(v)
 	if err != nil {
 		return nil

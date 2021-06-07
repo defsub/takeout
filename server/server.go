@@ -31,6 +31,7 @@ import (
 
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
+	"github.com/defsub/takeout/lib/date"
 	"github.com/defsub/takeout/lib/encoding/xspf"
 	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/music"
@@ -124,9 +125,11 @@ func parseTemplates(templ *template.Template, dir string) *template.Template {
 	return templ
 }
 
-func (handler *UserHandler) render(m *music.Music, temp string, view interface{},
+func (handler *UserHandler) render(m *music.Music, vid *video.Video, temp string, view interface{},
 	w http.ResponseWriter, r *http.Request) {
 	funcMap := template.FuncMap{
+		"join": strings.Join,
+		"ymd": date.YMD,
 		"link": func(o interface{}) string {
 			var link string
 			switch o.(type) {
@@ -143,6 +146,18 @@ func (handler *UserHandler) render(m *music.Music, temp string, view interface{}
 				link = fmt.Sprintf("/v?movie=%d", o.(video.Movie).ID)
 			}
 			return link
+		},
+		"url": func(o interface{}) string {
+			var loc string
+			switch o.(type) {
+			case music.Track:
+				t := o.(music.Track)
+				loc = handler.LocateTrack(t)
+			case video.Movie:
+				m := o.(video.Movie)
+				loc = handler.LocateMovie(m)
+			}
+			return loc
 		},
 		"popular": func(o interface{}) string {
 			var link string
@@ -205,6 +220,55 @@ func (handler *UserHandler) render(m *music.Music, temp string, view interface{}
 				return m.TrackCover(o.(music.Track), "1200")
 			}
 			return ""
+		},
+		"poster":  func(o interface{}) string {
+			switch o.(type) {
+			case video.Movie:
+				url := vid.MoviePoster(o.(video.Movie))
+				if url == nil {
+					return ""
+				}
+				return url.String()
+			}
+			return ""
+		},
+		"posterSmall":  func(o interface{}) string {
+			switch o.(type) {
+			case video.Movie:
+				url := vid.MoviePosterSmall(o.(video.Movie))
+				if url == nil {
+					return ""
+				}
+				return url.String()
+			}
+			return ""
+		},
+		"backdrop":  func(o interface{}) string {
+			switch o.(type) {
+			case video.Movie:
+				url := vid.MovieBackdrop(o.(video.Movie))
+				if url == nil {
+					return ""
+				}
+				return url.String()
+			}
+			return ""
+		},
+		"profile":  func(o interface{}) string {
+			switch o.(type) {
+			case video.Person:
+				url := vid.PersonProfile(o.(video.Person))
+				if url == nil {
+					return ""
+				}
+				return url.String()
+			}
+			return ""
+		},
+		"runtime": func(m video.Movie) string {
+			hours := m.Runtime / 60
+			mins := m.Runtime % 60
+			return fmt.Sprintf("%dh %dm", hours, mins)
 		},
 		"letter": func(a music.Artist) string {
 			return a.SortName[0:1]
@@ -371,12 +435,29 @@ func (handler *UserHandler) viewHandler(w http.ResponseWriter, r *http.Request) 
 		movie, _ := vid.LookupMovie(id)
 		view = handler.movieView(vid, movie)
 		temp = "movie.html"
+	} else if v := r.URL.Query().Get("person"); v != "" {
+		// /v?person={person-id}
+		id, _ := strconv.Atoi(v)
+		person, _ := vid.LookupPerson(id)
+		view = handler.personView(vid, person)
+		temp = "person.html"
+	} else if v := r.URL.Query().Get("genre"); v != "" {
+		// /v?genre={genre-name}
+		name := strings.TrimSpace(v)
+		view = handler.genreView(vid, name)
+		temp = "genre.html"
+	} else if v := r.URL.Query().Get("watch"); v != "" {
+		// /v?watch={movie-id}
+		id, _ := strconv.Atoi(v)
+		movie, _ := vid.LookupMovie(id)
+		view = handler.watchView(vid, movie)
+		temp = "watch.html"
 	} else {
 		view = time.Now().Unix()
 		temp = "index.html"
 	}
 
-	handler.render(m, temp, view, w, r)
+	handler.render(m, vid, temp, view, w, r)
 }
 
 func Serve(config *config.Config) {
