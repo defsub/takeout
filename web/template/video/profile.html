@@ -1,7 +1,13 @@
 <div>
-
+  <h1>{{ .Person.Name }}</h1>
+  <div style="display: flex">
+    <div style="padding-left: 25px; padding-right: 25px;"><img src="{{.Person|profile}}"></div>
+    <div>{{ .Person.Bio }}</div>
+  </div>
+</div>
+<div style="padding-top: 25px; padding-left: 25px;">
   {{ if .Staring }}
-  <h1>Staring: {{ .Person.Name }}</h1>
+  <h2>Staring {{ .Person.Name }}</h2>
   <div style="display: flex; text-align: center; width: 100%; justify-content: left; flex-wrap: wrap;">
     {{ range .Staring }}
     <div style="margin: 1em; flex: 0; min-width: 154px;">
@@ -14,7 +20,7 @@
   {{ end }}
 
   {{ if .Directing }}
-  <h1>Directing: {{ .Person.Name }}</h1>
+  <h2>Directing {{ .Person.Name }}</h2>
   <div style="display: flex; text-align: center; width: 100%; justify-content: left; flex-wrap: wrap;">
     {{ range .Directing }}
     <div style="margin: 1em; flex: 0; min-width: 154px;">
@@ -27,7 +33,7 @@
   {{ end }}
 
   {{ if .Writing }}
-  <h1>Writing: {{ .Person.Name }}</h1>
+  <h2>Writing {{ .Person.Name }}</h2>
   <div style="display: flex; text-align: center; width: 100%; justify-content: left; flex-wrap: wrap;">
     {{ range .Writing }}
     <div style="margin: 1em; flex: 0; min-width: 154px;">
@@ -39,4 +45,8 @@
   </div>
   {{ end }}
 
+  <div style="clear: both; padding-top: 5px;"/>
+  <h3>External Links</h3>
+  IMBD:
+  <a target="_blank" href="https://www.imdb.com/name/{{ .Person.IMID }}/">{{ .Person.Name }}</a>
 </div>

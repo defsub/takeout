@@ -1,4 +1,4 @@
-<div style="background-size: cover; background-position: center; background-repeat: no-repeat; background-image: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url('{{.Movie|backdrop}}');">
+<div style="background-size: cover; background-position: center; background-repeat: no-repeat; background-image: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.4)), url('{{.Movie|backdrop}}');">
   <div style="display: flex; padding-top: 10px;">
     <div style="padding-left: 25px; padding-right: 25px;">
       <img src="{{.Movie|poster}}">
@@ -17,8 +17,9 @@
 	{{ else }}
 	<span class="rating">NR</span>
 	{{ end }}
-	{{ymd .Movie.Date}},
 	{{.Movie|runtime}}
+	&bull;
+	{{.Movie.Date.Year}}
 	&bull;
 	{{ range .Genres }}
 	<a data-link="/v?genre={{.|urlquery}}">{{.}}</a>
@@ -31,7 +32,7 @@
 	    <td class="cred"><h2>Staring</h2></td>
 	    <td class="cred">
 	      {{ range .Staring }}
-	      <a data-link="/v?person={{.ID}}">{{.Name}}</a>
+	      <a data-link="/v?profile={{.ID}}">{{.Name}}</a>
 	      {{ end }}
 	    </td>
 	  </tr>
@@ -41,7 +42,7 @@
 	    <td class="cred"><h2>Directing</h2></td>
 	    <td class="cred">
 	      {{ range .Directing }}
-	      <a data-link="/v?person={{.ID}}">{{.Name}}</a>
+	      <a data-link="/v?profile={{.ID}}">{{.Name}}</a>
 	      {{ end }}
 	    </td>
 	  </tr>
@@ -51,7 +52,7 @@
 	    <td class="cred"><h2>Writing</h2></td>
 	    <td class="cred">
 	      {{ range .Writing }}
-	      <a data-link="/v?person={{.ID}}">{{.Name}}</a>
+	      <a data-link="/v?profile={{.ID}}">{{.Name}}</a>
 	      {{ end }}
 	    </td>
 	  </tr>
@@ -71,7 +72,7 @@
     {{ range $i, $c := .Cast }}
     {{ if lt $i 5 }}
     <div class="card">
-      <a data-link="/v?person={{ $c.Person.ID }}"><img src="{{$c.Person|profile}}"></a>
+      <a data-link="/v?profile={{ $c.Person.ID }}"><img src="{{$c.Person|profile}}"></a>
       <p class="person">{{ $c.Person.Name }}</p>
       <p class="character">{{ $c.Character }}</p>
     </div>

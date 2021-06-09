@@ -47,12 +47,14 @@ func (tag *IntTag) MarshalJSON() ([]byte, error) {
 }
 
 type TrackTag struct {
-	XMLName  xml.Name  `xml:"track" json:"-"`
-	Creator  StringTag `xml:"creator" json:"creator"`
-	Album    StringTag `xml:"album" json:"album"`
-	Title    StringTag `xml:"title" json:"title"`
-	TrackNum IntTag    `xml:"trackNum" json:"trackNum"`
-	Location StringTag `xml:"location" json:"location"`
+	XMLName    xml.Name  `xml:"track" json:"-"`
+	Creator    StringTag `xml:"creator" json:"creator"`
+	Album      StringTag `xml:"album" json:"album"`
+	Title      StringTag `xml:"title" json:"title"`
+	TrackNum   IntTag    `xml:"trackNum" json:"trackNum"`
+	Location   StringTag `xml:"location" json:"location"`
+	Image      StringTag `xml:"image" json:"image"`
+	Identifier StringTag `xml:"identifier" json:"identifier"`
 }
 
 type SpiffEncoder interface {
@@ -73,7 +75,9 @@ type xmlEncoder struct {
 func (e xmlEncoder) Header(title string) {
 	fmt.Fprint(e.writer, xml.Header)
 	fmt.Fprintf(e.writer, "<playlist version=\"1\" xmlns=\"http://xspf.org/ns/0/\">")
-	fmt.Fprintf(e.writer, "<title>%s</title>", title)
+	fmt.Fprintf(e.writer, "<title>")
+	xml.Escape(e.writer, []byte(title))
+	fmt.Fprintf(e.writer, "</title>")
 	fmt.Fprintf(e.writer, "<trackList>")
 }
 
@@ -142,6 +146,10 @@ func encode(e Encoder, track interface{}) error {
 					trackTag.TrackNum = IntTag{int(valueField.Int())}
 				case "location":
 					trackTag.Location = StringTag{valueField.Index(0).String()}
+				case "image":
+					trackTag.Image = StringTag{valueField.String()}
+				// case "identifier":
+				// 	trackTag.Identifier = StringTag{valueField.Index(0).String()}
 				}
 			}
 		}

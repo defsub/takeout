@@ -94,7 +94,7 @@ type MovieView struct {
 	Genres     []string
 }
 
-type PersonView struct {
+type ProfileView struct {
 	Person    video.Person
 	Staring   []video.Movie
 	Directing []video.Movie
@@ -240,8 +240,8 @@ func (handler *UserHandler) movieView(v *video.Video, m *video.Movie) *MovieView
 	return view
 }
 
-func (handler *UserHandler) personView(v *video.Video, p *video.Person) *PersonView {
-	view := &PersonView{}
+func (handler *UserHandler) profileView(v *video.Video, p *video.Person) *ProfileView {
+	view := &ProfileView{}
 	view.Person = *p
 	view.Staring = v.Staring(p)
 	view.Writing = v.Writing(p)

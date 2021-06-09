@@ -18,7 +18,6 @@
 package bucket
 
 import (
-	"fmt"
 	"net/url"
 	"time"
 
@@ -133,12 +132,10 @@ func (b *Bucket) List(lastSync time.Time) (objectCh chan *Object, err error) {
 
 // Generate a presigned url which expires based on config settings.
 func (b *Bucket) Presign(key string) *url.URL {
-	fmt.Printf("presign key %s\n", key)
 	req, _ := b.s3.GetObjectRequest(&s3.GetObjectInput{
 		Bucket: aws.String(b.config.BucketName),
 		Key:    aws.String(key)})
 	urlStr, _ := req.Presign(b.config.URLExpiration)
-	fmt.Printf("presign urlStr %s\n", urlStr)
 	url, _ := url.Parse(urlStr)
 	return url
 }

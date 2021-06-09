@@ -435,12 +435,12 @@ func (handler *UserHandler) viewHandler(w http.ResponseWriter, r *http.Request) 
 		movie, _ := vid.LookupMovie(id)
 		view = handler.movieView(vid, movie)
 		temp = "movie.html"
-	} else if v := r.URL.Query().Get("person"); v != "" {
-		// /v?person={person-id}
+	} else if v := r.URL.Query().Get("profile"); v != "" {
+		// /v?profile={person-id}
 		id, _ := strconv.Atoi(v)
 		person, _ := vid.LookupPerson(id)
-		view = handler.personView(vid, person)
-		temp = "person.html"
+		view = handler.profileView(vid, person)
+		temp = "profile.html"
 	} else if v := r.URL.Query().Get("genre"); v != "" {
 		// /v?genre={genre-name}
 		name := strings.TrimSpace(v)

@@ -26,6 +26,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/defsub/takeout/lib/encoding/xspf"
 	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/lib/spiff"
 	"github.com/defsub/takeout/lib/str"
@@ -262,9 +263,44 @@ func (handler *UserHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Reques
 	if plist.Entries == nil {
 		plist.Entries = []spiff.Entry{}
 	}
-	result, _ := plist.Marshal()
-	w.WriteHeader(http.StatusOK)
-	w.Write(result)
+	if strings.HasSuffix(r.URL.Path, ".xspf") {
+		w.Header().Set("Content-type", xspf.XMLContentType)
+		w.WriteHeader(http.StatusOK)
+		encoder := xspf.NewXMLEncoder(w)
+		encoder.Header(title)
+		locationRegexp := regexp.MustCompile(`/api/(movies|tracks)/([0-9]+)/location`)
+		for i := range plist.Entries {
+			matches := locationRegexp.FindStringSubmatch(plist.Entries[i].Location[0])
+			if matches != nil {
+				var url *url.URL
+				src := matches[1]
+				if src == "tracks" {
+					id := str.Atoi(matches[2])
+					track, err := m.LookupTrack(id)
+					if err != nil {
+						continue
+					}
+					url = m.TrackURL(&track)
+					plist.Entries[i].Location = []string{url.String()}
+				// } else if src == "movies" {
+				// 	// TODO not supported yet
+				// 	id := str.Atoi(matches[2])
+				// 	movie, err := vid.LookupMovie(id)
+				// 	if err != nil {
+				// 		continue
+				// 	}
+				// 	url = vid.MovieURL(movie)
+				// 	plist.Entries[i].Location = []string{url.String()}
+				}
+			}
+			encoder.Encode(plist.Entries[i])
+		}
+		encoder.Footer()
+	} else {
+		w.WriteHeader(http.StatusOK)
+		result, _ := plist.Marshal()
+		w.Write(result)
+	}
 }
 
 // GET /api/playlist > spiff.Playlist{}
@@ -379,14 +415,12 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/api/login" {
 		handler.apiLogin(w, r)
 	} else {
-		fmt.Printf("path %s\n", r.URL.Path)
-
-		if r.URL.Path == "/api/live" {
-			m := &music.Music{}
-			//defer music.Close()
-			handler.apiLive(w, r, m)
-			return
-		}
+		// if r.URL.Path == "/api/live" {
+		// 	m := &music.Music{}
+		// 	//defer music.Close()
+		// 	handler.apiLive(w, r, m)
+		// 	return
+		// }
 
 		// if r.URL.Path == "/api/watch" {
 		// 	v := video.NewVideo(handler.config)
@@ -454,13 +488,18 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// /api/artists/id/(popular|singles)/playlist
-			subPlayistRegexp := regexp.MustCompile(`/api/artists/([0-9]+)/([a-z]+)/playlist`)
+			subPlayistRegexp := regexp.MustCompile(`/api/artists/([0-9]+)/([a-z]+)/playlist(\.xspf)?`)
 			matches = subPlayistRegexp.FindStringSubmatch(r.URL.Path)
 			if matches != nil {
 				id := str.Atoi(matches[1])
 				artist, _ := m.LookupArtist(id)
 				image := m.ArtistImage(&artist)
 				sub := matches[2]
+				ext := matches[3]
+				if ext != "" && ext != ".xspf" {
+					http.Error(w, "bummer", http.StatusNotFound)
+					return
+				}
 				switch sub {
 				case "popular":
 					// /api/artists/id/popular/playlist
@@ -483,7 +522,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// /api/(artists|releases)/id/(playlist|popular|radio|singles)
-			playlistRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)/(playlist|popular|singles|radio)`)
+			playlistRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)/(playlist|popular|singles|radio)(\.xspf)?`)
 			matches = playlistRegexp.FindStringSubmatch(r.URL.Path)
 			if matches != nil {
 				v := matches[1]
