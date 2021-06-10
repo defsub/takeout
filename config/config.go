@@ -84,6 +84,7 @@ type VideoConfig struct {
 	ReleaseCountries []string
 	CastLimit        int
 	CrewJobs         []string
+	SearchLimit      int
 }
 
 type LastFMAPIConfig struct {
@@ -234,6 +235,7 @@ func configDefaults(v *viper.Viper) {
 		"Screenplay",
 		"Story",
 	})
+	v.SetDefault("Video.SearchLimit", "100")
 
 	// see https://musicbrainz.org/search (series)
 	v.SetDefault("Music.RadioSeries", []string{

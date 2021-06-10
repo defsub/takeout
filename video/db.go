@@ -268,6 +268,12 @@ func (v *Video) Writing(p *Person) []Movie {
 	return v.department("Writing", p)
 }
 
+func (v *Video) moviesFor(keys []string) []Movie {
+	var movies []Movie
+	v.db.Where("key in (?)", keys).Find(&movies)
+	return movies
+}
+
 func (v *Video) createCast(c *Cast) error {
 	return v.db.Create(c).Error
 }

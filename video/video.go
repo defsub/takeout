@@ -21,6 +21,7 @@ import (
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/lib/bucket"
 	"github.com/defsub/takeout/lib/client"
+	"github.com/defsub/takeout/lib/search"
 	"github.com/defsub/takeout/lib/tmdb"
 	"gorm.io/gorm"
 	"net/url"
@@ -50,6 +51,44 @@ func (v *Video) Open() (err error) {
 
 func (v *Video) Close() {
 	v.closeDB()
+}
+
+func (v *Video) newSearch() *search.Search {
+	s := search.NewSearch(v.config)
+	s.Keywords = []string{
+		FieldGenre,
+	}
+	s.Open("video")
+	return s
+}
+
+func (v *Video) Search(q string, limit ...int) []Movie {
+	s := v.newSearch()
+	defer s.Close()
+
+	l := v.config.Video.SearchLimit
+	if len(limit) == 1 {
+		l = limit[0]
+	}
+
+	keys, err := s.Search(q, l)
+	if err != nil {
+		return nil
+	}
+
+	// split potentially large # of result keys into chunks to query
+	chunkSize := 100
+	var movies []Movie
+	for i := 0; i < len(keys); i += chunkSize {
+		end := i + chunkSize
+		if end > len(keys) {
+			end = len(keys)
+		}
+		chunk := keys[i:end]
+		movies = append(movies, v.moviesFor(chunk)...)
+	}
+
+	return movies
 }
 
 func (v *Video) List() {

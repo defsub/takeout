@@ -419,7 +419,7 @@ func (handler *UserHandler) viewHandler(w http.ResponseWriter, r *http.Request) 
 		temp = "music.html"
 	} else if v := r.URL.Query().Get("q"); v != "" {
 		// /v?q={pattern}
-		view = handler.searchView(m, strings.TrimSpace(v))
+		view = handler.searchView(m, vid, strings.TrimSpace(v))
 		temp = "search.html"
 	} else if v := r.URL.Query().Get("radio"); v != "" {
 		// /v?radio=x

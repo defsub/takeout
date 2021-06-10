@@ -65,6 +65,7 @@ type SearchView struct {
 	Artists  []music.Artist
 	Releases []music.Release
 	Tracks   []music.Track
+	Movies   []video.Movie
 	Query    string
 	Hits     int
 }
@@ -175,14 +176,15 @@ func (handler *UserHandler) releaseView(m *music.Music, release music.Release) *
 	return view
 }
 
-func (handler *UserHandler) searchView(m *music.Music, query string) *SearchView {
+func (handler *UserHandler) searchView(m *music.Music, v *video.Video, query string) *SearchView {
 	view := &SearchView{}
 	artists, releases, _ := m.Query(query)
 	view.Artists = artists
 	view.Releases = releases
 	view.Query = query
 	view.Tracks = m.Search(query)
-	view.Hits = len(view.Artists) + len(view.Releases) + len(view.Tracks)
+	view.Movies = v.Search(query)
+	view.Hits = len(view.Artists) + len(view.Releases) + len(view.Tracks) + len(view.Movies)
 	return view
 }
 

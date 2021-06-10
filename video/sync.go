@@ -26,8 +26,24 @@ import (
 
 	"github.com/defsub/takeout/lib/bucket"
 	"github.com/defsub/takeout/lib/date"
+	"github.com/defsub/takeout/lib/search"
 	"github.com/defsub/takeout/lib/str"
 	"github.com/defsub/takeout/lib/tmdb"
+)
+
+const (
+	FieldBudget     = "budget"
+	FieldCast       = "cast"
+	FieldCharacter  = "character"
+	FieldCollection = "collection"
+	FieldCrew       = "crew"
+	FieldDate       = "date"
+	FieldGenre      = "genre"
+	FieldRating     = "rating"
+	FieldRevenue    = "revenue"
+	FieldRuntime    = "runtime"
+	FieldTagline    = "tagline"
+	FieldTitle      = "title"
 )
 
 func (v *Video) Sync() error {
@@ -52,6 +68,9 @@ func (v *Video) syncBucket(bucket *bucket.Bucket) error {
 	// Movies/Thriller/Zero Dark Thirty (2012) - HD.mkv
 	movieRegexp := regexp.MustCompile(`.*/(.+?)\s*\(([\d]+)\)(\s-\s(.+))?\.(mkv|mp4)$`)
 
+	s := v.newSearch()
+	defer s.Close()
+
 	for o := range objectCh {
 		matches := movieRegexp.FindStringSubmatch(o.Key)
 		if matches == nil {
@@ -72,14 +91,25 @@ func (v *Video) syncBucket(bucket *bucket.Bucket) error {
 			continue
 		}
 
+		index := make(search.IndexMap)
+
 		for _, r := range results {
+			fmt.Printf("result %s %s\n", r.Title, r.ReleaseDate)
 			if fuzzyName(title) == fuzzyName(r.Title) &&
 				strings.Contains(r.ReleaseDate, year) {
 				fmt.Printf("--> matched: %s (%s)\n", r.Title, r.ReleaseDate)
-				v.syncMovie(client, r.ID,
+				fields, err := v.syncMovie(client, r.ID,
 					o.Key, o.Size, o.ETag, o.LastModified)
+				if err != nil {
+					fmt.Printf("err %s\n", err)
+					continue
+				}
+				index[o.Key] = fields
+				break
 			}
 		}
+
+		s.Index(index)
 	}
 	return nil
 }
@@ -90,16 +120,18 @@ func fuzzyName(name string) string {
 }
 
 func (v *Video) syncMovie(client *tmdb.TMDB, tmid int,
-	key string, size int64, etag string, lastModified time.Time) error {
+	key string, size int64, etag string, lastModified time.Time) (search.FieldMap, error) {
 	v.deleteMovie(tmid)
 	v.deleteCast(tmid)
 	v.deleteCollections(tmid)
 	v.deleteCrew(tmid)
 	v.deleteGenres(tmid)
 
+	fields := make(search.FieldMap)
+
 	detail, err := client.MovieDetail(tmid)
 	if err != nil {
-		return err
+		return fields, err
 	}
 
 	m := Movie{
@@ -122,21 +154,30 @@ func (v *Video) syncMovie(client *tmdb.TMDB, tmid int,
 		ETag:             etag,
 		LastModified:     lastModified,
 	}
+
 	// rating / certification
 	for _, country := range v.config.Video.ReleaseCountries {
 		release, err := v.certification(client, tmid, country)
 		if err != nil {
-			return err
+			return fields, err
 		}
 		if release != nil {
 			m.Rating = release.Certification
 			break
 		}
 	}
-	//fmt.Printf("%s create\n", m.Title)
+
+	search.AddField(fields, FieldBudget, m.Budget)
+	search.AddField(fields, FieldDate, m.Date)
+	search.AddField(fields, FieldRating, m.Rating)
+	search.AddField(fields, FieldRevenue, m.Revenue)
+	search.AddField(fields, FieldRuntime, m.Runtime)
+	search.AddField(fields, FieldTitle, m.Title)
+	search.AddField(fields, FieldTagline, m.Tagline)
+
 	err = v.createMovie(&m)
 	if err != nil {
-		return nil
+		return fields, err
 	}
 
 	// collections
@@ -146,11 +187,11 @@ func (v *Video) syncMovie(client *tmdb.TMDB, tmid int,
 			Name:     detail.Collection.Name,
 			SortName: str.SortTitle(detail.Collection.Name),
 		}
-		//fmt.Printf("%s collection %s\n", m.Title, c.Name)
 		err = v.createCollection(&c)
 		if err != nil {
-			return err
+			return fields, err
 		}
+		search.AddField(fields, FieldCollection, c.Name)
 	}
 
 	// genres
@@ -159,17 +200,17 @@ func (v *Video) syncMovie(client *tmdb.TMDB, tmid int,
 			Name: o.Name,
 			TMID: m.TMID,
 		}
-		//fmt.Printf("%s genre %s\n", m.Title, g.Name)
 		err = v.createGenre(&g)
 		if err != nil {
-			return err
+			return fields, err
 		}
+		search.AddField(fields, FieldGenre, g.Name)
 	}
 
 	// credits
 	credits, err := client.MovieCredits(tmid)
 	if err != nil {
-		return err
+		return fields, err
 	}
 	// cast
 	sort.Slice(credits.Cast, func(i, j int) bool {
@@ -185,12 +226,12 @@ func (v *Video) syncMovie(client *tmdb.TMDB, tmid int,
 			// person detail
 			p, err = personDetail(client, o.ID)
 			if err != nil {
-				return err
+				return fields, err
 			}
 			//fmt.Printf("%s cast person %s -> %s\n", m.Title, p.Name, o.Character)
 			err = v.createPerson(p)
 			if err != nil {
-				return err
+				return fields, err
 			}
 		}
 		c := Cast{
@@ -201,8 +242,10 @@ func (v *Video) syncMovie(client *tmdb.TMDB, tmid int,
 		}
 		err = v.createCast(&c)
 		if err != nil {
-			return err
+			return fields, err
 		}
+		search.AddField(fields, FieldCast, p.Name)
+		search.AddField(fields, FieldCharacter, c.Character)
 	}
 
 	// DEPARTMENT - JOB
@@ -222,12 +265,12 @@ func (v *Video) syncMovie(client *tmdb.TMDB, tmid int,
 			// person detail
 			p, err = personDetail(client, o.ID)
 			if err != nil {
-				return err
+				return fields, err
 			}
 			//fmt.Printf("%s crew person %s -> %s\n", m.Title, p.Name, o.Job)
 			err = v.createPerson(p)
 			if err != nil {
-				return err
+				return fields, err
 			}
 		}
 		c := Crew{
@@ -238,11 +281,14 @@ func (v *Video) syncMovie(client *tmdb.TMDB, tmid int,
 		}
 		err = v.createCrew(&c)
 		if err != nil {
-			return err
+			return fields, err
 		}
+		search.AddField(fields, FieldCrew, p.Name)
+		search.AddField(fields, c.Department, p.Name)
+		search.AddField(fields, c.Job, p.Name)
 	}
 
-	return nil
+	return fields, nil
 }
 
 func personDetail(client *tmdb.TMDB, peid int) (*Person, error) {

@@ -1,5 +1,6 @@
 <div>
   <div class="search-results">Found {{ .Hits }} results</div>
+
   {{ if .Artists }}
   <div>
     <h2>Artists</h2>
@@ -78,6 +79,36 @@
       </div>
     </div>
     {{ end }}
+
   </div>
   {{ end }}
+
+  {{ if .Movies }}
+  <div>
+    <div class="parent">
+      <div class="left">
+	<h2>Movies</h2>
+      </div>
+      <div class="right">
+      </div>
+    </div>
+    {{ range .Movies }}
+    <div class="parent">
+      <div class="left" style="cursor: pointer;">
+	<div class="parent2">
+	  <div class="track-title">
+	    <a data-link="/v?movie={{.ID}}">{{ .Title }}</a>
+	  </div>
+	  <div class="track-artist">
+	    {{ .Rating }} ~ {{ .Date.Year }} ~ {{ .Runtime }} mins
+	  </div>
+	</div>
+      </div>
+      <div class="right">
+      </div>
+    </div>
+    {{ end }}
+  </div>
+  {{ end }}
+
 </div>

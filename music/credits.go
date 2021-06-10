@@ -166,6 +166,7 @@ func setField(c search.FieldMap, key string, value interface{}) search.FieldMap 
 	return addField(c, key, value)
 }
 
+// TODO refactor to use search.AddField
 func addField(c search.FieldMap, key string, value interface{}) search.FieldMap {
 	key = strings.ToLower(key)
 	keys := []string{key}

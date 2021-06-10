@@ -369,10 +369,10 @@ func (handler *UserHandler) apiView(w http.ResponseWriter, r *http.Request, view
 	enc.Encode(view)
 }
 
-func (handler *UserHandler) apiSearch(w http.ResponseWriter, r *http.Request, m *music.Music) {
+func (handler *UserHandler) apiSearch(w http.ResponseWriter, r *http.Request, m *music.Music, vid *video.Video) {
 	if v := r.URL.Query().Get("q"); v != "" {
 		// /api/search?q={pattern}
-		view := handler.searchView(m, strings.TrimSpace(v))
+		view := handler.searchView(m, vid, strings.TrimSpace(v))
 		handler.apiView(w, r, view)
 	} else {
 		http.Error(w, "bummer", http.StatusNotFound)
@@ -462,7 +462,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 		case "/api/artists":
 			handler.apiView(w, r, handler.artistsView(m))
 		case "/api/search":
-			handler.apiSearch(w, r, m)
+			handler.apiSearch(w, r, m, vid)
 		case "/api/movies":
 			handler.apiView(w, r, handler.moviesView(vid))
 		default:

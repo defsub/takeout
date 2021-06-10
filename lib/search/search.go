@@ -19,6 +19,7 @@ package search
 
 import (
 	"fmt"
+	"strings"
 	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/analysis/analyzer/keyword"
 	"github.com/defsub/takeout/config"
@@ -39,6 +40,8 @@ func NewSearch(config *config.Config) *Search {
 
 func (s *Search) Open(name string) error {
 	mapping := bleve.NewIndexMapping()
+	// Note that keywords are fields where we want only exact matches.
+	// see https://blevesearch.com/docs/Analyzers/
 	keywordFieldMapping := bleve.NewTextFieldMapping()
 	keywordFieldMapping.Analyzer = keyword.Name
 	keywordMapping := bleve.NewDocumentMapping()
@@ -94,4 +97,38 @@ func CloneFields(fields FieldMap) FieldMap {
 		target[k] = v
 	}
 	return target
+}
+
+func AddField(fields FieldMap, key string, value interface{}) FieldMap {
+	key = strings.ToLower(key)
+	keys := []string{key}
+	for _, k := range keys {
+		k := strings.Replace(k, " ", "_", -1)
+		switch value.(type) {
+		case string:
+			svalue := value.(string)
+			//svalue = fixName(svalue)
+			if v, ok := fields[k]; ok {
+				switch v.(type) {
+				case string:
+					// string becomes array of 2 strings
+					fields[k] = []string{v.(string), svalue}
+				case []string:
+					// array of 3+ strings
+					s := v.([]string)
+					s = append(s, svalue)
+					fields[k] = s
+				default:
+					panic("bad field types")
+				}
+			} else {
+				// single string
+				fields[k] = svalue
+			}
+		default:
+			// numeric, date, etc.
+			fields[k] = value
+		}
+	}
+	return fields
 }
