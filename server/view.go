@@ -21,11 +21,20 @@ import (
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/music"
 	"github.com/defsub/takeout/video"
+	"time"
 )
 
+type IndexView struct {
+	Time      int64
+	HasMusic  bool
+	HasMovies bool
+}
+
 type HomeView struct {
-	Added    []music.Release
-	Released []music.Release
+	AddedReleases []music.Release
+	NewReleases   []music.Release
+	AddedMovies   []video.Movie
+	NewMovies     []video.Movie
 }
 
 type ArtistsView struct {
@@ -89,15 +98,17 @@ type MovieView struct {
 	Other      []video.Movie
 	Cast       []video.Cast
 	Crew       []video.Crew
-	Staring    []video.Person
+	Starring   []video.Person
 	Directing  []video.Person
 	Writing    []video.Person
 	Genres     []string
+	Vote       int
+	VoteCount  int
 }
 
 type ProfileView struct {
 	Person    video.Person
-	Staring   []video.Movie
+	Starring  []video.Movie
 	Directing []video.Movie
 	Writing   []video.Movie
 }
@@ -111,10 +122,20 @@ type WatchView struct {
 	Movie video.Movie
 }
 
-func (handler *UserHandler) homeView(m *music.Music) *HomeView {
+func (handler *UserHandler) indexView(m *music.Music, v *video.Video) *IndexView {
+	view := &IndexView{}
+	view.Time = time.Now().Unix()
+	view.HasMusic = m.HasMusic()
+	view.HasMovies = v.HasMovies()
+	return view
+}
+
+func (handler *UserHandler) homeView(m *music.Music, v *video.Video) *HomeView {
 	view := &HomeView{}
-	view.Added = m.RecentlyAdded()
-	view.Released = m.RecentlyReleased()
+	view.AddedReleases = m.RecentlyAdded()
+	view.NewReleases = m.RecentlyReleased()
+	view.AddedMovies = v.RecentlyAdded()
+	view.NewMovies = v.RecentlyReleased()
 	return view
 }
 
@@ -236,16 +257,18 @@ func (handler *UserHandler) movieView(v *video.Video, m *video.Movie) *MovieView
 		if i == 3 {
 			break
 		}
-		view.Staring = append(view.Staring, c.Person)
+		view.Starring = append(view.Starring, c.Person)
 	}
 	view.Genres = v.Genres(m)
+	view.Vote = int(m.VoteAverage * 10)
+	view.VoteCount = m.VoteCount
 	return view
 }
 
 func (handler *UserHandler) profileView(v *video.Video, p *video.Person) *ProfileView {
 	view := &ProfileView{}
 	view.Person = *p
-	view.Staring = v.Staring(p)
+	view.Starring = v.Starring(p)
 	view.Writing = v.Writing(p)
 	view.Directing = v.Directing(p)
 	return view

@@ -1,0 +1,82 @@
+{{ if or .AddedReleases .NewReleases }}
+<div>
+  <h1>Music</h1>
+  {{ if .AddedReleases }}
+  <div>
+    <h2>Recently Added</h2>
+    <div style="overflow-x: auto; overflow-y: hidden; white-space: nowrap;">
+      {{ range .AddedReleases }}
+      <div style="padding: 10px; max-width: 110px; display: inline-block;">
+	<a data-link="{{.|link}}" style="text-decoration: none;">
+	  <img width="110" height="110" src="{{.|coverSmall}}" style="border-radius: 10px;">
+	  <br/>
+	  <div class="release-small-title">{{ .Name }}</div>
+	  <br style="display: none"/>
+	  <div class="release-small-year">{{ .Date.Year }}</div>
+	</a>
+      </div>
+      {{ end }}
+    </div>
+  </div>
+  {{ end }}
+  {{ if .NewReleases }}
+  <div>
+    <h2>Recently Released</h2>
+    <div style="overflow-x: auto; overflow-y: hidden; white-space: nowrap;">
+      {{ range .NewReleases }}
+      <div style="padding: 10px; max-width: 110px; display: inline-block;">
+	<a data-link="{{.|link}}" style="text-decoration: none;">
+	  <img width="110" height="110" src="{{.|coverSmall}}" style="border-radius: 10px;">
+	  <br/>
+	  <div class="release-small-title">{{ .Name }}</div>
+	  <br style="display: none"/>
+	  <div class="release-small-year">{{ .Date.Year }}</div>
+	</a>
+      </div>
+      {{ end }}
+    </div>
+  </div>
+  {{ end }}
+</div>
+{{ end }}
+{{ if or .AddedMovies .NewMovies }}
+<div>
+  <h1>Movies</h1>
+  {{ if .AddedMovies }}
+  <div>
+    <h2>Recently Added</h2>
+    <div style="overflow-x: auto; overflow-y: hidden; white-space: nowrap;">
+      {{ range .AddedMovies }}
+      <div style="padding: 10px; max-width: 154px; display: inline-block;">
+	<a data-link="{{.|link}}" style="text-decoration: none;">
+	  <img src="{{.|posterSmall}}" style="border-radius: 10px;">
+	  <br/>
+	  <div class="movie-small-title">{{ .Title }}</div>
+	  <br style="display: none"/>
+	  <div class="movie-small-year">{{ .Date.Year }}</div>
+	</a>
+      </div>
+      {{ end }}
+    </div>
+  </div>
+  {{ end }}
+  {{ if .NewMovies }}
+  <div>
+    <h2>Recently Released</h2>
+    <div style="overflow-x: auto; overflow-y: hidden; white-space: nowrap;">
+      {{ range .NewMovies }}
+      <div style="padding: 10px; max-width: 154px; display: inline-block;">
+	<a data-link="{{.|link}}" style="text-decoration: none;">
+	  <img src="{{.|posterSmall}}" style="border-radius: 10px;">
+	  <br/>
+	  <div class="movie-small-title">{{ .Title }}</div>
+	  <br style="display: none"/>
+	  <div class="movie-small-year">{{ .Date.Year }}</div>
+	</a>
+      </div>
+      {{ end }}
+    </div>
+  </div>
+  {{ end }}
+</div>
+{{ end }}

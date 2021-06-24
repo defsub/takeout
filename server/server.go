@@ -27,7 +27,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
@@ -192,7 +191,7 @@ func (handler *UserHandler) render(m *music.Music, vid *video.Video, temp string
 			return ref
 		},
 		"home": func() string {
-			return "/v?music=1"
+			return "/v?home=1"
 		},
 		"coverSmall": func(o interface{}) string {
 			switch o.(type) {
@@ -348,12 +347,13 @@ func (handler *UserHandler) authorized(w http.ResponseWriter, r *http.Request) b
 	a.Refresh(cookie)
 	http.SetCookie(w, cookie)
 
-	bucketName := handler.user.Bucket()
-	if bucketName == "" {
+	// only supports one media collection right now
+	media := handler.user.FirstMedia()
+	if media == "" {
 		http.Error(w, "bummer", http.StatusServiceUnavailable)
 		return false
 	}
-	path := fmt.Sprintf("%s/%s", handler.config.DataDir, bucketName)
+	path := fmt.Sprintf("%s/%s", handler.config.DataDir, media)
 
 	handler.userConfig, err = config.LoadConfig(path)
 	if err != nil {
@@ -413,10 +413,10 @@ func (handler *UserHandler) viewHandler(w http.ResponseWriter, r *http.Request) 
 		artist, _ := m.LookupArtist(id)
 		view = handler.singlesView(m, artist)
 		temp = "singles.html"
-	} else if v := r.URL.Query().Get("music"); v != "" {
-		// /v?music=x
-		view = handler.homeView(m)
-		temp = "music.html"
+	} else if v := r.URL.Query().Get("home"); v != "" {
+		// /v?home=x
+		view = handler.homeView(m, vid)
+		temp = "home.html"
 	} else if v := r.URL.Query().Get("q"); v != "" {
 		// /v?q={pattern}
 		view = handler.searchView(m, vid, strings.TrimSpace(v))
@@ -453,7 +453,7 @@ func (handler *UserHandler) viewHandler(w http.ResponseWriter, r *http.Request) 
 		view = handler.watchView(vid, movie)
 		temp = "watch.html"
 	} else {
-		view = time.Now().Unix()
+		view = handler.indexView(m, vid)
 		temp = "index.html"
 	}
 

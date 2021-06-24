@@ -44,11 +44,18 @@ const (
 	FieldRuntime    = "runtime"
 	FieldTagline    = "tagline"
 	FieldTitle      = "title"
+	FieldVote       = "vote"
+	FieldVoteCount  = "vote_count"
+
 )
 
 func (v *Video) Sync() error {
+	return v.SyncSince(time.Time{})
+}
+
+func (v *Video) SyncSince(lastSync time.Time) error {
 	for _, bucket := range v.buckets {
-		err := v.syncBucket(bucket)
+		err := v.syncBucket(bucket, lastSync)
 		if err != nil {
 			return err
 		}
@@ -56,8 +63,8 @@ func (v *Video) Sync() error {
 	return nil
 }
 
-func (v *Video) syncBucket(bucket *bucket.Bucket) error {
-	objectCh, err := bucket.List(time.Time{})
+func (v *Video) syncBucket(bucket *bucket.Bucket, lastSync time.Time) error {
+	objectCh, err := bucket.List(lastSync)
 	if err != nil {
 		return err
 	}
@@ -148,6 +155,8 @@ func (v *Video) syncMovie(client *tmdb.TMDB, tmid int,
 		Overview:         detail.Overview,
 		Tagline:          detail.Tagline,
 		Runtime:          detail.Runtime,
+		VoteAverage:      detail.VoteAverage,
+		VoteCount:        detail.VoteCount,
 		Date:             date.ParseDate(detail.ReleaseDate), // 2013-02-06
 		Key:              key,
 		Size:             size,
@@ -174,6 +183,8 @@ func (v *Video) syncMovie(client *tmdb.TMDB, tmid int,
 	search.AddField(fields, FieldRuntime, m.Runtime)
 	search.AddField(fields, FieldTitle, m.Title)
 	search.AddField(fields, FieldTagline, m.Tagline)
+	search.AddField(fields, FieldVote, int(m.VoteAverage * 10))
+	search.AddField(fields, FieldVoteCount, m.VoteCount)
 
 	err = v.createMovie(&m)
 	if err != nil {

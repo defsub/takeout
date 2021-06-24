@@ -1,6 +1,5 @@
 <div>
   <div class="search-results">Found {{ .Hits }} results</div>
-
   {{ if .Artists }}
   <div>
     <h2>Artists</h2>
@@ -18,7 +17,6 @@
     </table>
   </div>
   {{ end }}
-
   {{ if .Releases }}
   <div>
     <h2>Releases</h2>
@@ -36,7 +34,6 @@
   </div>
   <div style="clear: both;"/>
   {{ end }}
-
   {{ if .Tracks }}
   <div>
     <div class="parent">
@@ -79,10 +76,8 @@
       </div>
     </div>
     {{ end }}
-
   </div>
   {{ end }}
-
   {{ if .Movies }}
   <div>
     <div class="parent">
@@ -96,10 +91,10 @@
     <div class="parent">
       <div class="left" style="cursor: pointer;">
 	<div class="parent2">
-	  <div class="track-title">
+	  <div class="movie-title">
 	    <a data-link="/v?movie={{.ID}}">{{ .Title }}</a>
 	  </div>
-	  <div class="track-artist">
+	  <div class="movie-detail">
 	    {{ .Rating }} ~ {{ .Date.Year }} ~ {{ .Runtime }} mins
 	  </div>
 	</div>
@@ -110,5 +105,4 @@
     {{ end }}
   </div>
   {{ end }}
-
 </div>

@@ -4,8 +4,8 @@
   {{ range .Movies }}
   <div style="margin: 1em; flex: 0; min-width: 154px;">
     <div><a data-link="{{.|link}}"><img src="{{.|posterSmall}}"></a></div>
-    <div><span style="max-width: 154px; text-overflow: ellipsis;">{{ .Title }}</span></div>
-    <div>{{ .Date.Year }}</div>
+    <div><span style="max-width: 154px; text-overflow: ellipsis;" class="movie-title">{{ .Title }}</span></div>
+    <div class="movie-detail">{{ .Date.Year }}</div>
   </div>
     {{ end }}
   </div>

@@ -84,6 +84,8 @@ type VideoConfig struct {
 	ReleaseCountries []string
 	CastLimit        int
 	CrewJobs         []string
+	Recent           time.Duration
+	RecentLimit      int
 	SearchLimit      int
 }
 
@@ -124,11 +126,6 @@ type ClientConfig struct {
 	UserAgent string
 }
 
-type MediaConfig struct {
-	MovieTemplate  string
-	PosterTemplate string
-}
-
 type Config struct {
 	Auth    AuthConfig
 	Buckets []BucketConfig
@@ -136,7 +133,6 @@ type Config struct {
 	DataDir string
 	Fanart  FanartAPIConfig
 	LastFM  LastFMAPIConfig
-	Media   MediaConfig
 	Music   MusicConfig
 	TMDB    TMDBAPIConfig
 	Search  SearchConfig
@@ -235,6 +231,8 @@ func configDefaults(v *viper.Viper) {
 		"Screenplay",
 		"Story",
 	})
+	v.SetDefault("Video.Recent", "8760h") // 1 year
+	v.SetDefault("Video.RecentLimit", "50")
 	v.SetDefault("Video.SearchLimit", "100")
 
 	// see https://musicbrainz.org/search (series)
@@ -251,7 +249,6 @@ func configDefaults(v *viper.Viper) {
 		"Covers":      "+type:cover",
 		"Live Hits":   "+type:live +popularity:<3",
 	})
-
 }
 
 func userAgent() string {

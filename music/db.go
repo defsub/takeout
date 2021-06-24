@@ -819,6 +819,12 @@ func (m *Music) artistGenres() []string {
 	return genres
 }
 
+func (m *Music) TrackCount() int64 {
+	var count int64
+	m.db.Model(&Track{}).Count(&count)
+	return count
+}
+
 func (m *Music) updateArtist(a *Artist) error {
 	return m.db.Save(a).Error
 }

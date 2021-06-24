@@ -26,14 +26,19 @@
 	{{ end }}
       </div>
       <div style="padding-top: 50px;">
-	<table>
-	  {{ if .Staring }}
+	<table width="100%">
+	  {{ if .Starring }}
 	  <tr>
-	    <td class="cred"><h2>Staring</h2></td>
+	    <td class="cred"><h2>Starring</h2></td>
 	    <td class="cred">
-	      {{ range .Staring }}
+	      {{ range .Starring }}
 	      <a data-link="/v?profile={{.ID}}">{{.Name}}</a>
 	      {{ end }}
+	    </td>
+	    <td rowspan="3" width="100%" align="right">
+	      <div class="pie" style="--p:{{.Vote}}; display: flex; justify-content: center; align-items: center;">
+		<span style="font-size: large;">{{ .Vote }}%</span>
+	      </div>
 	    </td>
 	  </tr>
 	  {{ end }}
@@ -68,7 +73,7 @@
   </div>
   {{ if .Cast }}
   <h2 style="padding-left: 25px; padding-top: 25px;">Cast</h2>
-  <div style="display: flex;">
+  <div style="display: flex; padding-left: 25px;">
     {{ range $i, $c := .Cast }}
     {{ if lt $i 5 }}
     <div class="card">
@@ -81,17 +86,19 @@
   </div>
   {{ end }}
   {{ if .Collection }}
-  <h2>{{ .Collection.Name }}</h2>
-  <div style="display: flex;">
+  <h2 style="padding-left: 25px; padding-top: 25px;">{{ .Collection.Name }}</h2>
+  <div style="display: flex; padding-left: 25px;">
     {{ range .Other }}
     <div style="padding: 10px;">
       <div><a data-link="{{.|link}}"><img src="{{.|posterSmall}}"></a></div>
-      <div style="padding-top: 10px; max-width: 154px;">{{ .Title }}</div>
+      <div style="padding-top: 10px; max-width: 154px;" class="movie-title">{{ .Title }}</div>
     </div>
     {{ end }}
   </div>
   {{ end }}
-  <h3>External Links</h3>
-  <a target="_blank" href="https://www.themoviedb.org/movie/{{ .Movie.TMID }}">TMDB</a>,
-  <a target="_blank" href="https://www.imdb.com/title/{{ .Movie.IMID }}">IMDB</a>
+  <div style="padding-left: 25px;">
+    <h2>External Links</h2>
+    <a target="_blank" href="https://www.themoviedb.org/movie/{{ .Movie.TMID }}">TMDB</a>,
+    <a target="_blank" href="https://www.imdb.com/title/{{ .Movie.IMID }}">IMDB</a>
+  </div>
 </div>

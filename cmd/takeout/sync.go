@@ -18,71 +18,74 @@
 package main
 
 import (
+	"time"
+	"fmt"
+
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/music"
+	"github.com/defsub/takeout/video"
 	"github.com/spf13/cobra"
-	"time"
 )
 
 var syncCmd = &cobra.Command{
 	Use:   "sync",
-	Short: "sync music metadata",
+	Short: "sync media metadata",
 	Long:  `TODO`,
 	Run: func(cmd *cobra.Command, args []string) {
 		sync()
 	},
 }
 
-var syncOptions = music.NewSyncOptions()
-var syncAll bool
 var syncBack time.Duration
+var syncAll bool
+var mediaMusic bool
+var mediaVideo bool
+
+func since(lastSync time.Time) time.Time {
+	var since time.Time
+	if syncAll {
+		since = time.Time{}
+	} else if syncBack > 0 {
+		since = time.Now().Add(-1*syncBack)
+	} else {
+		since = lastSync
+	}
+	fmt.Printf("since %+v\n", since)
+	return since
+}
 
 func sync() {
 	cfg := getConfig()
-
-	var musicBuckets []config.BucketConfig
-	var videoBuckets []config.BucketConfig
-
-	for _, b := range cfg.Buckets {
-		if b.Media == config.MediaMusic {
-			musicBuckets = append(musicBuckets, b)
-		}
-		if b.Media == config.MediaVideo {
-			videoBuckets = append(videoBuckets, b)
-		}
+	fmt.Printf("%b %b\n", mediaMusic, mediaVideo)
+	if mediaMusic {
+		syncMusic(cfg)
 	}
-
-	cfg.Buckets = musicBuckets
-	syncMusic(cfg)
-
-	cfg.Buckets = videoBuckets
-	///
+	if mediaVideo {
+		syncVideo(cfg)
+	}
 }
 
 func syncMusic(cfg *config.Config) {
 	m := music.NewMusic(cfg)
 	m.Open()
 	defer m.Close()
-	if syncAll {
-		syncOptions.Since = time.Time{}
-	} else if syncBack > 0 {
-		syncOptions.Since = time.Now().Add(-1*syncBack)
-	} else {
-		syncOptions.Since = m.LastModified()
-	}
+	syncOptions := music.NewSyncOptions()
+	syncOptions.Since = since(m.LastModified())
 	m.Sync(syncOptions)
 }
 
+func syncVideo(cfg *config.Config) {
+	v := video.NewVideo(cfg)
+	v.Open()
+	defer v.Close()
+	v.SyncSince(since(v.LastModified()))
+}
+
 func init() {
-	syncCmd.Flags().StringVarP(&configFile, "config", "c", "config.ini", "config file")
+	syncCmd.Flags().StringVarP(&configFile, "config", "c", "", "config file")
 	syncCmd.Flags().DurationVarP(&syncBack, "back", "b", 0, "Back duration")
-	syncCmd.Flags().BoolVarP(&syncOptions.Tracks, "tracks", "t", true, "sync tracks")
-	syncCmd.Flags().BoolVarP(&syncOptions.Releases, "releases", "r", true, "sync releases")
-	syncCmd.Flags().BoolVarP(&syncOptions.Popular, "popular", "p", true, "sync popular")
-	syncCmd.Flags().BoolVarP(&syncOptions.Similar, "similar", "s", true, "sync similar")
-	syncCmd.Flags().BoolVarP(&syncOptions.Artwork, "artwork", "z", true, "sync artwork")
-	syncCmd.Flags().BoolVarP(&syncOptions.Index, "index", "i", true, "sync index")
-	syncCmd.Flags().StringVarP(&syncOptions.Artist, "artist", "a", "", "only sync a specific artist")
-	syncCmd.Flags().BoolVarP(&syncAll, "all", "x", false, "(re)sync all tracks instead of modified/new tracks")
+	syncCmd.Flags().BoolVarP(&syncAll, "all", "a", false, "Re(sync) all ignoring timestamps")
+	syncCmd.Flags().BoolVarP(&mediaMusic, "music", "m", true, "Sync music")
+	syncCmd.Flags().BoolVarP(&mediaVideo, "video", "v", true, "Sync video")
 	rootCmd.AddCommand(syncCmd)
 }

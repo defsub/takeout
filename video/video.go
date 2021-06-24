@@ -91,10 +91,6 @@ func (v *Video) Search(q string, limit ...int) []Movie {
 	return movies
 }
 
-func (v *Video) List() {
-	v.Sync()
-}
-
 func (v *Video) MovieURL(m *Movie) *url.URL {
 	// FIXME assume first bucket!!!
 	return v.buckets[0].Presign(m.Key)
@@ -118,4 +114,8 @@ func (v *Video) MovieBackdrop(m Movie) *url.URL {
 func (v *Video) PersonProfile(p Person) *url.URL {
 	client := tmdb.NewTMDB(v.config)
 	return client.PersonProfile(p.ProfilePath, tmdb.Profile185)
+}
+
+func (v *Video) HasMovies() bool {
+	return v.MovieCount() > 0
 }

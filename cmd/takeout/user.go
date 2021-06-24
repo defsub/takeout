@@ -32,7 +32,7 @@ var userCmd = &cobra.Command{
 	},
 }
 
-var user, pass, buckets string
+var user, pass, media string
 var add, change bool
 
 func doit() {
@@ -51,8 +51,8 @@ func doit() {
 		}
 	}
 
-	if user != "" && buckets != "" {
-		err := a.AssignBuckets(user, buckets)
+	if user != "" && media != "" {
+		err := a.AssignMedia(user, media)
 		log.CheckError(err)
 	}
 }
@@ -61,7 +61,7 @@ func init() {
 	userCmd.Flags().StringVarP(&configFile, "config", "c", "", "config file")
 	userCmd.Flags().StringVarP(&user, "user", "u", "", "user")
 	userCmd.Flags().StringVarP(&pass, "pass", "p", "", "pass")
-	userCmd.Flags().StringVarP(&buckets, "buckets", "b", "", "music")
+	userCmd.Flags().StringVarP(&media, "media", "m", "", "media")
 	userCmd.Flags().BoolVarP(&add, "add", "a", false, "add")
 	userCmd.Flags().BoolVarP(&change, "change", "n", false, "change")
 	rootCmd.AddCommand(userCmd)

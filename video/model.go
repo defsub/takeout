@@ -36,6 +36,8 @@ type Movie struct {
 	Budget           int64
 	Revenue          int64
 	Runtime          int
+	VoteAverage      float32
+	VoteCount        int
 	BackdropPath     string
 	PosterPath       string
 	SortTitle        string

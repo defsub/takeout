@@ -458,7 +458,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 		case "/api/live":
 			handler.apiLive(w, r, m)
 		case "/api/home":
-			handler.apiView(w, r, handler.homeView(m))
+			handler.apiView(w, r, handler.homeView(m, vid))
 		case "/api/artists":
 			handler.apiView(w, r, handler.artistsView(m))
 		case "/api/search":

@@ -44,22 +44,22 @@ type User struct {
 	Name    string `gorm:"unique_index:idx_user_name"`
 	Key     []byte
 	Salt    []byte
-	Buckets string
+	Media   string
 }
 
-func (u *User) BucketList() []string {
-	if len(u.Buckets) == 0 {
+func (u *User) MediaList() []string {
+	if len(u.Media) == 0 {
 		return make([]string, 0)
 	}
-	list := strings.Split(u.Buckets, ",")
+	list := strings.Split(u.Media, ",")
 	for i := range list {
 		list[i] = strings.Trim(list[i], " ")
 	}
 	return list
 }
 
-func (u *User) Bucket() string {
-	list := u.BucketList()
+func (u *User) FirstMedia() string {
+	list := u.MediaList()
 	return list[0]
 }
 
@@ -185,16 +185,14 @@ func (a *Auth) ChangePass(email, newpass string) error {
 	return a.db.Model(u).Update("salt", u.Salt).Update("key", u.Key).Error
 }
 
-func (a *Auth) AssignBuckets(email, buckets string) error {
+func (a *Auth) AssignMedia(email, media string) error {
 	var u User
 	err := a.db.Where("name = ?", email).First(&u).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return errors.New("user not found")
 	}
-
-	u.Buckets = buckets
-
-	return a.db.Model(u).Update("buckets", u.Buckets).Error
+	u.Media = media
+	return a.db.Model(u).Update("media", u.Media).Error
 }
 
 func (a *Auth) Expire(cookie *http.Cookie) {

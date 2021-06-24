@@ -297,3 +297,7 @@ func Shuffle(tracks []Track) []Track {
 	rand.Shuffle(len(tracks), func(i, j int) { tracks[i], tracks[j] = tracks[j], tracks[i] })
 	return tracks
 }
+
+func (m *Music) HasMusic() bool {
+	return m.TrackCount() > 0
+}

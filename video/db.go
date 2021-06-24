@@ -19,6 +19,7 @@ package video
 
 import (
 	"errors"
+	"time"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -71,18 +72,6 @@ func (v *Video) Genre(name string) []Movie {
 	return movies
 }
 
-func (v *Video) RecentlyReleased() []Movie {
-	var movies []Movie
-	v.db.Order("date desc, sort_title").Find(&movies)
-	return movies
-}
-
-func (v *Video) RecentlyAdded() []Movie {
-	var movies []Movie
-	v.db.Order("last_modified desc, sort_title").Find(&movies)
-	return movies
-}
-
 func (v *Video) Genres(m *Movie) []string {
 	var genres []Genre
 	var list []string
@@ -100,12 +89,12 @@ func (v *Video) Collections() []Collection {
 }
 
 func (v *Video) MovieCollection(m *Movie) *Collection {
-	var collection Collection
-	err := v.db.First(&collection, "tm_id = ?", m.TMID).Error
-	if err != nil { // && errors.Is(err, gorm.ErrRecordNotFound) {
+	var collections []Collection
+	v.db.Where("tm_id = ?", m.TMID).Find(&collections)
+	if len(collections) == 0 {
 		return nil
 	}
-	return &collection
+	return &collections[0]
 }
 
 func (v *Video) CollectionMovies(c *Collection) []Movie {
@@ -241,7 +230,7 @@ func (v *Video) LookupPerson(id int) (*Person, error) {
 	return &person, err
 }
 
-func (v *Video) Staring(p *Person) []Movie {
+func (v *Video) Starring(p *Person) []Movie {
 	var movies []Movie
 	v.db.Where(`movies.tm_id in (select tm_id from "cast" where pe_id = ?)`, p.PEID).
 		Order("movies.date").Find(&movies)
@@ -272,6 +261,40 @@ func (v *Video) moviesFor(keys []string) []Movie {
 	var movies []Movie
 	v.db.Where("key in (?)", keys).Find(&movies)
 	return movies
+}
+
+func (v *Video) RecentlyAdded() []Movie {
+	var movies []Movie
+	v.db.Where("movies.last_modified >= ?", time.Now().Add(v.config.Video.Recent*-1)).
+		Order("movies.last_modified desc, sort_title").
+		Limit(v.config.Video.RecentLimit).
+		Find(&movies)
+	return movies
+}
+
+func (v *Video) RecentlyReleased() []Movie {
+	var movies []Movie
+	v.db.Where("movies.date >= ?", time.Now().Add(v.config.Video.Recent*-1)).
+		Order("movies.date desc, sort_title").
+		Limit(v.config.Music.RecentLimit).
+		Find(&movies)
+	return movies
+}
+
+func (v *Video) MovieCount() int64 {
+	var count int64
+	v.db.Model(&Movie{}).Count(&count)
+	return count
+}
+
+func (v *Video) LastModified() time.Time {
+	var movies []Movie
+	v.db.Order("last_modified desc").Limit(1).Find(&movies)
+	if len(movies) == 1 {
+		return movies[0].LastModified
+	} else {
+		return time.Time{}
+	}
 }
 
 func (v *Video) createCast(c *Cast) error {

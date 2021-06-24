@@ -2,19 +2,24 @@
   <head>
     <title>Takeout</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" type="text/css" href="/static/music.css?{{.}}">
-    <link rel="stylesheet" type="text/css" href="/static/movie.css?{{.}}">
+    <link rel="stylesheet" type="text/css" href="/static/takeout.css?{{.Time}}">
+    <link rel="stylesheet" type="text/css" href="/static/music.css?{{.Time}}">
+    <link rel="stylesheet" type="text/css" href="/static/movie.css?{{.Time}}">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-    <script type="text/javascript" src="/static/music.js?{{.}}"></script>
+    <script type="text/javascript" src="/static/music.js?{{.Time}}"></script>
   </head>
   <body>
     <div id="top">
       <div class="parent4">
 	<div>
 	  <a data-link="{{home}}" class="takeout">Home</a>
+	  {{ if .HasMusic }}
 	  <a data-link="/v?artists=x" class="takeout">Artists</a>
 	  <a data-link="/v?radio=x" class="takeout">Radio</a>
+	  {{ end }}
+	  {{ if .HasMovies }}
 	  <a data-link="/v?movies=x" class="takeout">Movies</a>
+	  {{ end }}
 	</div>
 	<div class="parent">
 	  <div>
