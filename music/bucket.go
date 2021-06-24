@@ -27,7 +27,7 @@ import (
 )
 
 // Asynchronously obtain all tracks from the bucket.
-func (m *Music) syncFromBucket(bucket *bucket.Bucket, lastSync time.Time) (trackCh chan *Track, err error) {
+func (m *Music) syncFromBucket(bucket bucket.Bucket, lastSync time.Time) (trackCh chan *Track, err error) {
 	trackCh = make(chan *Track)
 
 	go func() {

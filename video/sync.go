@@ -63,7 +63,7 @@ func (v *Video) SyncSince(lastSync time.Time) error {
 	return nil
 }
 
-func (v *Video) syncBucket(bucket *bucket.Bucket, lastSync time.Time) error {
+func (v *Video) syncBucket(bucket bucket.Bucket, lastSync time.Time) error {
 	objectCh, err := bucket.List(lastSync)
 	if err != nil {
 		return err

@@ -31,7 +31,7 @@ type Video struct {
 	config  *config.Config
 	db      *gorm.DB
 	client  *client.Client
-	buckets []*bucket.Bucket
+	buckets []bucket.Bucket
 }
 
 func NewVideo(config *config.Config) *Video {

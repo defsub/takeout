@@ -43,7 +43,7 @@ const (
 type Music struct {
 	config     *config.Config
 	db         *gorm.DB
-	buckets    []*bucket.Bucket
+	buckets    []bucket.Bucket
 	client     *client.Client
 	coverCache map[string]string
 	lastfm     *lastfm.Lastfm

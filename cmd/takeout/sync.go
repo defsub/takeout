@@ -56,7 +56,6 @@ func since(lastSync time.Time) time.Time {
 
 func sync() {
 	cfg := getConfig()
-	fmt.Printf("%b %b\n", mediaMusic, mediaVideo)
 	if mediaMusic {
 		syncMusic(cfg)
 	}

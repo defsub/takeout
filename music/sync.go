@@ -167,6 +167,7 @@ func (m *Music) syncBucketTracksSince(lastSync time.Time) (modified bool, err er
 	for _, b := range m.buckets {
 		trackCh, err := m.syncFromBucket(b, lastSync)
 		if err != nil {
+			log.Printf("got sync err %s\n", err)
 			return false, err
 		}
 		for t := range trackCh {

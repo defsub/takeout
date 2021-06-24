@@ -43,8 +43,8 @@ type Object struct {
 func OpenAll(buckets []config.BucketConfig) ([]*Bucket, error) {
 	var list []*Bucket
 
-	for _, bc := range buckets {
-		b, err := Open(&bc)
+	for i := range buckets {
+		b, err := Open(buckets[i])
 		if err == nil {
 			return list, err
 		}
@@ -54,18 +54,18 @@ func OpenAll(buckets []config.BucketConfig) ([]*Bucket, error) {
 	return list, nil
 }
 
-func OpenMedia(buckets []config.BucketConfig, mediaType string) ([]*Bucket, error) {
-	var list []*Bucket
+func OpenMedia(buckets []config.BucketConfig, mediaType string) ([]Bucket, error) {
+	var list []Bucket
 
-	for _, bc := range buckets {
-		if bc.Media != mediaType {
+	for i := range buckets {
+		if buckets[i].Media != mediaType {
 			continue
 		}
-		b, err := Open(&bc)
+		b, err := Open(buckets[i])
 		if err != nil {
 			return list, err
 		}
-		list = append(list, b)
+		list = append(list, *b)
 	}
 
 	return list, nil
@@ -73,7 +73,7 @@ func OpenMedia(buckets []config.BucketConfig, mediaType string) ([]*Bucket, erro
 
 // Connect to the configured S3 bucket.
 // Tested: Wasabi, Backblaze, Minio
-func Open(config *config.BucketConfig) (*Bucket, error) {
+func Open(config config.BucketConfig) (*Bucket, error) {
 	creds := credentials.NewStaticCredentials(
 		config.AccessKeyID,
 		config.SecretAccessKey, "")
@@ -85,7 +85,7 @@ func Open(config *config.BucketConfig) (*Bucket, error) {
 	session, err := session.NewSession(s3Config)
 	bucket := &Bucket{
 		s3:     s3.New(session),
-		config: config,
+		config: &config,
 	}
 	return bucket, err
 }
