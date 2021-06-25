@@ -50,7 +50,6 @@ func since(lastSync time.Time) time.Time {
 	} else {
 		since = lastSync
 	}
-	fmt.Printf("since %+v\n", since)
 	return since
 }
 

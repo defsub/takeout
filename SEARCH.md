@@ -1,6 +1,6 @@
 # Search
 
-## General Fields
+## Music Fields
 
 * artist - Artist name(s) from artist credits within release (album) media tracks
 * asin - Amazon Standard Identifcation Number (optional)
@@ -85,6 +85,24 @@ Popular cover songs, performed live, that were released as singles:
 Epic 20+ minute songs:
 
 	+length:>1200 -silence
+
+## Movie Fields
+
+* budget - Budget in USD
+* cast - Cast member name
+* character - Character name
+* collection - Collection name
+* crew - Crew member name
+* date - Release date
+* genre - Movie genre
+* rating - Release rating or certification
+* runtime - Time in minutes
+* tagline - One liner
+* title - Movie title
+* vote - TMDb vote %
+* vote_count - TMDb vote count
+
+Note that date fields are YYYY-MM-DD and leading zeros are required.
 
 # Bleve
 

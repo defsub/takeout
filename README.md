@@ -1,11 +1,11 @@
 # Takeout
 
 Takeout is media service that indexes organized media files in S3 buckets using
-MusicBrainz, Last.fm and Fanart.tv to make media available for streaming using
-a [Flutter app](https://github.com/defsub/takeout_app), web interface and
-VLC. Media is browsed using the Takeout server and streamed directly from S3
-using pre-signed time-based URLs. REST APIs are available to build custom
-interfaces.
+MusicBrainz, Last.fm, Fanart.tv, and The Movie Database to make media available for
+streaming using a [Flutter app](https://github.com/defsub/takeout_app), web
+interface and VLC. Media is browsed using the Takeout server and streamed
+directly from S3 using pre-signed time-based URLs. REST APIs are available to
+build custom interfaces.
 
 Screens running on Chrome 85 for Android 10:
 
@@ -18,11 +18,11 @@ Screens running on Chrome 85 for Android 10:
 
 ## Features
 
-
 * Powerful search and playlists using [Bleve](https://blevesearch.com/). See [SEARCH.md](SEARCH.md).
 * Metadata from [MusicBrainz](https://musicbrainz.org/) and [Last.fm](https://last.fm/)
 * Album covers from the [Cover Art Archive](https://coverartarchive.org/)
 * Artist artwork from [Fanart.tv](https://fanart.tv/)
+* Movie data and artwork from [The Movie Database (TMDb)](https://www.themoviedb.org/)
 * Media streaming directly from S3 using pre-signed time-based URLs
 * Recently added and released
 * Similar artists and releases
@@ -36,13 +36,15 @@ Screens running on Chrome 85 for Android 10:
 * [Flutter app](https://github.com/defsub/takeout_app) available for Android and iOS
 * [XSPF ("spiff")](https://xspf.org/) and JSPF playlists
 * Written in [Go](https://golang.org/), using [SQLite3](https://sqlite.org/index.html) and [Bleve](https://blevesearch.com/)
-* Supports [caching](https://github.com/gregjones/httpcache) of MusicBrainz data for faster syncing
+* Supports [caching](https://github.com/gregjones/httpcache) of API data for faster syncing
 
 ## Quick Start
 
 * Tag your media with [Picard](https://picard.musicbrainz.org/) (highly recommeded)
-* Put your organized media in a S3 bucket ([Wasabi](https://wasabi.com/), [Minio](https://min.io/), [AWS](https://aws.amazon.com/))
-* Optionally setup a virtual server ([Linode](https://www.linode.com/), [EC2](https://aws.amazon.com/), [Compute Engine](https://cloud.google.com/compute))
+* Put your organized media in a S3 bucket ([Wasabi](https://wasabi.com/),
+  [Minio](https://min.io/), [AWS](https://aws.amazon.com/))
+* Optionally setup a virtual server ([Linode](https://www.linode.com/),
+  [EC2](https://aws.amazon.com/), [Compute Engine](https://cloud.google.com/compute))
 * Optionally setup a TLS front-end ([Nginx](http://nginx.org/), [Let's Encrypt](https://letsencrypt.org/))
 * Install [Go](https://golang.org/)
 * Build [Takeout](https://github.com/defsub/takeout/)

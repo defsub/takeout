@@ -48,6 +48,30 @@ Fanart.tv APIs are used to obtain artist images.
 
 Cover Art Archive APIs are used to obtain links to album covers.
 
+## Movie Files
+
+Takeout will index all the objects in the S3 bucket to find movie
+files that end with supported file extensions. The actual files
+are not individually opened to inspect tags or headers.
+
+The bucket structure should be:
+
+	bucket/prefix/path/movie
+
+where movie can be:
+
+    Title (year).mkv
+    Title (year) - HD.mkv
+
+### Examples
+
+    Joker (2019) - HD.mkv
+	Get Out (2017).mp4
+
+## Movie Metadata
+
+The Movie Database (TMDb) APIs are used to obtain all movie, cast and crew information.
+
 ## Configuration ##
 
 The configuration file _takeout.ini_ is used to store required configuration to
