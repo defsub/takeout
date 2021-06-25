@@ -28,5 +28,4 @@
 
 # Future
 
-* Movies
 * Photos

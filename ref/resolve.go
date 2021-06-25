@@ -31,7 +31,7 @@ import (
 )
 
 type Locator interface {
-	Locate(t music.Track) string
+	LocateTrack(t music.Track) string
 }
 
 type Resolver struct {
@@ -55,7 +55,7 @@ func (r *Resolver) addTrackEntries(tracks []music.Track, entries []spiff.Entry) 
 			Album:      t.ReleaseTitle,
 			Title:      t.Title,
 			Image:      r.music.TrackImage(t).String(),
-			Location:   []string{r.loc.Locate(t)},
+			Location:   []string{r.loc.LocateTrack(t)},
 			Identifier: []string{t.ETag},
 			Size:       []int64{t.Size}}
 		entries = append(entries, e)

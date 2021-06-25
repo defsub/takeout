@@ -675,7 +675,6 @@ func (m *Music) LookupTrack(id int) (Track, error) {
 	return track, err
 }
 
-// Lookup a track given the internal record ID.
 func (m *Music) tracksFor(keys []string) []Track {
 	var tracks []Track
 	m.db.Where("key in (?)", keys).Find(&tracks)
@@ -818,6 +817,12 @@ func (m *Music) artistGenres() []string {
 	}
 	rows.Close()
 	return genres
+}
+
+func (m *Music) TrackCount() int64 {
+	var count int64
+	m.db.Model(&Track{}).Count(&count)
+	return count
 }
 
 func (m *Music) updateArtist(a *Artist) error {

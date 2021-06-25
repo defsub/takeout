@@ -26,7 +26,8 @@ import (
 
 func TestPattern(t *testing.T) {
 	var trackRegexp = regexp.MustCompile(`(?:([1-9]+)-)?([\d]+)-(.*)\.(mp3|flac|ogg|m4a)$`)
-	var track2Regexp = regexp.MustCompile(`([\d]+)-(.*)\.(mp3|flac|ogg|m4a)$`)
+	var singleDiscRegexp = regexp.MustCompile(`([\d]+)-(.*)\.(mp3|flac|ogg|m4a)$`)
+	var numericRegexp = regexp.MustCompile(`^[\d\s-]+$`)
 
 	patterns := []string{
 		"Music/Abc/Def/1-Sub.flac",
@@ -39,9 +40,9 @@ func TestPattern(t *testing.T) {
 		"Music/Gorillaz/Gorillaz (2002)/02-5_4.flac", // song is 5/4
 		"Music/Gorillaz/Gorillaz (2002)/03-Tomorrow Comes Today.flac",
 		"Music/Gorillaz/Gorillaz (2002)/08-Sound Check (Gravity).flac",
-		"Music/Gorillaz/Gorillaz (2002)/11-19-2000.flac", // FAIL - song is 19-2000
+		"Music/Gorillaz/Gorillaz (2002)/11-19-2000.flac", // song is 19-2000
 		"Music/Gorillaz/Gorillaz (2002)/15-M1 A1.flac",
-		"Music/Gorillaz/Gorillaz (2002)/18-19-2000 (Soulchild remix).flac", // FAIL
+		"Music/Gorillaz/Gorillaz (2002)/18-19-2000 (Soulchild remix).flac",
 		"Music/The Velvet Underground/Loaded (1997)/1-01-Who Loves the Sun.flac",
 		"Music/The Velvet Underground/Loaded (1997)/2-17-Love Makes You Feel Ten Feet Tall (demo).flac",
 		"Music/The Beatles/The Beatles in Mono (2009)/8-12-Sgt. Pepper's Lonely Hearts Club Band (reprise).flac",
@@ -50,16 +51,17 @@ func TestPattern(t *testing.T) {
 		"Music/Artist/Album (2020)/01-2020.flac",
 		"Music/Artist/Album (2020)/1-02-2020.flac",
 		"Music/Artist/Album (2020)/01-02-2020.flac",
-		"Music/Artist/Album (2020)/1-2-2020.flac",
+		"Music/Artist/Album (2020)/1-2-2020.flac", // FAIL
 		"Music/Artist/Album (2020)/11-12 2020.flac",
 		"Music/Artist/Album (2020)/11-12 Twenty.flac",
 		"Music/Artist/Album (2020)/11-12-2020.flac",
 		"Music/Artist/Album (2020)/11-12-Twenty.flac",
-		"Music/ZZ Top/XXX (1999)/4-36-22-36.flac", // FAIL
+		"Music/ZZ Top/XXX (1999)/4-36-22-36.flac",
 		"Music/Beastie Boys/Paul's Boutique (1989)/07-3-Minute Rule.flac",
 		"Music/Beastie Boys/Paul's Boutique (1989)/09-5-Piece Chicken Dinner.flac",
 		"Music/Iron Maiden/Nights of the Dead Legacy of the Beast Live in Mexico City (2020)/1-04-2 Minutes to Midnight.flac",
 		"Music/N.W.A/The Best of N.W.A - The Strength of Street Knowledge (2006)/06-8-Ball.flac",
+		"Music/Rush/Sector 1 (2011)/5-01-2112_ I. Overture _ II. The Temples of Syrinx _ III. Discovery _ IV. Presentation _ V. Oracle_ The Dream _ VI. Soliloquy _ VII. Grand Finale.flac",
 	}
 
 	expect := []string{
@@ -82,18 +84,19 @@ func TestPattern(t *testing.T) {
 		"1 / 1 / Sci-Flyer",
 		"1 / 10 / Lock-Groove Lullaby",
 		"1 / 1 / 2020",
-		"1 / 2 / 2020",
+		"1 / 1 / 02-2020",
 		"1 / 1 / 02-2020",
 		"1 / 2 / 2020",
 		"1 / 11 / 12 2020",
 		"1 / 11 / 12 Twenty",
-		"11 / 12 / 2020",
+		"1 / 11 / 12-2020",
 		"11 / 12 / Twenty",
 		"1 / 4 / 36-22-36",
 		"1 / 7 / 3-Minute Rule",
 		"1 / 9 / 5-Piece Chicken Dinner",
 		"1 / 4 / 2 Minutes to Midnight",
 		"1 / 6 / 8-Ball",
+		"5 / 1 / 2112_ I. Overture _ II. The Temples of Syrinx _ III. Discovery _ IV. Presentation _ V. Oracle_ The Dream _ VI. Soliloquy _ VII. Grand Finale",
 	}
 
 	for i, v := range patterns {
@@ -108,13 +111,8 @@ func TestPattern(t *testing.T) {
 		if disc == 0 {
 			disc = 1
 		}
-
-		result := fmt.Sprintf("%d / %d / %s", disc, track, title)
-		t.Logf("%s\n", result)
-		if result != expect[i] {
-			t.Logf("Expected: %s\n", expect[i])
-
-			matches := track2Regexp.FindStringSubmatch(v)
+		if disc > 13 { // hack
+			matches := singleDiscRegexp.FindStringSubmatch(v)
 			if matches == nil {
 				t.Errorf("bummer\n")
 				break
@@ -122,9 +120,32 @@ func TestPattern(t *testing.T) {
 			disc = 1
 			track, _ = strconv.Atoi(matches[1])
 			title = matches[2]
+		}
 
-			result = fmt.Sprintf("%d / %d / %s", disc, track, title)
-			t.Logf("now: %s\n", result)
+		if numericRegexp.MatchString(title) {
+			matches = singleDiscRegexp.FindStringSubmatch(v)
+			// TODO assuming these are single disc for now
+			disc = 1
+			track, _ = strconv.Atoi(matches[1])
+			title = matches[2]
+		}
+
+		result := fmt.Sprintf("%d / %d / %s", disc, track, title)
+		t.Logf("%s\n", result)
+		if result != expect[i] {
+			t.Logf("Expected: %s ~ %s\n", expect[i], v)
+
+			// matches := track2Regexp.FindStringSubmatch(v)
+			// if matches == nil {
+			// 	t.Errorf("bummer\n")
+			// 	break
+			// }
+			// disc = 1
+			// track, _ = strconv.Atoi(matches[1])
+			// title = matches[2]
+
+			// result = fmt.Sprintf("%d / %d / %s", disc, track, title)
+			// t.Logf("now: %s\n", result)
 		}
 
 	}

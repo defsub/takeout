@@ -21,8 +21,32 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/defsub/takeout/lib/client"
 	"github.com/defsub/takeout/config"
+	"github.com/defsub/takeout/lib/client"
+)
+
+const (
+	Backdrop300      = "w300"
+	Backdrop780      = "w780"
+	Backdrop1280     = "w1280"
+	BackdropOriginal = "original"
+)
+
+const (
+	Poster92       = "w92"
+	Poster154      = "w154"
+	Poster185      = "w185"
+	Poster342      = "w342"
+	Poster500      = "w500"
+	Poster780      = "w780"
+	PosterOriginal = "original"
+)
+
+const (
+	Profile45       = "w45"
+	Profile185      = "w185"
+	Profile632      = "h632"
+	ProfileOriginal = "original"
 )
 
 type TMDB struct {
@@ -37,6 +61,100 @@ func NewTMDB(config *config.Config) *TMDB {
 		config: config,
 		client: client.NewClient(config),
 	}
+}
+
+type Collection struct {
+	ID           int    `json:"id"` // unique collection ID
+	Name         string `json:"name"`
+	Overview     string `json:"overview"`
+	BackdropPath string `json:"backdrop_path"`
+	PosterPath   string `json:"poster_path"`
+	// Parts []MovieResult
+}
+
+type Movie struct {
+	ID               int        `json:"id"` // unique movie ID
+	IMDB_ID          string     `json:"imdb_id"`
+	Adult            bool       `json:"adult"`
+	BackdropPath     string     `json:"backdrop_path"`
+	Collection       Collection `json:"belongs_to_collection"`
+	Genres           []Genre    `json:"genres"`
+	OriginalLanguage string     `json:"original_language"`
+	OriginalTitle    string     `json:"original_title"`
+	Overview         string     `json:"overview"`
+	Popularity       float32    `json:"populartity"`
+	PosterPath       string     `json:"poster_path"`
+	ReleaseDate      string     `json:"release_date"`
+	Tagline          string     `json:"tagline"`
+	Title            string     `json:"title"`
+	Video            bool       `json:"video"`
+	VoteAverage      float32    `json:"vote_average"`
+	VoteCount        int        `json:"vote_count"`
+	Budget           int64      `json:"budget"`
+	Revenue          int64      `json:"revenue"`
+	Runtime          int        `json:"runtime"`
+}
+
+type Cast struct {
+	ID           int    `json:"id"` // unique person ID
+	Name         string `json:"name"`
+	OriginalName string `json:"original_name"`
+	ProfilePath  string `json:"profile_path"`
+	Character    string `json:"character"`
+	Order        int    `json:"order"`
+}
+
+type Crew struct {
+	ID           int    `json:"id"` // unique person ID
+	Name         string `json:"name"`
+	OriginalName string `json:"original_name"`
+	ProfilePath  string `json:"profile_path"`
+	Department   string `json:"department"`
+	Job          string `json:"job"`
+}
+
+type Credits struct {
+	ID   int    `json:"id"` // unique movie ID
+	Cast []Cast `json:"cast"`
+	Crew []Crew `json:"crew"`
+}
+
+type Person struct {
+	ID          int    `json:"id"` // unique person ID
+	IMDB_ID     string `json:"imdb_id"`
+	Name        string `json:"name"`
+	ProfilePath string `json:"profile_path"`
+	Birthday    string `json:"birthday"`
+	Deathday    string `json:"deathday"`
+	Biography   string `json:"biography"`
+	Birthplace  string `json:"place_of_birth"`
+}
+
+// https://developers.themoviedb.org/3/movies/get-movie-release-dates
+const (
+	TypePremiere = iota + 1
+	TypeTheatricalLimited
+	TypeTheatrical
+	TypeDigital
+	TypePhysical
+	TypeTV
+)
+
+type Release struct {
+	Certification string `json:"certification"`
+	Date          string `json:"release_date"`
+	Note          string `json:"note"`
+	Type          int    `json:"type"`
+}
+
+type ReleaseCountry struct {
+	CountryCode string    `json:"iso_3166_1"`
+	Releases    []Release `json:"release_dates"`
+}
+
+type Releases struct {
+	ID      int              `json:"id"`
+	Results []ReleaseCountry `json:"results"`
 }
 
 type MovieResult struct {
@@ -63,13 +181,13 @@ type moviePage struct {
 	Results      []MovieResult `json:"results"`
 }
 
-type genre struct {
+type Genre struct {
 	ID   int    `json:"id"`
 	Name string `json:"name"`
 }
 
 type genreList struct {
-	Genres []genre `json:"genres"`
+	Genres []Genre `json:"genres"`
 }
 
 type Genres map[int]string
@@ -105,6 +223,69 @@ func (m *TMDB) MovieSearch(q string) ([]MovieResult, error) {
 	// TODO only supports one page right now
 	page, err := m.moviePage(q, 1)
 	return page.Results, err
+}
+
+func (m *TMDB) MovieDetail(tmid int) (*Movie, error) {
+	url := fmt.Sprintf(
+		"https://%s/3/movie/%d?api_key=%s",
+		endpoint, tmid, m.config.TMDB.Key)
+	var result Movie
+	err := m.client.GetJson(url, &result)
+	return &result, err
+}
+
+func (m *TMDB) MovieCredits(tmid int) (*Credits, error) {
+	url := fmt.Sprintf(
+		"https://%s/3/movie/%d/credits?api_key=%s",
+		endpoint, tmid, m.config.TMDB.Key)
+	var result Credits
+	err := m.client.GetJson(url, &result)
+	return &result, err
+}
+
+func (m *TMDB) MovieReleases(tmid int) (map[string][]Release, error) {
+	url := fmt.Sprintf(
+		"https://%s/3/movie/%d/release_dates?api_key=%s",
+		endpoint, tmid, m.config.TMDB.Key)
+	var result Releases
+	var countryMap map[string][]Release
+	err := m.client.GetJson(url, &result)
+	if err == nil {
+		countryMap = make(map[string][]Release)
+		for _, rc := range result.Results {
+			countryMap[rc.CountryCode] = rc.Releases
+		}
+	}
+	return countryMap, err
+}
+
+func (m *TMDB) MovieReleaseType(tmid int, country string, releaseType int) (*Release, error) {
+	url := fmt.Sprintf(
+		"https://%s/3/movie/%d/release_dates?api_key=%s",
+		endpoint, tmid, m.config.TMDB.Key)
+	var result Releases
+	err := m.client.GetJson(url, &result)
+	if err == nil {
+		for _, rc := range result.Results {
+			if rc.CountryCode == country {
+				for _, r := range rc.Releases {
+					if r.Type == releaseType {
+						return &r, nil
+					}
+				}
+			}
+		}
+	}
+	return nil, err
+}
+
+func (m *TMDB) PersonDetail(peid int) (*Person, error) {
+	url := fmt.Sprintf(
+		"https://%s/3/person/%d?api_key=%s",
+		endpoint, peid, m.config.TMDB.Key)
+	var result Person
+	err := m.client.GetJson(url, &result)
+	return &result, err
 }
 
 func (m *TMDB) MovieGenres() (Genres, error) {
@@ -157,17 +338,26 @@ func (m *TMDB) configuration() (*apiConfig, error) {
    https://image.tmdb.org/t/p/w500/8uO0gUM8aNqYLs1OsTBQiXu0fEv.jpg
 */
 
-func moviePoster(c *apiConfig, size string, r *MovieResult) string {
-	url := fmt.Sprintf("%s%s%s", c.Images.SecureBaseURL, size, r.PosterPath)
+func moviePoster(c *apiConfig, size string, posterPath string) string {
+	url := fmt.Sprintf("%s%s%s", c.Images.SecureBaseURL, size, posterPath)
 	return url
 }
 
-func movieBackdrop(c *apiConfig, size string, r *MovieResult) string {
-	url := fmt.Sprintf("%s%s%s", c.Images.SecureBaseURL, size, r.BackdropPath)
+func movieBackdrop(c *apiConfig, size string, backdropPath string) string {
+	url := fmt.Sprintf("%s%s%s", c.Images.SecureBaseURL, size, backdropPath)
 	return url
 }
 
-func (m *TMDB) MovieOriginalPoster(r *MovieResult) *url.URL {
+func profile(c *apiConfig, size string, profilePath string) string {
+	url := fmt.Sprintf("%s%s%s", c.Images.SecureBaseURL, size, profilePath)
+	return url
+}
+
+func (m *TMDB) MovieOriginalPoster(posterPath string) *url.URL {
+	return m.MoviePoster(posterPath, PosterOriginal)
+}
+
+func (m *TMDB) MoviePoster(posterPath string, size string) *url.URL {
 	var err error
 	if m.configCache == nil {
 		m.configCache, err = m.configuration()
@@ -175,7 +365,39 @@ func (m *TMDB) MovieOriginalPoster(r *MovieResult) *url.URL {
 	if err != nil {
 		return nil
 	}
-	v := moviePoster(m.configCache, "original", r)
+	v := moviePoster(m.configCache, size, posterPath)
+	url, err := url.Parse(v)
+	if err != nil {
+		return nil
+	}
+	return url
+}
+
+func (m *TMDB) MovieBackdrop(backdropPath string, size string) *url.URL {
+	var err error
+	if m.configCache == nil {
+		m.configCache, err = m.configuration()
+	}
+	if err != nil {
+		return nil
+	}
+	v := movieBackdrop(m.configCache, size, backdropPath)
+	url, err := url.Parse(v)
+	if err != nil {
+		return nil
+	}
+	return url
+}
+
+func (m *TMDB) PersonProfile(profilePath string, size string) *url.URL {
+	var err error
+	if m.configCache == nil {
+		m.configCache, err = m.configuration()
+	}
+	if err != nil {
+		return nil
+	}
+	v := profile(m.configCache, size, profilePath)
 	url, err := url.Parse(v)
 	if err != nil {
 		return nil

@@ -1,0 +1,11 @@
+<div>
+  <h1>{{ .Movie.Title }}</h1>
+  <div>
+    {{ .Movie.Tagline }}
+  </div>
+  <div>
+    <video width="800" height="600" controls="true" name="video" src="{{.Movie|url}}">
+      sorry no video for you
+    </video>
+  </div>
+</div>

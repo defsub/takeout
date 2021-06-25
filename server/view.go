@@ -20,11 +20,21 @@ package server
 import (
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/music"
+	"github.com/defsub/takeout/video"
+	"time"
 )
 
+type IndexView struct {
+	Time      int64
+	HasMusic  bool
+	HasMovies bool
+}
+
 type HomeView struct {
-	Added    []music.Release
-	Released []music.Release
+	AddedReleases []music.Release
+	NewReleases   []music.Release
+	AddedMovies   []video.Movie
+	NewMovies     []video.Movie
 }
 
 type ArtistsView struct {
@@ -64,6 +74,7 @@ type SearchView struct {
 	Artists  []music.Artist
 	Releases []music.Release
 	Tracks   []music.Track
+	Movies   []video.Movie
 	Query    string
 	Hits     int
 }
@@ -77,20 +88,64 @@ type RadioView struct {
 	Other   []music.Station
 }
 
-func (handler *MusicHandler) homeView(m *music.Music) *HomeView {
-	view := &HomeView{}
-	view.Added = m.RecentlyAdded()
-	view.Released = m.RecentlyReleased()
+type MoviesView struct {
+	Movies []video.Movie
+}
+
+type MovieView struct {
+	Movie      video.Movie
+	Collection video.Collection
+	Other      []video.Movie
+	Cast       []video.Cast
+	Crew       []video.Crew
+	Starring   []video.Person
+	Directing  []video.Person
+	Writing    []video.Person
+	Genres     []string
+	Vote       int
+	VoteCount  int
+}
+
+type ProfileView struct {
+	Person    video.Person
+	Starring  []video.Movie
+	Directing []video.Movie
+	Writing   []video.Movie
+}
+
+type GenreView struct {
+	Name   string
+	Movies []video.Movie
+}
+
+type WatchView struct {
+	Movie video.Movie
+}
+
+func (handler *UserHandler) indexView(m *music.Music, v *video.Video) *IndexView {
+	view := &IndexView{}
+	view.Time = time.Now().Unix()
+	view.HasMusic = m.HasMusic()
+	view.HasMovies = v.HasMovies()
 	return view
 }
 
-func (handler *MusicHandler) artistsView(m *music.Music) *ArtistsView {
+func (handler *UserHandler) homeView(m *music.Music, v *video.Video) *HomeView {
+	view := &HomeView{}
+	view.AddedReleases = m.RecentlyAdded()
+	view.NewReleases = m.RecentlyReleased()
+	view.AddedMovies = v.RecentlyAdded()
+	view.NewMovies = v.RecentlyReleased()
+	return view
+}
+
+func (handler *UserHandler) artistsView(m *music.Music) *ArtistsView {
 	view := &ArtistsView{}
 	view.Artists = m.Artists()
 	return view
 }
 
-func (handler *MusicHandler) artistView(m *music.Music, artist music.Artist) *ArtistView {
+func (handler *UserHandler) artistView(m *music.Music, artist music.Artist) *ArtistView {
 	view := &ArtistView{}
 	view.Artist = artist
 	view.Releases = m.ArtistReleases(&artist)
@@ -109,7 +164,7 @@ func (handler *MusicHandler) artistView(m *music.Music, artist music.Artist) *Ar
 	return view
 }
 
-func (handler *MusicHandler) popularView(m *music.Music, artist music.Artist) *PopularView {
+func (handler *UserHandler) popularView(m *music.Music, artist music.Artist) *PopularView {
 	view := &PopularView{}
 	view.Artist = artist
 	view.Popular = m.ArtistPopularTracks(artist)
@@ -120,7 +175,7 @@ func (handler *MusicHandler) popularView(m *music.Music, artist music.Artist) *P
 	return view
 }
 
-func (handler *MusicHandler) singlesView(m *music.Music, artist music.Artist) *SinglesView {
+func (handler *UserHandler) singlesView(m *music.Music, artist music.Artist) *SinglesView {
 	view := &SinglesView{}
 	view.Artist = artist
 	view.Singles = m.ArtistSingleTracks(artist)
@@ -131,7 +186,7 @@ func (handler *MusicHandler) singlesView(m *music.Music, artist music.Artist) *S
 	return view
 }
 
-func (handler *MusicHandler) releaseView(m *music.Music, release music.Release) *ReleaseView {
+func (handler *UserHandler) releaseView(m *music.Music, release music.Release) *ReleaseView {
 	view := &ReleaseView{}
 	view.Release = release
 	view.Artist = *m.Artist(release.Artist)
@@ -142,18 +197,19 @@ func (handler *MusicHandler) releaseView(m *music.Music, release music.Release) 
 	return view
 }
 
-func (handler *MusicHandler) searchView(m *music.Music, query string) *SearchView {
+func (handler *UserHandler) searchView(m *music.Music, v *video.Video, query string) *SearchView {
 	view := &SearchView{}
 	artists, releases, _ := m.Query(query)
 	view.Artists = artists
 	view.Releases = releases
 	view.Query = query
 	view.Tracks = m.Search(query)
-	view.Hits = len(view.Artists) + len(view.Releases) + len(view.Tracks)
+	view.Movies = v.Search(query)
+	view.Hits = len(view.Artists) + len(view.Releases) + len(view.Tracks) + len(view.Movies)
 	return view
 }
 
-func (handler *MusicHandler) radioView(m *music.Music, user *auth.User) *RadioView {
+func (handler *UserHandler) radioView(m *music.Music, user *auth.User) *RadioView {
 	view := &RadioView{}
 	for _, s := range m.Stations(user) {
 		switch s.Type {
@@ -171,5 +227,62 @@ func (handler *MusicHandler) radioView(m *music.Music, user *auth.User) *RadioVi
 			view.Other = append(view.Other, s)
 		}
 	}
+	return view
+}
+
+func (handler *UserHandler) moviesView(v *video.Video) *MoviesView {
+	view := &MoviesView{}
+	view.Movies = v.Movies()
+	return view
+}
+
+func (handler *UserHandler) movieView(v *video.Video, m *video.Movie) *MovieView {
+	view := &MovieView{}
+	view.Movie = *m
+	collection := v.MovieCollection(m)
+	if collection != nil {
+		view.Collection = *collection
+		view.Other = v.CollectionMovies(collection)
+	}
+	view.Cast = v.Cast(m)
+	view.Crew = v.Crew(m)
+	for _, c := range view.Crew {
+		if c.Job == "Director" {
+			view.Directing = append(view.Directing, c.Person)
+		} else if c.Job == "Novel" || c.Job == "Screenplay" || c.Job == "Story" {
+			view.Writing = append(view.Writing, c.Person)
+		}
+	}
+	for i, c := range view.Cast {
+		if i == 3 {
+			break
+		}
+		view.Starring = append(view.Starring, c.Person)
+	}
+	view.Genres = v.Genres(m)
+	view.Vote = int(m.VoteAverage * 10)
+	view.VoteCount = m.VoteCount
+	return view
+}
+
+func (handler *UserHandler) profileView(v *video.Video, p *video.Person) *ProfileView {
+	view := &ProfileView{}
+	view.Person = *p
+	view.Starring = v.Starring(p)
+	view.Writing = v.Writing(p)
+	view.Directing = v.Directing(p)
+	return view
+}
+
+func (handler *UserHandler) genreView(v *video.Video, name string) *GenreView {
+	view := &GenreView{}
+	view.Name = name
+	view.Movies = v.Genre(name)
+	return view
+}
+
+func (handler *UserHandler) watchView(v *video.Video, m *video.Movie) *WatchView {
+	view := &WatchView{}
+	view.Movie = *m
 	return view
 }

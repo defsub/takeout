@@ -42,12 +42,12 @@ type Spiff struct {
 
 type Entry struct {
 	Ref        string   `json:"$ref,omitempty"`
-	Creator    string   `json:"creator,omitempty"`
-	Album      string   `json:"album,omitempty"`
-	Title      string   `json:"title,omitempty"`
-	Image      string   `json:"image,omitempty"`
-	Location   []string `json:"location,omitempty"`
-	Identifier []string `json:"identifier,omitempty"`
+	Creator    string   `json:"creator,omitempty" spiff:"creator"`
+	Album      string   `json:"album,omitempty" spiff:"album"`
+	Title      string   `json:"title,omitempty" spiff:"title"`
+	Image      string   `json:"image,omitempty" spiff:"image"`
+	Location   []string `json:"location,omitempty" spiff:"location"`
+	Identifier []string `json:"identifier,omitempty" spiff:"identifier"`
 	Size       []int64  `json:"size,omitempty"`
 }
 

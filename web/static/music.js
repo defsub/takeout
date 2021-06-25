@@ -573,7 +573,7 @@ Takeout.music = (function() {
 	    checkLinks();
 	    registerEvents();
 	    setupSearch();
-	    forward("/v?music=1");
+	    forward("/v?home=1");
 	    fetchPlaylist();
 	};
     };

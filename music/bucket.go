@@ -23,77 +23,33 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/defsub/takeout/config"
+	"github.com/defsub/takeout/lib/bucket"
 )
 
-func (m *Music) bucketConfig() config.BucketConfig {
-	return m.config.Bucket
-}
-
-// Connect to the configured S3 bucket.
-// Tested: Wasabi, Backblaze, Minio
-func (m *Music) openBucket() error {
-	bucket := m.bucketConfig()
-	creds := credentials.NewStaticCredentials(
-		bucket.AccessKeyID, bucket.SecretAccessKey, "")
-	s3Config := &aws.Config{
-		Credentials:      creds,
-		Endpoint:         aws.String(bucket.Endpoint),
-		Region:           aws.String(bucket.Region),
-		S3ForcePathStyle: aws.Bool(true)}
-	session, err := session.NewSession(s3Config)
-	m.s3 = s3.New(session)
-	return err
-}
-
 // Asynchronously obtain all tracks from the bucket.
-func (m *Music) syncFromBucket(lastSync time.Time) (trackCh chan *Track, err error) {
+func (m *Music) syncFromBucket(bucket bucket.Bucket, lastSync time.Time) (trackCh chan *Track, err error) {
 	trackCh = make(chan *Track)
 
 	go func() {
 		defer close(trackCh)
-		bucket := m.bucketConfig()
-
-		var continuationToken *string
-		continuationToken = nil
-		for {
-			req := s3.ListObjectsV2Input{
-				Bucket: aws.String(bucket.BucketName),
-				Prefix: aws.String(bucket.ObjectPrefix)}
-			if continuationToken != nil {
-				req.ContinuationToken = continuationToken
-			}
-			resp, err := m.s3.ListObjectsV2(&req)
-			if err != nil {
-				break
-			}
-			for _, obj := range resp.Contents {
-				if obj.LastModified != nil &&
-					obj.LastModified.After(lastSync) {
-					checkObject(obj, trackCh)
-				}
-			}
-
-			if !*resp.IsTruncated {
-				break
-			}
-			continuationToken = resp.NextContinuationToken
+		objectCh, err := bucket.List(lastSync)
+		if err != nil {
+			return
+		}
+		for o := range objectCh {
+			checkObject(o, trackCh)
 		}
 	}()
 
 	return
 }
 
-func checkObject(object *s3.Object, trackCh chan *Track) {
-	matchPath(*object.Key, trackCh, func(t *Track, trackCh chan *Track) {
-		t.Key = *object.Key
-		t.ETag = *object.ETag
-		t.Size = *object.Size
-		t.LastModified = *object.LastModified
+func checkObject(object *bucket.Object, trackCh chan *Track) {
+	matchPath(object.Key, trackCh, func(t *Track, trackCh chan *Track) {
+		t.Key = object.Key
+		t.ETag = object.ETag
+		t.Size = object.Size
+		t.LastModified = object.LastModified
 		trackCh <- t
 	})
 }
@@ -157,8 +113,8 @@ func matchRelease(release string) (string, string) {
 	return name, date
 }
 
-var trackRegexp = regexp.MustCompile(`(?:([\d]+)-)?([\d]+)-(.*)\.(mp3|flac|ogg|m4a)$`)
-var trackRegexp2 = regexp.MustCompile(`([\d]+)-(.*)\.(mp3|flac|ogg|m4a)$`)
+var trackRegexp = regexp.MustCompile(`(?:([1-9]+)-)?([\d]+)-(.*)\.(mp3|flac|ogg|m4a)$`)
+var singleDiscRegexp = regexp.MustCompile(`([\d]+)-(.*)\.(mp3|flac|ogg|m4a)$`)
 var numericRegexp = regexp.MustCompile(`^[\d]+([\s-])*`)
 
 func matchTrack(file string, t *Track) bool {
@@ -174,29 +130,41 @@ func matchTrack(file string, t *Track) bool {
 	if t.DiscNum == 0 {
 		t.DiscNum = 1
 	}
-	if numericRegexp.MatchString(t.Title) {
-		// handle titles like:
-		// 4-36-22-36.flac
-		//   -> Track: 4, Title: 36-22-36
-		// 11-19-2000.flac
-		//   -> Track: 11, Title: 19-2000
-		// 18-19-2000 (Soulchild remix).flac
-		//   -> Track: 18, Title: 19-2000 (Soulchild remix)
-		matches = trackRegexp2.FindStringSubmatch(file)
-		// TODO assuming these are single disc for now
+
+	// potentially not multi-disc so assume single disc if too many
+	// TODO make this configurable?
+	// eg: 18-19-2000 (Soulchild remix).flac
+	// Beatles in Mono - 13 discs
+	// Eagles Legacy - 12 discs
+	// Kraftwerk The Catalogue - 8 discs
+	if t.DiscNum > 13 {
+		matches := singleDiscRegexp.FindStringSubmatch(file)
+		if matches == nil {
+			return false
+		}
 		t.DiscNum = 1
 		t.TrackNum, _ = strconv.Atoi(matches[1])
 		t.Title = matches[2]
 	}
+
+	// all numeric assume is single disc since most are single
+	// eg: 11-19-2000.flac
+	// eg: 4-36-22-36.flac
+	if numericRegexp.MatchString(t.Title) {
+		matches := singleDiscRegexp.FindStringSubmatch(file)
+		if matches == nil {
+			return false
+		}
+		t.DiscNum = 1
+		t.TrackNum, _ = strconv.Atoi(matches[1])
+		t.Title = matches[2]
+	}
+
 	return true
 }
 
 // Generate a presigned url which expires based on config settings.
 func (m *Music) bucketURL(t *Track) *url.URL {
-	req, _ := m.s3.GetObjectRequest(&s3.GetObjectInput{
-		Bucket: aws.String(m.config.Bucket.BucketName),
-		Key: aws.String(t.Key)})
-	urlStr, _ := req.Presign(m.config.Bucket.URLExpiration)
-	url, _ := url.Parse(urlStr)
-	return url
+	// TODO FIXME assume first bucket!!!
+	return m.buckets[0].Presign(t.Key)
 }

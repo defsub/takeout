@@ -32,6 +32,11 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	MediaMusic = "music"
+	MediaVideo = "video"
+)
+
 type BucketConfig struct {
 	Endpoint        string
 	Region          string
@@ -41,6 +46,7 @@ type BucketConfig struct {
 	ObjectPrefix    string
 	UseSSL          bool
 	URLExpiration   time.Duration
+	Media           string
 }
 
 type DatabaseConfig struct {
@@ -73,7 +79,14 @@ type MusicConfig struct {
 	artistMap            map[string]string
 }
 
-type MovieConfig struct {
+type VideoConfig struct {
+	DB               DatabaseConfig
+	ReleaseCountries []string
+	CastLimit        int
+	CrewJobs         []string
+	Recent           time.Duration
+	RecentLimit      int
+	SearchLimit      int
 }
 
 type LastFMAPIConfig struct {
@@ -113,24 +126,18 @@ type ClientConfig struct {
 	UserAgent string
 }
 
-type MediaConfig struct {
-	MovieTemplate  string
-	PosterTemplate string
-}
-
 type Config struct {
 	Auth    AuthConfig
-	Bucket  BucketConfig
+	Buckets []BucketConfig
 	Client  ClientConfig
 	DataDir string
 	Fanart  FanartAPIConfig
 	LastFM  LastFMAPIConfig
-	Media   MediaConfig
 	Music   MusicConfig
 	TMDB    TMDBAPIConfig
-	Movie   MovieConfig
 	Search  SearchConfig
 	Server  ServerConfig
+	Video   VideoConfig
 }
 
 func (mc *MusicConfig) UserArtistID(name string) (string, bool) {
@@ -160,8 +167,9 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Auth.MaxAge", "24h")
 	v.SetDefault("Auth.SecureCookies", "true")
 
-	v.SetDefault("Bucket.URLExpiration", "72h")
-	v.SetDefault("Bucket.UseSSL", "true")
+	// TODO apply as default
+	// v.SetDefault("Bucket.URLExpiration", "72h")
+	// v.SetDefault("Bucket.UseSSL", "true")
 
 	v.SetDefault("Client.CacheDir", ".httpcache")
 	v.SetDefault("Client.MaxAge", 86400*30) // 30 days in seconds
@@ -208,6 +216,25 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Server.WebDir", "web")
 	v.SetDefault("Server.URL", "https://example.com") // w/o trailing slash
 
+	v.SetDefault("Video.DB.Driver", "sqlite3")
+	v.SetDefault("Video.DB.Source", "video.db")
+	v.SetDefault("Video.DB.LogMode", "true")
+	v.SetDefault("Video.ReleaseCountries", []string{
+		"US",
+	})
+	v.SetDefault("Video.CastLimit", "25")
+	v.SetDefault("Video.CrewJobs", []string{
+		"Director",
+		"Executive Producer",
+		"Novel",
+		"Producer",
+		"Screenplay",
+		"Story",
+	})
+	v.SetDefault("Video.Recent", "8760h") // 1 year
+	v.SetDefault("Video.RecentLimit", "50")
+	v.SetDefault("Video.SearchLimit", "100")
+
 	// see https://musicbrainz.org/search (series)
 	v.SetDefault("Music.RadioSeries", []string{
 		"The Rolling Stone Magazine's 500 Greatest Songs of All Time",
@@ -222,7 +249,6 @@ func configDefaults(v *viper.Viper) {
 		"Covers":      "+type:cover",
 		"Live Hits":   "+type:live +popularity:<3",
 	})
-
 }
 
 func userAgent() string {

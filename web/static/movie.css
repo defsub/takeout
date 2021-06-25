@@ -1,0 +1,80 @@
+.tagline {
+    font-style: italic;
+    text-align: center;
+}
+
+.rating {
+    border: 1px solid rgba(255,255,255,0.6);
+    color: rgba(255,255,255,0.6);
+    text-transform: uppercase;
+    padding: 0.06em 4px 0.15em 4px;
+    line-height: 1;
+    border-radius: 2px;
+    margin-right: 7px;
+}
+
+.specs {
+    text-align: center;
+}
+
+.cred {
+    text-align: left;
+    vertical-align: top;
+    padding-right: 20px;
+    white-space: nowrap;
+}
+
+.card {
+    max-width: 185px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    margin-left: 10px;
+    margin-right: 4px;
+    padding-bottom: 10px;
+}
+
+.person {
+    font-weight: bold;
+}
+
+.character {
+    font-weight: lighter;
+}
+
+.movie-title {
+    font-size: medium;
+    background-color: inherit;
+}
+
+.movie-detail {
+    font-size: small;
+    opacity: 0.5;
+    background-color: inherit;
+}
+
+.movie-small-title {
+    text-align: center;
+    font-size: small;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.movie-small-year {
+    text-align: center;
+    font-size: small;
+    opacity: 0.5;
+}
+
+.pie {
+  --v:calc( ((18/5) * var(--p) - 90)*1deg);
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  padding: 10px;
+  background:
+    linear-gradient(#222,#222) content-box,
+    linear-gradient(var(--v), #222 50%,transparent 0) 0/min(100%,(50 - var(--p))*100%),
+    linear-gradient(var(--v), transparent 50%,orange 0) 0/min(100%,(var(--p) - 50)*100%),
+    linear-gradient(to right, #222 50%,orange 0);
+}

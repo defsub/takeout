@@ -1,0 +1,52 @@
+<div>
+  <h1>{{ .Person.Name }}</h1>
+  <div style="display: flex">
+    <div style="padding-left: 25px; padding-right: 25px;"><img src="{{.Person|profile}}"></div>
+    <div>{{ .Person.Bio }}</div>
+  </div>
+</div>
+<div style="padding-top: 25px; padding-left: 25px;">
+  {{ if .Starring }}
+  <h2>Starring {{ .Person.Name }}</h2>
+  <div style="display: flex; text-align: center; width: 100%; justify-content: left; flex-wrap: wrap;">
+    {{ range .Starring }}
+    <div style="margin: 1em; flex: 0; min-width: 154px;">
+      <div><a data-link="{{.|link}}"><img src="{{.|posterSmall}}"></a></div>
+      <div><span style="max-width: 154px; text-overflow: ellipsis;" class="movie-title">{{ .Title }}</span></div>
+      <div class="movie-detail">{{ .Date.Year }}</div>
+    </div>
+    {{ end }}
+  </div>
+  {{ end }}
+
+  {{ if .Directing }}
+  <h2>Directing {{ .Person.Name }}</h2>
+  <div style="display: flex; text-align: center; width: 100%; justify-content: left; flex-wrap: wrap;">
+    {{ range .Directing }}
+    <div style="margin: 1em; flex: 0; min-width: 154px;">
+      <div><a data-link="{{.|link}}"><img src="{{.|posterSmall}}"></a></div>
+      <div><span style="max-width: 154px; text-overflow: ellipsis;" class="movie-title">{{ .Title }}</span></div>
+      <div class="movie-detail">{{ .Date.Year }}</div>
+    </div>
+    {{ end }}
+  </div>
+  {{ end }}
+
+  {{ if .Writing }}
+  <h2>Writing {{ .Person.Name }}</h2>
+  <div style="display: flex; text-align: center; width: 100%; justify-content: left; flex-wrap: wrap;">
+    {{ range .Writing }}
+    <div style="margin: 1em; flex: 0; min-width: 154px;">
+      <div><a data-link="{{.|link}}"><img src="{{.|posterSmall}}"></a></div>
+      <div><span style="max-width: 154px; text-overflow: ellipsis;" class="movie-title">{{ .Title }}</span></div>
+      <div class="movie-detail">{{ .Date.Year }}</div>
+    </div>
+    {{ end }}
+  </div>
+  {{ end }}
+
+  <div style="clear: both; padding-top: 5px;"/>
+  <h3>External Links</h3>
+  <a target="_blank" href="https://www.themoviedb.org/person/{{ .Person.PEID }}">TMDB</a>,
+  <a target="_blank" href="https://www.imdb.com/name/{{ .Person.IMID }}/">IMDB</a>
+</div>

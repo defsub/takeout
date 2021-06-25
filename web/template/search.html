@@ -17,7 +17,6 @@
     </table>
   </div>
   {{ end }}
-
   {{ if .Releases }}
   <div>
     <h2>Releases</h2>
@@ -35,7 +34,6 @@
   </div>
   <div style="clear: both;"/>
   {{ end }}
-
   {{ if .Tracks }}
   <div>
     <div class="parent">
@@ -75,6 +73,33 @@
 	<a data-playlist="append-ref" data-ref="{{.|ref}}">
 	  <img src="/static/playlist_add-white-24dp.svg">
 	</a>
+      </div>
+    </div>
+    {{ end }}
+  </div>
+  {{ end }}
+  {{ if .Movies }}
+  <div>
+    <div class="parent">
+      <div class="left">
+	<h2>Movies</h2>
+      </div>
+      <div class="right">
+      </div>
+    </div>
+    {{ range .Movies }}
+    <div class="parent">
+      <div class="left" style="cursor: pointer;">
+	<div class="parent2">
+	  <div class="movie-title">
+	    <a data-link="/v?movie={{.ID}}">{{ .Title }}</a>
+	  </div>
+	  <div class="movie-detail">
+	    {{ .Rating }} ~ {{ .Date.Year }} ~ {{ .Runtime }} mins
+	  </div>
+	</div>
+      </div>
+      <div class="right">
       </div>
     </div>
     {{ end }}

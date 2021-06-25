@@ -80,6 +80,7 @@
 	    </div>
 	    <div class="track-artist">
 	      {{ .ReleaseTitle }}
+	      / {{ .MediaTitle }}
 	    </div>
 	  </div>
 	</div>
@@ -117,4 +118,6 @@
   <a target="_blank" href="https://musicbrainz.org/artist/{{ .Artist.ARID }}">Artist</a>,
   <a target="_blank" href="https://musicbrainz.org/release-group/{{ .Release.RGID }}">Release Group</a>,
   <a target="_blank" href="https://musicbrainz.org/release/{{ .Release.REID }}">Release</a>
+  <p/>
+  <a alt="Open in VLC" href="/api/releases/{{.Release.ID}}/playlist.xspf"><img src="/static/open_in_new_white_24dp.svg"/></a>
 </div>
