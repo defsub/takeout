@@ -19,7 +19,6 @@ package main
 
 import (
 	"time"
-	"fmt"
 
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/music"
