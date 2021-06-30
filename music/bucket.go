@@ -115,7 +115,7 @@ func matchRelease(release string) (string, string) {
 
 var trackRegexp = regexp.MustCompile(`(?:([1-9]+)-)?([\d]+)-(.*)\.(mp3|flac|ogg|m4a)$`)
 var singleDiscRegexp = regexp.MustCompile(`([\d]+)-(.*)\.(mp3|flac|ogg|m4a)$`)
-var numericRegexp = regexp.MustCompile(`^[\d]+([\s-])*`)
+var numericRegexp = regexp.MustCompile(`^[\d\s-]+$`)
 
 func matchTrack(file string, t *Track) bool {
 	matches := trackRegexp.FindStringSubmatch(file)

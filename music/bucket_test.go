@@ -62,6 +62,7 @@ func TestPattern(t *testing.T) {
 		"Music/Iron Maiden/Nights of the Dead Legacy of the Beast Live in Mexico City (2020)/1-04-2 Minutes to Midnight.flac",
 		"Music/N.W.A/The Best of N.W.A - The Strength of Street Knowledge (2006)/06-8-Ball.flac",
 		"Music/Rush/Sector 1 (2011)/5-01-2112_ I. Overture _ II. The Temples of Syrinx _ III. Discovery _ IV. Presentation _ V. Oracle_ The Dream _ VI. Soliloquy _ VII. Grand Finale.flac",
+		"Music/Iron Maiden/Live After Death (2020)/1-03-2 Minutes to Midnight.flac",
 	}
 
 	expect := []string{
@@ -97,6 +98,7 @@ func TestPattern(t *testing.T) {
 		"1 / 4 / 2 Minutes to Midnight",
 		"1 / 6 / 8-Ball",
 		"5 / 1 / 2112_ I. Overture _ II. The Temples of Syrinx _ III. Discovery _ IV. Presentation _ V. Oracle_ The Dream _ VI. Soliloquy _ VII. Grand Finale",
+		"1 / 3 / 2 Minutes to Midnight",
 	}
 
 	for i, v := range patterns {
