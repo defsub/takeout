@@ -113,7 +113,7 @@ func matchRelease(release string) (string, string) {
 	return name, date
 }
 
-var trackRegexp = regexp.MustCompile(`(?:([1-9]+)-)?([\d]+)-(.*)\.(mp3|flac|ogg|m4a)$`)
+var trackRegexp = regexp.MustCompile(`(?:([1-9]+[0-9]?)-)?([\d]+)-(.*)\.(mp3|flac|ogg|m4a)$`)
 var singleDiscRegexp = regexp.MustCompile(`([\d]+)-(.*)\.(mp3|flac|ogg|m4a)$`)
 var numericRegexp = regexp.MustCompile(`^[\d\s-]+$`)
 

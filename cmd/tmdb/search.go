@@ -36,6 +36,7 @@ var searchCmd = &cobra.Command{
 }
 
 var optQuery string
+var optFile string
 
 func fixColon(name string) string {
 	// not generalluy good to have colons in filenames so change "foo: bar"
@@ -46,16 +47,27 @@ func fixColon(name string) string {
 }
 
 func doit() {
+	var query string
 	m := tmdb.NewTMDB(getConfig())
-	if optQuery != "" {
-		results, err := m.MovieSearch(optQuery)
+	if optFile != "" {
+		fileRegexp := regexp.MustCompile(`([^\/]+)_t\d+\.mkv$`)
+		matches := fileRegexp.FindStringSubmatch(optFile)
+		if matches != nil {
+			query = matches[1]
+		}
+	} else if optQuery != "" {
+		query = optQuery
+	}
+	if query != "" {
+		results, err := m.MovieSearch(query)
 		if err != nil {
 			fmt.Printf("%s\n", err)
 			return
 		}
 		for _, v := range results {
-			fmt.Printf("%s (%d)\n", v.Title, date.ParseDate(v.ReleaseDate).Year())
-			fmt.Printf("%s\n", m.MovieOriginalPoster(&v).String())
+			title := fmt.Sprintf("%s (%d)", v.Title, date.ParseDate(v.ReleaseDate).Year())
+			fmt.Printf("%s\n", title)
+			fmt.Printf("%s\n", m.MovieOriginalPoster(v.PosterPath).String())
 			if len(v.GenreIDs) > 0 {
 				for i, id := range v.GenreIDs {
 					if i > 0 {
@@ -65,6 +77,9 @@ func doit() {
 				}
 				fmt.Println()
 			}
+			if optFile != "" {
+				fmt.Printf("mv '%s' '%s - HD.mkv'\n", optFile, title)
+			}
 			fmt.Printf("\n")
 		}
 	}
@@ -73,5 +88,6 @@ func doit() {
 func init() {
 	searchCmd.Flags().StringVarP(&configFile, "config", "c", "", "config file")
 	searchCmd.Flags().StringVarP(&optQuery, "query", "q", "", "search query")
+	searchCmd.Flags().StringVarP(&optFile, "file", "f", "", "search file")
 	rootCmd.AddCommand(searchCmd)
 }

@@ -573,7 +573,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			// /api/(artists|radio|releases)/id
+			// /api/(artists|radio|releases|movies|profiles)/id
 			resourceRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)`)
 			matches = resourceRegexp.FindStringSubmatch(r.URL.Path)
 			if matches != nil {
@@ -591,6 +591,31 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 				case "radio":
 					// /api/radio/1
 					handler.apiStation(w, r, m, id)
+				case "movies":
+					// /api/movies/1
+					movie, _ := vid.LookupMovie(id)
+					handler.apiView(w, r, handler.movieView(vid, movie))
+				case "profiles":
+					// /api/profiles/1
+					person, _ := vid.LookupPerson(id)
+					handler.apiView(w, r, handler.profileView(vid, person))
+				default:
+					http.Error(w, "bummer", http.StatusNotFound)
+				}
+				return
+			}
+
+			// /api/(genres)/str
+			otherRegexp := regexp.MustCompile(`/api/([a-z]+)/([a-zA-Z]+)`)
+			matches = otherRegexp.FindStringSubmatch(r.URL.Path)
+			if matches != nil {
+				v := matches[1]
+				name := strings.TrimSpace(matches[2])
+				fmt.Printf("%s %s\n", v, name)
+				switch v {
+				case "genres":
+					// /api/genres/str
+					handler.apiView(w, r, handler.genreView(vid, name))
 				default:
 					http.Error(w, "bummer", http.StatusNotFound)
 				}

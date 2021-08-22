@@ -25,7 +25,7 @@ import (
 )
 
 func TestPattern(t *testing.T) {
-	var trackRegexp = regexp.MustCompile(`(?:([1-9]+)-)?([\d]+)-(.*)\.(mp3|flac|ogg|m4a)$`)
+	var trackRegexp = regexp.MustCompile(`.*/(?:([1-9]+[0-9]?)-)?([\d]+)-(.*)\.(mp3|flac|ogg|m4a)$`)
 	var singleDiscRegexp = regexp.MustCompile(`([\d]+)-(.*)\.(mp3|flac|ogg|m4a)$`)
 	var numericRegexp = regexp.MustCompile(`^[\d\s-]+$`)
 
@@ -63,6 +63,8 @@ func TestPattern(t *testing.T) {
 		"Music/N.W.A/The Best of N.W.A - The Strength of Street Knowledge (2006)/06-8-Ball.flac",
 		"Music/Rush/Sector 1 (2011)/5-01-2112_ I. Overture _ II. The Temples of Syrinx _ III. Discovery _ IV. Presentation _ V. Oracle_ The Dream _ VI. Soliloquy _ VII. Grand Finale.flac",
 		"Music/Iron Maiden/Live After Death (2020)/1-03-2 Minutes to Midnight.flac",
+		"Music/ZZ Top/The Complete Studio Albums 1970-1990 (2013)/10-01-Concrete and Steel.flac",
+		"Music/ZZ Top/The Complete Studio Albums 1970-1990 (2013)/10-08-2000 Blues.flac",
 	}
 
 	expect := []string{
@@ -99,6 +101,8 @@ func TestPattern(t *testing.T) {
 		"1 / 6 / 8-Ball",
 		"5 / 1 / 2112_ I. Overture _ II. The Temples of Syrinx _ III. Discovery _ IV. Presentation _ V. Oracle_ The Dream _ VI. Soliloquy _ VII. Grand Finale",
 		"1 / 3 / 2 Minutes to Midnight",
+		"10 / 1 / Concrete and Steel",
+		"10 / 8 / 2000 Blues",
 	}
 
 	for i, v := range patterns {
