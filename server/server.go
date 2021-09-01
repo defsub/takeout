@@ -469,6 +469,7 @@ func Serve(config *config.Config) {
 	http.HandleFunc("/v", handler.viewHandler)
 	http.HandleFunc("/login", handler.loginHandler)
 	http.HandleFunc("/api/", handler.apiHandler)
+	http.HandleFunc("/hook/", handler.hookHandler)
 	log.Printf("listening on %s\n", config.Server.Listen)
 	http.ListenAndServe(config.Server.Listen, nil)
 }
