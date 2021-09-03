@@ -23,10 +23,20 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/defsub/takeout/auth"
+	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/lib/actions"
 )
 
+const (
+	IntentPlay          = "PLAY"
+	MediaTypeAudio      = "AUDIO"
+	MediaControlPaused  = "PAUSED"
+	MediaControlStopped = "STOPPED"
+)
+
 func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) {
+	var err error
 	w.Header().Set("Content-type", "application/json")
 
 	if r.Method != "POST" {
@@ -34,9 +44,23 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	handler.user = &auth.User{Name: "xxx", Media: "xxx"}
+	media := handler.user.FirstMedia()
+	if media == "" {
+		http.Error(w, "bummer", http.StatusServiceUnavailable)
+		return
+	}
+	path := fmt.Sprintf("%s/%s", handler.config.DataDir, media)
+
+	handler.userConfig, err = config.LoadConfig(path)
+	if err != nil {
+		http.Error(w, "bummer", http.StatusInternalServerError)
+		return
+	}
+
 	var hookRequest actions.WebhookRequest
 	body, _ := ioutil.ReadAll(r.Body)
-	err := json.Unmarshal(body, &hookRequest)
+	err = json.Unmarshal(body, &hookRequest)
 	if err != nil {
 		http.Error(w, "bummer", http.StatusInternalServerError)
 		return
@@ -45,9 +69,45 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 	fmt.Printf("got %+v\n", hookRequest)
 
 	var hookResponse actions.WebhookResponse
-	hookResponse.Session.ID = hookRequest.Session.ID
-	hookResponse.Prompt.FirstSimple.Speech = "hello there"
-	hookResponse.Prompt.FirstSimple.Text = "hello there text"
+	hookResponse.AddSession(hookRequest.Session.ID)
+
+	if hookRequest.IntentName() == IntentPlay {
+		artist := hookRequest.ArtistParam()
+		song := hookRequest.SongParam()
+
+		music := handler.NewMusic(w, r)
+		defer music.Close()
+
+		query := ""
+		if artist != "" && song != "" {
+			query = fmt.Sprintf(`+artist:"%s" +title:"%s"`, artist, song)
+		} else if artist != "" {
+			query = fmt.Sprintf(`+artist:"%s" +type:single`, artist)
+		} else if song != "" {
+			query = fmt.Sprintf(`+title:"%s"`, song)
+		}
+		tracks := music.Search(query, 10)
+		fmt.Printf("searching for %s\n", query)
+		fmt.Printf("got %d\n", len(tracks))
+
+		for _, t := range tracks {
+			hookResponse.AddMedia(t.Title,
+				fmt.Sprintf("%s \u2022 %s", t.Artist, t.Release),
+				music.TrackURL(&t).String(),
+				music.TrackImage(t).String())
+		}
+
+		speech := ""
+		if len(tracks) > 0 {
+			speech = "Enjoy the music"
+		} else {
+			speech = "Sorry try again"
+		}
+		hookResponse.AddSimple(speech, speech)
+
+	} else {
+		hookResponse.AddSimple("Welcome to Takeout", "Welcome to Takeout")
+	}
 
 	fmt.Printf("sending %+v\n", hookResponse)
 
