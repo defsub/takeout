@@ -241,7 +241,19 @@ func (r *WebhookResponse) AddSimple(speech, text string) {
 	}
 }
 
+func (r *WebhookResponse) AddSuggestions(suggestions ...string) {
+	if r.Prompt == nil {
+		r.Prompt = &Prompt{}
+	}
+	for _, s := range suggestions {
+		r.Prompt.Suggestions = append(r.Prompt.Suggestions, &Suggestion{Title: s})
+	}
+}
+
 func (r *WebhookResponse) AddMedia(name, desc, url, image string) {
+	if r.Prompt == nil {
+		r.Prompt = &Prompt{}
+	}
 	if r.Prompt.Content == nil {
 		r.Prompt.Content = &Content{}
 	}

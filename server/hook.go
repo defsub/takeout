@@ -100,6 +100,7 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 		speech := ""
 		if len(tracks) > 0 {
 			speech = "Enjoy the music"
+			hookResponse.AddSuggestions("Pause", "Next", "Turn it up")
 		} else {
 			speech = "Sorry try again"
 		}
