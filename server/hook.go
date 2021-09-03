@@ -29,7 +29,9 @@ import (
 )
 
 const (
-	IntentPlay          = "PLAY"
+	IntentPlay = "TAKEOUT_PLAY"
+	IntentNew  = "TAKEOUT_NEW"
+
 	MediaTypeAudio      = "AUDIO"
 	MediaControlPaused  = "PAUSED"
 	MediaControlStopped = "STOPPED"
@@ -71,12 +73,15 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 	var hookResponse actions.WebhookResponse
 	hookResponse.AddSession(hookRequest.Session.ID)
 
+	music := handler.NewMusic(w, r)
+	defer music.Close()
+
+	vid := handler.NewVideo(w, r)
+	defer vid.Close()
+
 	if hookRequest.IntentName() == IntentPlay {
 		artist := hookRequest.ArtistParam()
 		song := hookRequest.SongParam()
-
-		music := handler.NewMusic(w, r)
-		defer music.Close()
 
 		query := ""
 		if artist != "" && song != "" {
@@ -100,14 +105,36 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 		speech := ""
 		if len(tracks) > 0 {
 			speech = "Enjoy the music"
-			hookResponse.AddSuggestions("Pause", "Next", "Turn it up")
 		} else {
 			speech = "Sorry try again"
 		}
 		hookResponse.AddSimple(speech, speech)
-
+	} else if hookRequest.IntentName() == IntentNew {
+		home := handler.homeView(music, vid)
+		speech := "Recent additions are "
+		text := ""
+		for i, rel := range home.AddedReleases {
+			if i == 3 {
+				break
+			} else if i > 0 {
+				speech += " and "
+				text += ", "
+			}
+			speech += fmt.Sprintf("%s by %s", rel.Name, rel.Artist)
+			text += fmt.Sprintf("%s \u2022 %s", rel.Artist, rel.Name)
+		}
+		hookResponse.AddSimple(speech, text)
 	} else {
+		suggest := []string{}
+
+		home := handler.homeView(music, vid)
+		if len(home.AddedReleases) > 0 {
+			release := home.AddedReleases[0]
+			suggest = append(suggest, fmt.Sprintf("%s by %s", release.Name, release.Artist))
+		}
+
 		hookResponse.AddSimple("Welcome to Takeout", "Welcome to Takeout")
+		hookResponse.AddSuggestions(suggest...)
 	}
 
 	fmt.Printf("sending %+v\n", hookResponse)
