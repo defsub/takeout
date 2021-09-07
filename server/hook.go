@@ -18,35 +18,42 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 
-	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/lib/actions"
+	"github.com/defsub/takeout/music"
+	"github.com/defsub/takeout/video"
 )
 
 const (
 	IntentPlay = "TAKEOUT_PLAY"
 	IntentNew  = "TAKEOUT_NEW"
-
-	MediaTypeAudio      = "AUDIO"
-	MediaControlPaused  = "PAUSED"
-	MediaControlStopped = "STOPPED"
 )
 
 func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
-	w.Header().Set("Content-type", "application/json")
+	w.Header().Set("Content-type", ApplicationJson)
 
 	if r.Method != "POST" {
 		http.Error(w, "bummer", http.StatusInternalServerError)
 		return
 	}
 
-	handler.user = &auth.User{Name: "xxx", Media: "xxx"}
+	a := handler.NewAuth()
+	if a == nil {
+		http.Error(w, "bummer", http.StatusInternalServerError)
+		return
+	}
+	defer a.Close()
+
+	handler.user, err = a.UserAuthValue("6c796f84-2267-406c-942b-388e248d1b92")
+	if err != nil {
+		http.Error(w, "bummer", http.StatusInternalServerError)
+		return
+	}
+
 	media := handler.user.FirstMedia()
 	if media == "" {
 		http.Error(w, "bummer", http.StatusServiceUnavailable)
@@ -60,85 +67,111 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var hookRequest actions.WebhookRequest
-	body, _ := ioutil.ReadAll(r.Body)
-	err = json.Unmarshal(body, &hookRequest)
-	if err != nil {
-		http.Error(w, "bummer", http.StatusInternalServerError)
+	mus := handler.NewMusic(w)
+	if mus == nil {
 		return
 	}
+	defer mus.Close()
 
-	fmt.Printf("got %+v\n", hookRequest)
-
-	var hookResponse actions.WebhookResponse
-	hookResponse.AddSession(hookRequest.Session.ID)
-
-	music := handler.NewMusic(w, r)
-	defer music.Close()
-
-	vid := handler.NewVideo(w, r)
+	vid := handler.NewVideo(w)
+	if vid == nil {
+		return
+	}
 	defer vid.Close()
 
-	if hookRequest.IntentName() == IntentPlay {
-		artist := hookRequest.ArtistParam()
-		song := hookRequest.SongParam()
+	hookRequest := actions.NewWebhookRequest(r)
+	hookResponse := actions.NewWebhookResponse(hookRequest)
+	fmt.Printf("got %+v\n", hookRequest)
 
-		query := ""
-		if artist != "" && song != "" {
-			query = fmt.Sprintf(`+artist:"%s" +title:"%s"`, artist, song)
-		} else if artist != "" {
-			query = fmt.Sprintf(`+artist:"%s" +type:single`, artist)
-		} else if song != "" {
-			query = fmt.Sprintf(`+title:"%s"`, song)
-		}
-		tracks := music.Search(query, 10)
-		fmt.Printf("searching for %s\n", query)
-		fmt.Printf("got %d\n", len(tracks))
-
-		for _, t := range tracks {
-			hookResponse.AddMedia(t.Title,
-				fmt.Sprintf("%s \u2022 %s", t.Artist, t.Release),
-				music.TrackURL(&t).String(),
-				music.TrackImage(t).String())
-		}
-
-		speech := ""
-		if len(tracks) > 0 {
-			speech = "Enjoy the music"
-		} else {
-			speech = "Sorry try again"
-		}
-		hookResponse.AddSimple(speech, speech)
-	} else if hookRequest.IntentName() == IntentNew {
-		home := handler.homeView(music, vid)
-		speech := "Recent additions are "
-		text := ""
-		for i, rel := range home.AddedReleases {
-			if i == 3 {
-				break
-			} else if i > 0 {
-				speech += " and "
-				text += ", "
-			}
-			speech += fmt.Sprintf("%s by %s", rel.Name, rel.Artist)
-			text += fmt.Sprintf("%s \u2022 %s", rel.Artist, rel.Name)
-		}
-		hookResponse.AddSimple(speech, text)
-	} else {
-		suggest := []string{}
-
-		home := handler.homeView(music, vid)
-		if len(home.AddedReleases) > 0 {
-			release := home.AddedReleases[0]
-			suggest = append(suggest, fmt.Sprintf("%s by %s", release.Name, release.Artist))
-		}
-
-		hookResponse.AddSimple("Welcome to Takeout", "Welcome to Takeout")
-		hookResponse.AddSuggestions(suggest...)
+	switch hookRequest.IntentName() {
+	case IntentPlay:
+		handler.fulfillPlay(hookRequest, hookResponse, mus, vid)
+	case IntentNew:
+		handler.fulfillNew(hookRequest, hookResponse, mus, vid)
+	default:
+		handler.fulfillWelcome(hookRequest, hookResponse, mus, vid)
 	}
 
 	fmt.Printf("sending %+v\n", hookResponse)
+	hookResponse.Send(w)
+}
 
-	enc := json.NewEncoder(w)
-	enc.Encode(hookResponse)
+func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.WebhookResponse,
+	m *music.Music, v *video.Video) {
+	song := r.SongParam()
+	artist := r.ArtistParam()
+	release := r.ReleaseParam()
+
+	query := ""
+	if artist != "" && song != "" {
+		// play [song] by [artist]
+		query = fmt.Sprintf(`+artist:"%s" +title:"%s*"`, artist, song)
+	} else if artist != "" && release != "" {
+		// play album [release] by [artist]
+		query = fmt.Sprintf(`+artist:"%s" +release:"%s"`, artist, release)
+	} else if artist != "" {
+		// play [artist] songs
+		// play songs by [artist]
+		query = fmt.Sprintf(`+artist:"%s" +type:"single"`, artist)
+	} else if song != "" {
+		// play song [song]
+		// play [song]
+		query = fmt.Sprintf(`+title:"%s*"`, song)
+	} else if release != "" {
+		// play album [release]
+		query = fmt.Sprintf(`+release:"%s"`, release)
+	}
+
+	var tracks []music.Track
+	if query != "" {
+		tracks = m.Search(query, 10)
+	}
+	fmt.Printf("search for %s -> %d tracks\n", query, len(tracks))
+
+	for _, t := range tracks {
+		w.AddMedia(t.Title,
+			fmt.Sprintf("%s \u2022 %s", t.Artist, t.Release),
+			m.TrackURL(&t).String(),
+			m.TrackImage(t).String())
+	}
+
+	if len(tracks) > 0 {
+		addSimple(w, handler.config.Assistant.Play)
+	} else {
+		addSimple(w, handler.config.Assistant.Error)
+	}
+}
+
+func (handler *UserHandler) fulfillNew(r *actions.WebhookRequest, w *actions.WebhookResponse,
+	m *music.Music, v *video.Video) {
+	home := handler.homeView(m, v)
+	speech := "Recent additions are "
+	text := ""
+	for i, rel := range home.AddedReleases {
+		if i == 3 {
+			break
+		} else if i > 0 {
+			speech += " and "
+			text += ", "
+		}
+		speech += fmt.Sprintf("%s by %s", rel.Name, rel.Artist)
+		text += fmt.Sprintf("%s \u2022 %s", rel.Artist, rel.Name)
+	}
+	w.AddSimple(speech, text)
+}
+
+func (handler *UserHandler) fulfillWelcome(r *actions.WebhookRequest, w *actions.WebhookResponse,
+	m *music.Music, v *video.Video) {
+	suggest := []string{}
+	home := handler.homeView(m, v)
+	if len(home.AddedReleases) > 0 {
+		release := home.AddedReleases[0]
+		suggest = append(suggest, fmt.Sprintf("%s by %s", release.Name, release.Artist))
+	}
+	addSimple(w, handler.config.Assistant.Welcome)
+	w.AddSuggestions(suggest...)
+}
+
+func addSimple(w *actions.WebhookResponse, m config.AssistantResponse) {
+	w.AddSimple(m.Speech, m.Text)
 }

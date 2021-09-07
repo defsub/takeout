@@ -25,6 +25,12 @@ package actions
 // https://developers.google.com/assistant/conversational/overview
 // https://developers.google.com/assistant/conversational/prompts
 
+import (
+	"encoding/json"
+	"io/ioutil"
+	"net/http"
+)
+
 const (
 	MediaTypeAudio = "AUDIO"
 
@@ -48,9 +54,12 @@ type Param struct {
 	Resolved string `json:"resolved,omitempty"`
 }
 
+// These params are Takeout specific. Include here to make overall json handing
+// easier.
 type Params struct {
-	Artist *Param `json:"artist"`
-	Song   *Param `json:"song"`
+	Artist  *Param `json:"artist"`
+	Song    *Param `json:"song"`
+	Release *Param `json:"release"`
 }
 
 type Intent struct {
@@ -167,10 +176,33 @@ type WebhookRequest struct {
 	Context *Context `json:"Context"`
 }
 
+func NewWebhookRequest(r *http.Request) *WebhookRequest {
+	var request WebhookRequest
+	body, _ := ioutil.ReadAll(r.Body)
+	err := json.Unmarshal(body, &request)
+	if err != nil {
+		return nil
+	}
+	return &request
+}
+
 type WebhookResponse struct {
 	Session *Session `json:"session"`
 	Prompt  *Prompt  `json:"prompt"`
 	Home    *Home    `json:"home"`
+}
+
+func NewWebhookResponse(r *WebhookRequest) *WebhookResponse {
+	var response WebhookResponse
+	if r.Session != nil && len(r.Session.ID) > 0 {
+		response.AddSession(r.Session.ID)
+	}
+	return &response
+}
+
+func (h *WebhookResponse) Send(w http.ResponseWriter) {
+	enc := json.NewEncoder(w)
+	enc.Encode(h)
 }
 
 func (r WebhookRequest) IntentName() string {
@@ -192,6 +224,13 @@ func (r WebhookRequest) SongParam() string {
 		return ""
 	}
 	return r.Intent.Params.Song.Resolved
+}
+
+func (r WebhookRequest) ReleaseParam() string {
+	if r.Intent == nil || r.Intent.Params == nil || r.Intent.Params.Release == nil {
+		return ""
+	}
+	return r.Intent.Params.Release.Resolved
 }
 
 func (r WebhookRequest) SupportsRichResponse() bool {
@@ -230,7 +269,6 @@ func (r *WebhookResponse) AddSession(id string) {
 	r.Session.ID = id
 }
 
-
 func (r *WebhookResponse) AddSimple(speech, text string) {
 	if r.Prompt == nil {
 		r.Prompt = &Prompt{}
@@ -259,18 +297,18 @@ func (r *WebhookResponse) AddMedia(name, desc, url, image string) {
 	}
 	if r.Prompt.Content.Media == nil {
 		r.Prompt.Content.Media = &Media{
-			MediaType: MediaTypeAudio,
+			MediaType:    MediaTypeAudio,
 			MediaObjects: []*MediaObject{},
 		}
 	}
 	object := &MediaObject{
-		Name: name,
+		Name:        name,
 		Description: desc,
-		URL: url,
+		URL:         url,
 		Image: &MediaImage{
 			Large: &Image{
 				URL: image,
- 				Alt: "album cover",
+				Alt: "album cover",
 			},
 		},
 	}

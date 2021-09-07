@@ -37,13 +37,17 @@ import (
 	"github.com/defsub/takeout/video"
 )
 
+const (
+	ApplicationJson = "application/json"
+)
+
 type UserHandler struct {
 	user       *auth.User
 	config     *config.Config
 	userConfig *config.Config
 }
 
-func (handler *UserHandler) NewMusic(w http.ResponseWriter, r *http.Request) *music.Music {
+func (handler *UserHandler) NewMusic(w http.ResponseWriter) *music.Music {
 	music := music.NewMusic(handler.userConfig)
 	if music.Open() != nil {
 		http.Error(w, "bummer", http.StatusInternalServerError)
@@ -52,7 +56,7 @@ func (handler *UserHandler) NewMusic(w http.ResponseWriter, r *http.Request) *mu
 	return music
 }
 
-func (handler *UserHandler) NewVideo(w http.ResponseWriter, r *http.Request) *video.Video {
+func (handler *UserHandler) NewVideo(w http.ResponseWriter) *video.Video {
 	vid := video.NewVideo(handler.userConfig)
 	if vid.Open() != nil {
 		http.Error(w, "bummer", http.StatusInternalServerError)
@@ -72,7 +76,7 @@ func (handler *UserHandler) NewAuth() *auth.Auth {
 }
 
 func (handler *UserHandler) doit(w http.ResponseWriter, r *http.Request) {
-	m := handler.NewMusic(w, r)
+	m := handler.NewMusic(w)
 	if m == nil {
 		return
 	}
@@ -335,7 +339,7 @@ func (handler *UserHandler) authorized(w http.ResponseWriter, r *http.Request) b
 		return false
 	}
 
-	handler.user, err = a.User(*cookie)
+	handler.user, err = a.UserAuth(*cookie)
 	if err != nil {
 		a.Logout(*cookie)
 		http.Error(w, "bummer", http.StatusUnauthorized)
@@ -370,13 +374,13 @@ func (handler *UserHandler) viewHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	m := handler.NewMusic(w, r)
+	m := handler.NewMusic(w)
 	if m == nil {
 		return
 	}
 	defer m.Close()
 
-	vid := handler.NewVideo(w, r)
+	vid := handler.NewVideo(w)
 	if vid == nil {
 		return
 	}

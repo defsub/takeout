@@ -55,6 +55,18 @@ type DatabaseConfig struct {
 	LogMode bool
 }
 
+type AssistantResponse struct {
+	Speech string
+	Text   string
+}
+
+type AssistantConfig struct {
+	SearchLimit int
+	Welcome     AssistantResponse
+	Play        AssistantResponse
+	Error       AssistantResponse
+}
+
 type MusicConfig struct {
 	ArtistFile           string
 	ArtistRadioBreadth   int
@@ -127,17 +139,18 @@ type ClientConfig struct {
 }
 
 type Config struct {
-	Auth    AuthConfig
-	Buckets []BucketConfig
-	Client  ClientConfig
-	DataDir string
-	Fanart  FanartAPIConfig
-	LastFM  LastFMAPIConfig
-	Music   MusicConfig
-	TMDB    TMDBAPIConfig
-	Search  SearchConfig
-	Server  ServerConfig
-	Video   VideoConfig
+	Auth      AuthConfig
+	Buckets   []BucketConfig
+	Client    ClientConfig
+	DataDir   string
+	Fanart    FanartAPIConfig
+	LastFM    LastFMAPIConfig
+	Music     MusicConfig
+	TMDB      TMDBAPIConfig
+	Search    SearchConfig
+	Server    ServerConfig
+	Video     VideoConfig
+	Assistant AssistantConfig
 }
 
 func (mc *MusicConfig) UserArtistID(name string) (string, bool) {
@@ -249,6 +262,14 @@ func configDefaults(v *viper.Viper) {
 		"Covers":      "+type:cover",
 		"Live Hits":   "+type:live +popularity:<3",
 	})
+
+	v.SetDefault("Assistant.SearchLimit", "10")
+	v.SetDefault("Assistant.Welcome.Speech", "Wecome to Takeout")
+	v.SetDefault("Assistant.Welcome.Text", "Wecome to Takeout")
+	v.SetDefault("Assistant.Play.Speech", "Enjoy the music")
+	v.SetDefault("Assistant.Play.Text", "")
+	v.SetDefault("Assistant.Error.Speech", "Please try again")
+	v.SetDefault("Assistant.Error.Text", "Please try again")
 }
 
 func userAgent() string {

@@ -215,7 +215,7 @@ func (a *Auth) Valid(cookie http.Cookie) bool {
 		fmt.Printf("bad name %s\n", cookie.Name)
 		return false
 	}
-	session := a.findSession(cookie)
+	session := a.findCookieSession(cookie)
 	if session == nil {
 		fmt.Printf("session not found %+v\n", cookie)
 		return false
@@ -228,7 +228,7 @@ func (a *Auth) Valid(cookie http.Cookie) bool {
 }
 
 func (a *Auth) Refresh(cookie *http.Cookie) error {
-	session := a.findSession(*cookie)
+	session := a.findCookieSession(*cookie)
 	if session == nil {
 		return errors.New("session not found")
 	}
@@ -237,8 +237,13 @@ func (a *Auth) Refresh(cookie *http.Cookie) error {
 	return nil
 }
 
-func (a *Auth) User(cookie http.Cookie) (*User, error) {
-	session := a.findSession(cookie)
+func (a *Auth) UserAuth(cookie http.Cookie) (*User, error) {
+	return a.UserAuthValue(cookie.Value)
+}
+
+// TODO make private later
+func (a *Auth) UserAuthValue(value string) (*User, error) {
+	session := a.findSession(value)
 	if session == nil {
 		return nil, errors.New("session not found")
 	}
@@ -254,7 +259,7 @@ func (a *Auth) User(cookie http.Cookie) (*User, error) {
 }
 
 func (a *Auth) Logout(cookie http.Cookie) {
-	session := a.findSession(cookie)
+	session := a.findCookieSession(cookie)
 	if session != nil {
 		a.db.Delete(session)
 	}
@@ -264,9 +269,13 @@ func (a *Auth) key(pass string, salt []byte) ([]byte, error) {
 	return scrypt.Key([]byte(pass), salt, 32768, 8, 1, 32)
 }
 
-func (a *Auth) findSession(cookie http.Cookie) *Session {
+func (a *Auth) findCookieSession(cookie http.Cookie) *Session {
+	return a.findSession(cookie.Value)
+}
+
+func (a *Auth) findSession(value string) *Session {
 	var session Session
-	err := a.db.Where("cookie = ?", cookie.Value).First(&session).Error
+	err := a.db.Where("cookie = ?", value).First(&session).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil
 	}
