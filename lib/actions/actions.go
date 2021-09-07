@@ -284,6 +284,10 @@ func (r *WebhookResponse) AddSuggestions(suggestions ...string) {
 		r.Prompt = &Prompt{}
 	}
 	for _, s := range suggestions {
+		// max allowed length is 25
+		if len(s) > 25 {
+			s = s[0:25]
+		}
 		r.Prompt.Suggestions = append(r.Prompt.Suggestions, &Suggestion{Title: s})
 	}
 }
