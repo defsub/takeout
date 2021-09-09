@@ -335,13 +335,13 @@ const (
 )
 
 func randomCode() string {
-	var buf bytes.Buffer
+	var code string
 	rando.Seed(time.Now().UnixNano())
 	for i := 0; i < CodeSize; i++ {
-		buf.WriteByte(byte(rando.Intn(len(CodeChars))))
+		code += string(rando.Intn(len(CodeChars)))
 	}
-	fmt.Printf("generated code '%s'\n", buf.String())
-	return buf.String()
+	fmt.Printf("generated code '%s'\n", code)
+	return code
 }
 
 func (a *Auth) createCode(c *Code) (err error) {
