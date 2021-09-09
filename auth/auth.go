@@ -338,7 +338,8 @@ func randomCode() string {
 	var code string
 	rando.Seed(time.Now().UnixNano())
 	for i := 0; i < CodeSize; i++ {
-		code += string(rando.Intn(len(CodeChars)))
+		n := rando.Intn(len(CodeChars))
+		code += string(CodeChars[n])
 	}
 	fmt.Printf("generated code '%s'\n", code)
 	return code
