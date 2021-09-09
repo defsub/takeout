@@ -32,6 +32,8 @@ const (
 	IntentAuth = "TAKEOUT_AUTH"
 	IntentPlay = "TAKEOUT_PLAY"
 	IntentNew  = "TAKEOUT_NEW"
+
+	UserParamCookie = "cookie"
 )
 
 func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) {
@@ -45,6 +47,12 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 	hookRequest := actions.NewWebhookRequest(r)
 	hookResponse := actions.NewWebhookResponse(hookRequest)
 	fmt.Printf("got %+v\n", hookRequest)
+	for k, v := range hookRequest.User.Params {
+		fmt.Printf("request user[%s]=%s\n", k, v)
+	}
+	for k, v := range hookRequest.Session.Params {
+		fmt.Printf("request session[%s]=%s\n", k, v)
+	}
 
 	a := handler.NewAuth()
 	if a == nil {
@@ -53,8 +61,8 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	defer a.Close()
 
-	cookie, ok := hookRequest.User.Params["cookie"]
-	if !ok {
+	cookie := hookRequest.UserParam(UserParamCookie)
+	if cookie == "" {
 		handler.authRequired(hookRequest, hookResponse, a)
 	} else if !handler.authCheck(hookRequest, hookResponse, a, cookie) {
 		handler.authRequired(hookRequest, hookResponse, a)
@@ -63,6 +71,12 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	fmt.Printf("sending %+v\n", hookResponse)
+	for k, v := range hookResponse.User.Params {
+		fmt.Printf("response user[%s]=%s\n", k, v)
+	}
+	for k, v := range hookResponse.Session.Params {
+		fmt.Printf("response session[%s]=%s\n", k, v)
+	}
 	hookResponse.Send(w)
 }
 
@@ -189,6 +203,21 @@ func (handler *UserHandler) authRequired(r *actions.WebhookRequest, w *actions.W
 	code := a.GenerateCode()
 	w.AddSimple("Link Account", fmt.Sprintf("Link Account: Code is %s", code.Value))
 	w.AddSuggestions("Next")
+	w.AddSessionParam("code", code.Value)
+}
+
+func (handler *UserHandler) authNext(r *actions.WebhookRequest, w *actions.WebhookResponse,
+	a *auth.Auth) bool {
+	value := r.SessionParam("code")
+	if value == "" {
+		return false
+	}
+	code := a.LinkedCode(value)
+	if code == nil {
+		return false
+	}
+	w.AddUserParam(UserParamCookie, code.Cookie)
+	return true
 }
 
 func (handler *UserHandler) authCheck(r *actions.WebhookRequest, w *actions.WebhookResponse,

@@ -367,14 +367,26 @@ func (a *Auth) GenerateCode() *Code {
 	return c
 }
 
+func (c *Code) expired() bool {
+	now := time.Now()
+	return now.After(c.Expires)
+}
+
+func (a *Auth) LinkedCode(value string) *Code {
+	code := a.findCode(value)
+	if code == nil || code.Cookie == "" || code.expired() {
+		return nil
+	}
+	return code
+}
+
 // This assumes cookie is valid
 func (a *Auth) AuthorizeCode(value, cookie string) error {
 	code := a.findCode(value)
 	if code == nil {
 		return errors.New("code not found")
 	}
-	now := time.Now()
-	if now.After(code.Expires) {
+	if code.expired() {
 		return errors.New("code has expired")
 	}
 	if code.Cookie != "" {

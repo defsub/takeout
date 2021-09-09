@@ -188,8 +188,9 @@ func NewWebhookRequest(r *http.Request) *WebhookRequest {
 
 type WebhookResponse struct {
 	Session *Session `json:"session"`
-	Prompt  *Prompt  `json:"prompt"`
+	User    *User    `json:"user"`
 	Home    *Home    `json:"home"`
+	Prompt  *Prompt  `json:"prompt"`
 }
 
 func NewWebhookResponse(r *WebhookRequest) *WebhookResponse {
@@ -210,6 +211,26 @@ func (r WebhookRequest) IntentName() string {
 		return ""
 	}
 	return r.Intent.Name
+}
+
+func (r *WebhookRequest) SessionParam(name string) string {
+	if r.Session == nil {
+		r.Session = &Session{}
+	}
+	if v, ok := r.Session.Params[name]; ok {
+		return v
+	}
+	return ""
+}
+
+func (r *WebhookRequest) UserParam(name string) string {
+	if r.User == nil {
+		r.User = &User{}
+	}
+	if v, ok := r.User.Params[name]; ok {
+		return v
+	}
+	return ""
 }
 
 func (r WebhookRequest) ArtistParam() string {
@@ -267,6 +288,37 @@ func (r *WebhookResponse) AddSession(id string) {
 		r.Session = &Session{}
 	}
 	r.Session.ID = id
+}
+
+func (r *WebhookResponse) AddSessionParam(name, value string) {
+	if r.Session == nil {
+		r.Session = &Session{}
+	}
+	r.Session.Params[name] = value
+}
+
+func (r *WebhookResponse) SessionParam(name string) string {
+	if r.Session == nil {
+		r.Session = &Session{}
+	}
+	if v, ok := r.Session.Params[name]; ok {
+		return v
+	}
+	return ""
+}
+
+func (r *WebhookResponse) AddUserParam(name, value string) {
+	if r.User == nil {
+		r.User = &User{}
+	}
+	r.User.Params[name] = value
+}
+
+func (r *WebhookResponse) UserParam(name string) string {
+	if r.User == nil {
+		r.User = &User{}
+	}
+	return r.User.Params[name]
 }
 
 func (r *WebhookResponse) AddSimple(speech, text string) {
