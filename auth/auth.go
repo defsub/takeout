@@ -22,6 +22,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	rando "math/rand"
 	"net/http"
 	"strings"
 	"time"
@@ -41,10 +42,17 @@ const (
 
 type User struct {
 	gorm.Model
-	Name    string `gorm:"unique_index:idx_user_name"`
-	Key     []byte
-	Salt    []byte
-	Media   string
+	Name  string `gorm:"unique_index:idx_user_name"`
+	Key   []byte
+	Salt  []byte
+	Media string
+}
+
+type Code struct {
+	gorm.Model
+	Value   string `gorm:"unique_index:idx_code_value"`
+	Expires time.Time
+	Cookie  string
 }
 
 func (u *User) MediaList() []string {
@@ -100,7 +108,7 @@ func (a *Auth) Open() (err error) {
 		return
 	}
 
-	err = a.db.AutoMigrate(&Session{}, &User{})
+	err = a.db.AutoMigrate(&Code{}, &Session{}, &User{})
 	return
 }
 
@@ -313,6 +321,63 @@ func (a *Auth) maxAge() time.Duration {
 	return a.config.Auth.MaxAge
 }
 
+func (a *Auth) codeAge() time.Duration {
+	return a.config.Auth.CodeAge
+}
+
 func (s *Session) maxAge() int {
 	return int(s.Expires.Sub(time.Now()).Seconds())
+}
+
+const (
+	CodeChars = "123456789ABCDEFGHILKMNPQRSTUVWXYZ"
+	CodeSize  = 4
+)
+
+func randomCode() string {
+	var buf bytes.Buffer
+	rando.Seed(time.Now().UnixNano())
+	for i := 0; i < CodeSize; i++ {
+		buf.WriteByte(byte(rando.Intn(len(CodeChars))))
+	}
+	fmt.Printf("generated code '%s'\n", buf.String())
+	return buf.String()
+}
+
+func (a *Auth) createCode(c *Code) (err error) {
+	err = a.db.Create(c).Error
+	return
+}
+
+func (a *Auth) findCode(value string) *Code {
+	var code Code
+	err := a.db.Where("value = ?", value).First(&code).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil
+	}
+	return &code
+}
+
+func (a *Auth) GenerateCode() *Code {
+	value := randomCode()
+	expires := time.Now().Add(a.codeAge())
+	c := &Code{Value: value, Expires: expires}
+	a.db.Create(c)
+	return c
+}
+
+// This assumes cookie is valid
+func (a *Auth) AuthorizeCode(value, cookie string) error {
+	code := a.findCode(value)
+	if code == nil {
+		return errors.New("code not found")
+	}
+	now := time.Now()
+	if now.After(code.Expires) {
+		return errors.New("code has expired")
+	}
+	if code.Cookie != "" {
+		return errors.New("code already authorized")
+	}
+	return a.db.Model(code).Update("cookie", cookie).Error
 }

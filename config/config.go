@@ -118,6 +118,7 @@ type TMDBAPIConfig struct {
 type AuthConfig struct {
 	DB            DatabaseConfig
 	MaxAge        time.Duration
+	CodeAge       time.Duration
 	SecureCookies bool
 }
 
@@ -178,6 +179,7 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Auth.DB.LogMode", "false")
 	v.SetDefault("Auth.DB.Source", "auth.db")
 	v.SetDefault("Auth.MaxAge", "24h")
+	v.SetDefault("Auth.CodeAge", "1h")
 	v.SetDefault("Auth.SecureCookies", "true")
 
 	// TODO apply as default

@@ -296,6 +296,23 @@ func (handler *UserHandler) doLogin(user, pass string) (http.Cookie, error) {
 	return a.Login(user, pass)
 }
 
+func (handler *UserHandler) doCodeAuth(user, pass, value string) error {
+	a := handler.NewAuth()
+	if a == nil {
+		return errors.New("noauth")
+	}
+	defer a.Close()
+	cookie, err := a.Login(user, pass)
+	if err != nil {
+		return err
+	}
+	err = a.AuthorizeCode(value, cookie.Value)
+	if err != nil {
+		return errors.New("invalid code")
+	}
+	return nil
+}
+
 func (handler *UserHandler) loginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseForm()
@@ -309,6 +326,20 @@ func (handler *UserHandler) loginHandler(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
+	http.Error(w, "bummer", http.StatusUnauthorized)
+}
+
+func (handler *UserHandler) linkHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseForm()
+		user := r.Form.Get("user")
+		pass := r.Form.Get("pass")
+		value := r.Form.Get("code")
+		err := handler.doCodeAuth(user, pass, value)
+		if err == nil {
+			return
+		}
+	}
 	http.Error(w, "bummer", http.StatusUnauthorized)
 }
 
@@ -472,6 +503,7 @@ func Serve(config *config.Config) {
 	http.HandleFunc("/", handler.viewHandler)
 	http.HandleFunc("/v", handler.viewHandler)
 	http.HandleFunc("/login", handler.loginHandler)
+	http.HandleFunc("/link", handler.linkHandler)
 	http.HandleFunc("/api/", handler.apiHandler)
 	http.HandleFunc("/hook/", handler.hookHandler)
 	log.Printf("listening on %s\n", config.Server.Listen)

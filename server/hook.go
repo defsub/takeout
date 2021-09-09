@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/lib/actions"
 	"github.com/defsub/takeout/music"
@@ -28,18 +29,22 @@ import (
 )
 
 const (
+	IntentAuth = "TAKEOUT_AUTH"
 	IntentPlay = "TAKEOUT_PLAY"
 	IntentNew  = "TAKEOUT_NEW"
 )
 
 func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) {
-	var err error
 	w.Header().Set("Content-type", ApplicationJson)
 
 	if r.Method != "POST" {
 		http.Error(w, "bummer", http.StatusInternalServerError)
 		return
 	}
+
+	hookRequest := actions.NewWebhookRequest(r)
+	hookResponse := actions.NewWebhookResponse(hookRequest)
+	fmt.Printf("got %+v\n", hookRequest)
 
 	a := handler.NewAuth()
 	if a == nil {
@@ -48,52 +53,55 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	defer a.Close()
 
-	handler.user, err = a.UserAuthValue("6c796f84-2267-406c-942b-388e248d1b92")
-	if err != nil {
-		http.Error(w, "bummer", http.StatusInternalServerError)
-		return
+	cookie, ok := hookRequest.User.Params["cookie"]
+	if !ok {
+		handler.authRequired(hookRequest, hookResponse, a)
+	} else if !handler.authCheck(hookRequest, hookResponse, a, cookie) {
+		handler.authRequired(hookRequest, hookResponse, a)
+	} else {
+		handler.fulfillIntent(w, hookRequest, hookResponse)
 	}
 
+	fmt.Printf("sending %+v\n", hookResponse)
+	hookResponse.Send(w)
+}
+
+func (handler *UserHandler) fulfillIntent(resp http.ResponseWriter,
+	r *actions.WebhookRequest, w *actions.WebhookResponse) {
+	var err error
 	media := handler.user.FirstMedia()
 	if media == "" {
-		http.Error(w, "bummer", http.StatusServiceUnavailable)
+		http.Error(resp, "bummer", http.StatusServiceUnavailable)
 		return
 	}
 	path := fmt.Sprintf("%s/%s", handler.config.DataDir, media)
 
 	handler.userConfig, err = config.LoadConfig(path)
 	if err != nil {
-		http.Error(w, "bummer", http.StatusInternalServerError)
+		http.Error(resp, "bummer", http.StatusInternalServerError)
 		return
 	}
 
-	mus := handler.NewMusic(w)
+	mus := handler.NewMusic(resp)
 	if mus == nil {
 		return
 	}
 	defer mus.Close()
 
-	vid := handler.NewVideo(w)
+	vid := handler.NewVideo(resp)
 	if vid == nil {
 		return
 	}
 	defer vid.Close()
 
-	hookRequest := actions.NewWebhookRequest(r)
-	hookResponse := actions.NewWebhookResponse(hookRequest)
-	fmt.Printf("got %+v\n", hookRequest)
-
-	switch hookRequest.IntentName() {
+	switch r.IntentName() {
 	case IntentPlay:
-		handler.fulfillPlay(hookRequest, hookResponse, mus, vid)
+		handler.fulfillPlay(r, w, mus, vid)
 	case IntentNew:
-		handler.fulfillNew(hookRequest, hookResponse, mus, vid)
+		handler.fulfillNew(r, w, mus, vid)
 	default:
-		handler.fulfillWelcome(hookRequest, hookResponse, mus, vid)
+		handler.fulfillWelcome(r, w, mus, vid)
 	}
-
-	fmt.Printf("sending %+v\n", hookResponse)
-	hookResponse.Send(w)
 }
 
 func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.WebhookResponse,
@@ -122,21 +130,22 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 		query = fmt.Sprintf(`+release:"%s"`, release)
 	}
 
+	// play [artist] radio
+	// play popular songs by [artist]
+
 	var tracks []music.Track
 	if query != "" {
 		tracks = m.Search(query, 10)
 	}
 	fmt.Printf("search for %s -> %d tracks\n", query, len(tracks))
-
-	for _, t := range tracks {
-		w.AddMedia(t.Title,
-			fmt.Sprintf("%s \u2022 %s", t.Artist, t.Release),
-			m.TrackURL(&t).String(),
-			m.TrackImage(t).String())
-	}
-
 	if len(tracks) > 0 {
 		addSimple(w, handler.config.Assistant.Play)
+		for _, t := range tracks {
+			w.AddMedia(t.Title,
+				fmt.Sprintf("%s \u2022 %s", t.Artist, t.Release),
+				m.TrackURL(&t).String(),
+				m.TrackImage(t).String())
+		}
 	} else {
 		addSimple(w, handler.config.Assistant.Error)
 	}
@@ -174,4 +183,17 @@ func (handler *UserHandler) fulfillWelcome(r *actions.WebhookRequest, w *actions
 
 func addSimple(w *actions.WebhookResponse, m config.AssistantResponse) {
 	w.AddSimple(m.Speech, m.Text)
+}
+
+func (handler *UserHandler) authRequired(r *actions.WebhookRequest, w *actions.WebhookResponse, a *auth.Auth) {
+	code := a.GenerateCode()
+	w.AddSimple("Link Account", fmt.Sprintf("Link Account: Code is %s", code.Value))
+	w.AddSuggestions("Next")
+}
+
+func (handler *UserHandler) authCheck(r *actions.WebhookRequest, w *actions.WebhookResponse,
+	a *auth.Auth, cookie string) bool {
+	var err error
+	handler.user, err = a.UserAuthValue(cookie)
+	return err != nil
 }
