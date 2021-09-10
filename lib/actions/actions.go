@@ -43,6 +43,9 @@ const (
 	CapabilityInteractiveCanvas = "LONG_FORM_AUDIO"
 	CapabilityWebLink           = "WEB_LINK"
 	CapabilityHomeStorage       = "HOME_STORAGE"
+
+	VerificationStatusGuest     = "GUEST"
+	VerificationStatusVerified  = "VERIFIED"
 )
 
 type Handler struct {
@@ -211,6 +214,17 @@ func (r WebhookRequest) IntentName() string {
 		return ""
 	}
 	return r.Intent.Name
+}
+
+func (r WebhookRequest) VerifiedStatus() string {
+	if r.User != nil {
+		return r.User.VerificationStatus
+	}
+	return ""
+}
+
+func (r WebhookRequest) Verified() bool {
+	return r.VerifiedStatus() == VerificationStatusVerified
 }
 
 func (r *WebhookRequest) ensureSession() {

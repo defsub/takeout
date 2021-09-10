@@ -59,25 +59,29 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	a := handler.NewAuth()
-	if a == nil {
-		http.Error(w, "bummer", http.StatusInternalServerError)
-		return
-	}
-	defer a.Close()
-
-	cookie := hookRequest.UserParam(UserParamCookie)
-	if cookie == "" {
-		if hookRequest.IntentName() == IntentAuth {
-			// try to authenticate
-			handler.authNext(hookRequest, hookResponse, a)
-		} else {
-			handler.authRequired(hookRequest, hookResponse, a)
-		}
-	} else if !handler.authCheck(hookRequest, hookResponse, a, cookie) {
-		handler.authRequired(hookRequest, hookResponse, a)
+	if !hookRequest.Verified() {
+		handler.verificationRequired(hookRequest, hookResponse)
 	} else {
-		handler.fulfillIntent(w, hookRequest, hookResponse)
+		a := handler.NewAuth()
+		if a == nil {
+			http.Error(w, "bummer", http.StatusInternalServerError)
+			return
+		}
+		defer a.Close()
+
+		cookie := hookRequest.UserParam(UserParamCookie)
+		if cookie == "" {
+			if hookRequest.IntentName() == IntentAuth {
+				// try to authenticate
+				handler.authNext(hookRequest, hookResponse, a)
+			} else {
+				handler.authRequired(hookRequest, hookResponse, a)
+			}
+		} else if !handler.authCheck(hookRequest, hookResponse, a, cookie) {
+			handler.authRequired(hookRequest, hookResponse, a)
+		} else {
+			handler.fulfillIntent(w, hookRequest, hookResponse)
+		}
 	}
 
 	fmt.Printf("sending %+v\n", hookResponse)
@@ -246,4 +250,8 @@ func (handler *UserHandler) authCheck(r *actions.WebhookRequest, w *actions.Webh
 	var err error
 	handler.user, err = a.UserAuthValue(cookie)
 	return err != nil
+}
+
+func (handler *UserHandler) verificationRequired(r *actions.WebhookRequest, w *actions.WebhookResponse) {
+	w.AddSimple("User not verified", "User not verified. Try again")
 }
