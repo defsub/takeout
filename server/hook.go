@@ -46,7 +46,7 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 
 	hookRequest := actions.NewWebhookRequest(r)
 	hookResponse := actions.NewWebhookResponse(hookRequest)
-	fmt.Printf("got %+v\n", hookRequest)
+	fmt.Printf("got intent=%s %+v\n", hookRequest.IntentName(), hookRequest)
 	fmt.Printf("got user %+v\n", *hookRequest.User)
 	if hookRequest.User != nil && hookRequest.User.Params != nil {
 		for k, v := range hookRequest.User.Params {
