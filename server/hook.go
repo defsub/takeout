@@ -67,11 +67,16 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 
 	cookie := hookRequest.UserParam(UserParamCookie)
 	if cookie == "" {
-		handler.authRequired(hookRequest, hookResponse, a)
+		if hookRequest.IntentName() == IntentAuth {
+			// try to authenticate
+			handler.authNext(hookRequest, hookResponse, a)
+		} else {
+			handler.authRequired(hookRequest, hookResponse, a)
+		}
 	} else if !handler.authCheck(hookRequest, hookResponse, a, cookie) {
 		handler.authRequired(hookRequest, hookResponse, a)
 	} else {
-		handler.fulfillIntent(w, hookRequest, hookResponse, a)
+		handler.fulfillIntent(w, hookRequest, hookResponse)
 	}
 
 	fmt.Printf("sending %+v\n", hookResponse)
@@ -89,7 +94,7 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func (handler *UserHandler) fulfillIntent(resp http.ResponseWriter,
-	r *actions.WebhookRequest, w *actions.WebhookResponse, a *auth.Auth) {
+	r *actions.WebhookRequest, w *actions.WebhookResponse) {
 	var err error
 	media := handler.user.FirstMedia()
 	if media == "" {
@@ -117,8 +122,6 @@ func (handler *UserHandler) fulfillIntent(resp http.ResponseWriter,
 	defer vid.Close()
 
 	switch r.IntentName() {
-	case IntentAuth:
-		handler.fulfillAuth(r, w, a)
 	case IntentPlay:
 		handler.fulfillPlay(r, w, mus, vid)
 	case IntentNew:
@@ -126,10 +129,6 @@ func (handler *UserHandler) fulfillIntent(resp http.ResponseWriter,
 	default:
 		handler.fulfillWelcome(r, w, mus, vid)
 	}
-}
-
-func (handler *UserHandler) fulfillAuth(r *actions.WebhookRequest, w *actions.WebhookResponse, a *auth.Auth) {
-	handler.authNext(r, w, a)
 }
 
 func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.WebhookResponse,
