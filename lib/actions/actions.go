@@ -213,10 +213,20 @@ func (r WebhookRequest) IntentName() string {
 	return r.Intent.Name
 }
 
-func (r *WebhookRequest) SessionParam(name string) string {
+func (r *WebhookRequest) ensureSession() {
 	if r.Session == nil {
-		r.Session = &Session{}
+		r.Session = &Session{Params: make(map[string]string)}
 	}
+}
+
+func (r *WebhookRequest) ensureUser() {
+	if r.User == nil {
+		r.User = &User{Params: make(map[string]string)}
+	}
+}
+
+func (r *WebhookRequest) SessionParam(name string) string {
+	r.ensureSession()
 	if v, ok := r.Session.Params[name]; ok {
 		return v
 	}
@@ -224,9 +234,7 @@ func (r *WebhookRequest) SessionParam(name string) string {
 }
 
 func (r *WebhookRequest) UserParam(name string) string {
-	if r.User == nil {
-		r.User = &User{}
-	}
+	r.ensureUser()
 	if v, ok := r.User.Params[name]; ok {
 		return v
 	}
@@ -283,24 +291,30 @@ func (r WebhookRequest) SupportsMedia() bool {
 	return hasRichResponse && hasLongFormAudio
 }
 
-func (r *WebhookResponse) AddSession(id string) {
+func (r *WebhookResponse) ensureSession() {
 	if r.Session == nil {
-		r.Session = &Session{}
+		r.Session = &Session{Params: make(map[string]string)}
 	}
+}
+
+func (r *WebhookResponse) ensureUser() {
+	if r.User == nil {
+		r.User = &User{Params: make(map[string]string)}
+	}
+}
+
+func (r *WebhookResponse) AddSession(id string) {
+	r.ensureSession()
 	r.Session.ID = id
 }
 
 func (r *WebhookResponse) AddSessionParam(name, value string) {
-	if r.Session == nil {
-		r.Session = &Session{}
-	}
+	r.ensureSession()
 	r.Session.Params[name] = value
 }
 
 func (r *WebhookResponse) SessionParam(name string) string {
-	if r.Session == nil {
-		r.Session = &Session{}
-	}
+	r.ensureSession()
 	if v, ok := r.Session.Params[name]; ok {
 		return v
 	}
@@ -308,17 +322,16 @@ func (r *WebhookResponse) SessionParam(name string) string {
 }
 
 func (r *WebhookResponse) AddUserParam(name, value string) {
-	if r.User == nil {
-		r.User = &User{}
-	}
+	r.ensureUser()
 	r.User.Params[name] = value
 }
 
 func (r *WebhookResponse) UserParam(name string) string {
-	if r.User == nil {
-		r.User = &User{}
+	r.ensureUser()
+	if v, ok := r.User.Params[name]; ok {
+		return v
 	}
-	return r.User.Params[name]
+	return ""
 }
 
 func (r *WebhookResponse) AddSimple(speech, text string) {
