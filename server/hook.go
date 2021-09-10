@@ -71,7 +71,7 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 	} else if !handler.authCheck(hookRequest, hookResponse, a, cookie) {
 		handler.authRequired(hookRequest, hookResponse, a)
 	} else {
-		handler.fulfillIntent(w, hookRequest, hookResponse)
+		handler.fulfillIntent(w, hookRequest, hookResponse, a)
 	}
 
 	fmt.Printf("sending %+v\n", hookResponse)
@@ -89,7 +89,7 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func (handler *UserHandler) fulfillIntent(resp http.ResponseWriter,
-	r *actions.WebhookRequest, w *actions.WebhookResponse) {
+	r *actions.WebhookRequest, w *actions.WebhookResponse, a *auth.Auth) {
 	var err error
 	media := handler.user.FirstMedia()
 	if media == "" {
@@ -117,6 +117,8 @@ func (handler *UserHandler) fulfillIntent(resp http.ResponseWriter,
 	defer vid.Close()
 
 	switch r.IntentName() {
+	case IntentAuth:
+		handler.fulfillAuth(r, w, a)
 	case IntentPlay:
 		handler.fulfillPlay(r, w, mus, vid)
 	case IntentNew:
@@ -124,6 +126,10 @@ func (handler *UserHandler) fulfillIntent(resp http.ResponseWriter,
 	default:
 		handler.fulfillWelcome(r, w, mus, vid)
 	}
+}
+
+func (handler *UserHandler) fulfillAuth(r *actions.WebhookRequest, w *actions.WebhookResponse, a *auth.Auth) {
+	handler.authNext(r, w, a)
 }
 
 func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.WebhookResponse,
@@ -215,17 +221,24 @@ func (handler *UserHandler) authRequired(r *actions.WebhookRequest, w *actions.W
 }
 
 func (handler *UserHandler) authNext(r *actions.WebhookRequest, w *actions.WebhookResponse,
-	a *auth.Auth) bool {
+	a *auth.Auth) {
+	ok := true
 	value := r.SessionParam("code")
 	if value == "" {
-		return false
+		ok = false
 	}
 	code := a.LinkedCode(value)
 	if code == nil {
-		return false
+		ok = false
 	}
+	if !ok {
+		handler.authRequired(r, w, a)
+		return
+	}
+
 	w.AddUserParam(UserParamCookie, code.Cookie)
-	return true
+	w.AddSimple("Account linked!", "Account linked!")
+	w.AddSuggestions("Talk to Takeout")
 }
 
 func (handler *UserHandler) authCheck(r *actions.WebhookRequest, w *actions.WebhookResponse,

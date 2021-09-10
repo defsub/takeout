@@ -306,7 +306,9 @@ func (handler *UserHandler) doCodeAuth(user, pass, value string) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("login -> %+v\n", cookie)
 	err = a.AuthorizeCode(value, cookie.Value)
+	fmt.Printf("auth -> %+v\n", err)
 	if err != nil {
 		return errors.New("invalid code")
 	}
@@ -337,8 +339,10 @@ func (handler *UserHandler) linkHandler(w http.ResponseWriter, r *http.Request) 
 		value := r.Form.Get("code")
 		err := handler.doCodeAuth(user, pass, value)
 		if err == nil {
+			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 			return
 		}
+		fmt.Printf("link err %+v\n", err)
 	}
 	http.Error(w, "bummer", http.StatusUnauthorized)
 }
