@@ -47,11 +47,15 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 	hookRequest := actions.NewWebhookRequest(r)
 	hookResponse := actions.NewWebhookResponse(hookRequest)
 	fmt.Printf("got %+v\n", hookRequest)
-	for k, v := range hookRequest.User.Params {
-		fmt.Printf("request user[%s]=%s\n", k, v)
+	if hookRequest.User != nil && hookRequest.User.Params != nil {
+		for k, v := range hookRequest.User.Params {
+			fmt.Printf("request user[%s]=%s\n", k, v)
+		}
 	}
-	for k, v := range hookRequest.Session.Params {
-		fmt.Printf("request session[%s]=%s\n", k, v)
+	if hookRequest.Session != nil && hookRequest.Session.Params != nil {
+		for k, v := range hookRequest.Session.Params {
+			fmt.Printf("request session[%s]=%s\n", k, v)
+		}
 	}
 
 	a := handler.NewAuth()
@@ -71,11 +75,15 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	fmt.Printf("sending %+v\n", hookResponse)
-	for k, v := range hookResponse.User.Params {
-		fmt.Printf("response user[%s]=%s\n", k, v)
+	if hookResponse.User != nil && hookResponse.User.Params != nil {
+		for k, v := range hookResponse.User.Params {
+			fmt.Printf("response user[%s]=%s\n", k, v)
+		}
 	}
-	for k, v := range hookResponse.Session.Params {
-		fmt.Printf("response session[%s]=%s\n", k, v)
+	if hookResponse.Session != nil && hookResponse.Session.Params != nil {
+		for k, v := range hookResponse.Session.Params {
+			fmt.Printf("response session[%s]=%s\n", k, v)
+		}
 	}
 	hookResponse.Send(w)
 }
