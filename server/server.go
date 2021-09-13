@@ -342,9 +342,8 @@ func (handler *UserHandler) linkHandler(w http.ResponseWriter, r *http.Request) 
 			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 			return
 		}
-		fmt.Printf("link err %+v\n", err)
 	}
-	http.Error(w, "bummer", http.StatusUnauthorized)
+	http.Redirect(w, r, "/static/link.html", http.StatusTemporaryRedirect)
 }
 
 func (handler *UserHandler) authorized(w http.ResponseWriter, r *http.Request) bool {

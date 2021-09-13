@@ -249,7 +249,8 @@ func (handler *UserHandler) authCheck(r *actions.WebhookRequest, w *actions.Webh
 	a *auth.Auth, cookie string) bool {
 	var err error
 	handler.user, err = a.UserAuthValue(cookie)
-	return err != nil
+	fmt.Printf("authcheck user is %s\n", handler.user.Name)
+	return err == nil
 }
 
 func (handler *UserHandler) verificationRequired(r *actions.WebhookRequest, w *actions.WebhookResponse) {

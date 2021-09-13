@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"errors"
-	"fmt"
 	rando "math/rand"
 	"net/http"
 	"strings"
@@ -124,13 +123,11 @@ func (a *Auth) AddUser(email, pass string) error {
 	salt := make([]byte, 8)
 	_, err := rand.Read(salt)
 	if err != nil {
-		fmt.Printf("rand: %s\n", err)
 		return err
 	}
 
 	key, err := a.key(pass, salt)
 	if err != nil {
-		fmt.Printf("key: %s\n", err)
 		return err
 	}
 
@@ -148,19 +145,16 @@ func (a *Auth) Login(email, pass string) (http.Cookie, error) {
 
 	key, err := a.key(pass, u.Salt)
 	if err != nil {
-		fmt.Printf("err %s\n", err)
 		return http.Cookie{}, err
 	}
 
 	if !bytes.Equal(u.Key, key) {
-		fmt.Printf("bad match\n")
 		return http.Cookie{}, errors.New("key mismatch")
 	}
 
 	session := a.session(&u)
 	err = a.createSession(session)
 	if err != nil {
-		fmt.Printf("err %s\n", err)
 		return http.Cookie{}, err
 	}
 
@@ -177,13 +171,11 @@ func (a *Auth) ChangePass(email, newpass string) error {
 	salt := make([]byte, 8)
 	_, err = rand.Read(salt)
 	if err != nil {
-		fmt.Printf("rand: %s\n", err)
 		return err
 	}
 
 	key, err := a.key(newpass, salt)
 	if err != nil {
-		fmt.Printf("key: %s\n", err)
 		return err
 	}
 
@@ -220,12 +212,10 @@ func (a *Auth) newCookie(session *Session) http.Cookie {
 
 func (a *Auth) Valid(cookie http.Cookie) bool {
 	if cookie.Name != CookieName {
-		fmt.Printf("bad name %s\n", cookie.Name)
 		return false
 	}
 	session := a.findCookieSession(cookie)
 	if session == nil {
-		fmt.Printf("session not found %+v\n", cookie)
 		return false
 	}
 	now := time.Now()
@@ -331,7 +321,7 @@ func (s *Session) maxAge() int {
 
 const (
 	CodeChars = "123456789ABCDEFGHILKMNPQRSTUVWXYZ"
-	CodeSize  = 4
+	CodeSize  = 6
 )
 
 func randomCode() string {
@@ -341,7 +331,6 @@ func randomCode() string {
 		n := rando.Intn(len(CodeChars))
 		code += string(CodeChars[n])
 	}
-	fmt.Printf("generated code '%s'\n", code)
 	return code
 }
 
