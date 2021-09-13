@@ -219,8 +219,10 @@ func addSimple(w *actions.WebhookResponse, m config.AssistantResponse) {
 
 func (handler *UserHandler) authRequired(r *actions.WebhookRequest, w *actions.WebhookResponse, a *auth.Auth) {
 	code := a.GenerateCode()
-	w.AddSimple("Link Account", fmt.Sprintf("Link Account: Code is %s", code.Value))
-	w.AddSuggestions("Next")
+	speech := fmt.Sprintf(handler.config.Assistant.Link.Speech, code)
+	text := fmt.Sprintf(handler.config.Assistant.Link.Text, code)
+	w.AddSimple(speech, text)
+	w.AddSuggestions(handler.config.Assistant.SuggestionAuth)
 	w.AddSessionParam("code", code.Value)
 }
 
@@ -241,7 +243,7 @@ func (handler *UserHandler) authNext(r *actions.WebhookRequest, w *actions.Webho
 	}
 
 	w.AddUserParam(UserParamCookie, code.Cookie)
-	w.AddSimple("Account linked!", "Account linked!")
+	addSimple(w, handler.config.Assistant.Linked)
 	w.AddSuggestions("Talk to Takeout")
 }
 
@@ -249,10 +251,9 @@ func (handler *UserHandler) authCheck(r *actions.WebhookRequest, w *actions.Webh
 	a *auth.Auth, cookie string) bool {
 	var err error
 	handler.user, err = a.UserAuthValue(cookie)
-	fmt.Printf("authcheck user is %s\n", handler.user.Name)
 	return err == nil
 }
 
 func (handler *UserHandler) verificationRequired(r *actions.WebhookRequest, w *actions.WebhookResponse) {
-	w.AddSimple("User not verified", "User not verified. Try again")
+	addSimple(w, handler.config.Assistant.Error)
 }
