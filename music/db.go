@@ -89,6 +89,16 @@ func (m *Music) Artist(artist string) *Artist {
 	return &a
 }
 
+// Find an artist by name.
+func (m *Music) ArtistLike(artist string) *Artist {
+	var a Artist
+	err := m.db.Where("name like ?", artist).First(&a).Error
+	if err != nil {
+		return nil
+	}
+	return &a
+}
+
 // Compute and update TrackCount for each track with total number of
 // tracks in the associated release/album. This helps to match up
 // MusicBrainz releases with tracks, especially with non-exact

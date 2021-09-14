@@ -145,19 +145,35 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 	release := r.ReleaseParam()
 	radio := r.RadioParam()
 	popular := r.PopularParam()
+	latest := r.LatestParam()
 	query := ""
 
+	// play the new halsey
+	// play the new iron maiden
+	// play the new lana del rey
+	// play the latest lana del rey
 	if artist != "" && radio != "" {
 		// play [artist] radio
-		a := m.Artist(artist)
+		a := m.ArtistLike(artist)
 		if a != nil {
 			tracks = m.ArtistRadio(*a)
 		}
 	} else if popular != "" {
 		// play popular songs by [artist]
-		a := m.Artist(artist) // case sensitive!
+		a := m.ArtistLike(artist)
 		if a != nil {
 			tracks = m.ArtistPopularTracks(*a)
+		}
+	} else if artist != "" && latest != "" {
+		// play the new [artist]
+		// play the latest [artist]
+		a := m.ArtistLike(artist)
+		if a != nil {
+			releases := m.ArtistReleases(a)
+			if len(releases) > 0 {
+				r := releases[len(releases)-1]
+				tracks = m.ReleaseTracks(r)
+			}
 		}
 	} else if artist != "" && song != "" {
 		// play [song] by [artist]
