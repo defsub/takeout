@@ -258,7 +258,8 @@ func (handler *UserHandler) authNext(r *actions.WebhookRequest, w *actions.Webho
 
 func (handler *UserHandler) authCheck(r *actions.WebhookRequest, w *actions.WebhookResponse,
 	a *auth.Auth, cookie string) bool {
-	_, err := a.UserAuthValue(cookie)
+	var err error
+	handler.user, err = a.UserAuthValue(cookie)
 	return err == nil
 }
 
