@@ -145,9 +145,21 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 	release := r.ReleaseParam()
 	radio := r.RadioParam()
 	popular := r.PopularParam()
-
 	query := ""
-	if artist != "" && song != "" {
+
+	if artist != "" && radio != "" {
+		// play [artist] radio
+		a := m.Artist(artist)
+		if a != nil {
+			tracks = m.ArtistRadio(*a)
+		}
+	} else if popular != "" {
+		// play popular songs by [artist]
+		a := m.Artist(artist) // case sensitive!
+		if a != nil {
+			tracks = m.ArtistPopularTracks(*a)
+		}
+	} else if artist != "" && song != "" {
 		// play [song] by [artist]
 		query = fmt.Sprintf(`+artist:"%s" +title:"%s*"`, artist, song)
 	} else if artist != "" && release != "" {
@@ -169,20 +181,6 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 	if query != "" {
 		tracks = m.Search(query, handler.config.Assistant.SearchLimit)
 		fmt.Printf("search for %s -> %d tracks\n", query, len(tracks))
-	} else {
-		if radio != "" {
-			// play [radio] radio
-			a := m.Artist(radio)
-			if a != nil {
-				tracks = m.ArtistRadio(*a)
-			}
-		} else if popular != "" {
-			// play popular songs by [popular]
-			a := m.Artist(popular) // case sensitive!
-			if a != nil {
-				tracks = m.ArtistPopularTracks(*a)
-			}
-		}
 	}
 
 	if len(tracks) > 0 {
