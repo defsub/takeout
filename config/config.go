@@ -62,6 +62,7 @@ type AssistantResponse struct {
 
 type AssistantConfig struct {
 	SearchLimit    int
+	RecentLimit    int
 	Welcome        AssistantResponse
 	Play           AssistantResponse
 	Error          AssistantResponse
@@ -69,6 +70,7 @@ type AssistantConfig struct {
 	Linked         AssistantResponse
 	Guest          AssistantResponse
 	SuggestionAuth string
+	SuggestionNew  string
 }
 
 type MusicConfig struct {
@@ -270,6 +272,7 @@ func configDefaults(v *viper.Viper) {
 	})
 
 	v.SetDefault("Assistant.SearchLimit", "10")
+	v.SetDefault("Assistant.RecentLimit", "3")
 	v.SetDefault("Assistant.Welcome.Speech", "Welcome to Takeout")
 	v.SetDefault("Assistant.Welcome.Text", "Welcome to Takeout")
 	v.SetDefault("Assistant.Play.Speech", "Enjoy the music")
@@ -283,6 +286,7 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Assistant.Guest.Speech", "Guest not supported. Verified user is required.")
 	v.SetDefault("Assistant.Guest.Text", "Guest not supported. Verified user is required.")
 	v.SetDefault("Assistant.SuggestionAuth", "Next")
+	v.SetDefault("Assistant.SuggestionNew", "What's new")
 }
 
 func userAgent() string {

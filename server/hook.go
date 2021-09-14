@@ -138,9 +138,13 @@ func (handler *UserHandler) fulfillIntent(resp http.ResponseWriter,
 
 func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.WebhookResponse,
 	m *music.Music, v *video.Video) {
+	var tracks []music.Track
+
 	song := r.SongParam()
 	artist := r.ArtistParam()
 	release := r.ReleaseParam()
+	radio := r.RadioParam()
+	popular := r.PopularParam()
 
 	query := ""
 	if artist != "" && song != "" {
@@ -162,14 +166,25 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 		query = fmt.Sprintf(`+release:"%s"`, release)
 	}
 
-	// play [artist] radio
-	// play popular songs by [artist]
-
-	var tracks []music.Track
 	if query != "" {
-		tracks = m.Search(query, 10)
+		tracks = m.Search(query, handler.config.Assistant.SearchLimit)
+		fmt.Printf("search for %s -> %d tracks\n", query, len(tracks))
+	} else {
+		if radio != "" {
+			// play [radio] radio
+			a := m.Artist(radio)
+			if a != nil {
+				tracks = m.ArtistRadio(*a)
+			}
+		} else if popular != "" {
+			// play popular songs by [popular]
+			a := m.Artist(popular) // case sensitive!
+			if a != nil {
+				tracks = m.ArtistPopularTracks(*a)
+			}
+		}
 	}
-	fmt.Printf("search for %s -> %d tracks\n", query, len(tracks))
+
 	if len(tracks) > 0 {
 		addSimple(w, handler.config.Assistant.Play)
 		for _, t := range tracks {
@@ -189,13 +204,13 @@ func (handler *UserHandler) fulfillNew(r *actions.WebhookRequest, w *actions.Web
 	speech := "Recent additions are "
 	text := ""
 	for i, rel := range home.AddedReleases {
-		if i == 3 {
+		if i == handler.config.Assistant.RecentLimit {
 			break
 		} else if i > 0 {
 			speech += " and "
 			text += ", "
 		}
-		speech += fmt.Sprintf("%s by %s", rel.Name, rel.Artist)
+		speech += fmt.Sprintf("album %s by %s", rel.Name, rel.Artist)
 		text += fmt.Sprintf("%s \u2022 %s", rel.Artist, rel.Name)
 	}
 	w.AddSimple(speech, text)
@@ -203,14 +218,8 @@ func (handler *UserHandler) fulfillNew(r *actions.WebhookRequest, w *actions.Web
 
 func (handler *UserHandler) fulfillWelcome(r *actions.WebhookRequest, w *actions.WebhookResponse,
 	m *music.Music, v *video.Video) {
-	suggest := []string{}
-	home := handler.homeView(m, v)
-	if len(home.AddedReleases) > 0 {
-		release := home.AddedReleases[0]
-		suggest = append(suggest, fmt.Sprintf("%s by %s", release.Name, release.Artist))
-	}
 	addSimple(w, handler.config.Assistant.Welcome)
-	w.AddSuggestions(suggest...)
+	w.AddSuggestions(handler.config.Assistant.SuggestionNew)
 }
 
 func addSimple(w *actions.WebhookResponse, m config.AssistantResponse) {
@@ -249,8 +258,7 @@ func (handler *UserHandler) authNext(r *actions.WebhookRequest, w *actions.Webho
 
 func (handler *UserHandler) authCheck(r *actions.WebhookRequest, w *actions.WebhookResponse,
 	a *auth.Auth, cookie string) bool {
-	var err error
-	handler.user, err = a.UserAuthValue(cookie)
+	_, err := a.UserAuthValue(cookie)
 	return err == nil
 }
 

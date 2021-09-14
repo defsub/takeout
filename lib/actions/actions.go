@@ -44,8 +44,8 @@ const (
 	CapabilityWebLink           = "WEB_LINK"
 	CapabilityHomeStorage       = "HOME_STORAGE"
 
-	VerificationStatusGuest     = "GUEST"
-	VerificationStatusVerified  = "VERIFIED"
+	VerificationStatusGuest    = "GUEST"
+	VerificationStatusVerified = "VERIFIED"
 )
 
 type Handler struct {
@@ -57,12 +57,14 @@ type Param struct {
 	Resolved string `json:"resolved,omitempty"`
 }
 
-// These params are Takeout specific. Include here to make overall json handing
+// These params are Takeout specific. Included here to make overall json handing
 // easier.
 type Params struct {
 	Artist  *Param `json:"artist"`
 	Song    *Param `json:"song"`
 	Release *Param `json:"release"`
+	Radio   *Param `json:"radio"`
+	Popular *Param `json:"popular"`
 }
 
 type Intent struct {
@@ -274,6 +276,20 @@ func (r WebhookRequest) ReleaseParam() string {
 		return ""
 	}
 	return r.Intent.Params.Release.Resolved
+}
+
+func (r WebhookRequest) RadioParam() string {
+	if r.Intent == nil || r.Intent.Params == nil || r.Intent.Params.Radio == nil {
+		return ""
+	}
+	return r.Intent.Params.Radio.Resolved
+}
+
+func (r WebhookRequest) PopularParam() string {
+	if r.Intent == nil || r.Intent.Params == nil || r.Intent.Params.Popular == nil {
+		return ""
+	}
+	return r.Intent.Params.Popular.Resolved
 }
 
 func (r WebhookRequest) SupportsRichResponse() bool {

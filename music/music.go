@@ -246,6 +246,16 @@ func (m *Music) CreateStations() {
 	}
 }
 
+func (m *Music) ArtistRadio(artist Artist) []Track {
+	tracks := m.ArtistSimilar(artist,
+		m.config.Music.ArtistRadioDepth,
+		m.config.Music.ArtistRadioBreadth)
+	if len(tracks) > m.config.Music.RadioLimit {
+		tracks = tracks[:m.config.Music.RadioLimit]
+	}
+	return tracks
+}
+
 func (m *Music) ArtistSimilar(artist Artist, depth int, breadth int) []Track {
 	var station []Track
 	tracks := m.ArtistPopularTracks(artist, depth)

@@ -19,9 +19,10 @@ package music
 
 import (
 	"fmt"
-	"testing"
 	"regexp"
 	"strconv"
+	"strings"
+	"testing"
 )
 
 func TestPattern(t *testing.T) {
