@@ -251,7 +251,7 @@ func execute(t *template.Template, vars interface{}) string {
 
 func (handler *UserHandler) authRequired(r *actions.WebhookRequest, w *actions.WebhookResponse, a *auth.Auth) {
 	code := a.GenerateCode()
-	vars := map[string]string{"code": code.Value}
+	vars := map[string]string{"Code": code.Value}
 	addSimpleTemplate(w, handler.config.Assistant.Link, vars)
 	w.AddSuggestions(handler.config.Assistant.SuggestionAuth)
 	w.AddSessionParam("code", code.Value)
