@@ -286,5 +286,5 @@ func (handler *UserHandler) authCheck(r *actions.WebhookRequest, w *actions.Webh
 }
 
 func (handler *UserHandler) verificationRequired(r *actions.WebhookRequest, w *actions.WebhookResponse) {
-	addSimple(w, handler.config.Assistant.Error)
+	addSimple(w, handler.config.Assistant.Guest)
 }
