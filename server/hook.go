@@ -18,8 +18,10 @@
 package server
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
+	"text/template"
 
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
@@ -148,10 +150,6 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 	latest := r.LatestParam()
 	query := ""
 
-	// play the new halsey
-	// play the new iron maiden
-	// play the new lana del rey
-	// play the latest lana del rey
 	if artist != "" && radio != "" {
 		// play [artist] radio
 		a := m.ArtistLike(artist)
@@ -167,6 +165,7 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 	} else if artist != "" && latest != "" {
 		// play the new [artist]
 		// play the latest [artist]
+		// play the latest by/from [artist]
 		a := m.ArtistLike(artist)
 		if a != nil {
 			releases := m.ArtistReleases(a)
@@ -240,11 +239,20 @@ func addSimple(w *actions.WebhookResponse, m config.AssistantResponse) {
 	w.AddSimple(m.Speech, m.Text)
 }
 
+func addSimpleTemplate(w *actions.WebhookResponse, m config.AssistantResponse, vars interface{}) {
+	w.AddSimple(execute(m.SpeechTemplate(), vars), execute(m.TextTemplate(), vars))
+}
+
+func execute(t *template.Template, vars interface{}) string {
+	var buf bytes.Buffer
+	_ = t.Execute(&buf, vars)
+	return buf.String()
+}
+
 func (handler *UserHandler) authRequired(r *actions.WebhookRequest, w *actions.WebhookResponse, a *auth.Auth) {
 	code := a.GenerateCode()
-	speech := fmt.Sprintf(handler.config.Assistant.Link.Speech, code)
-	text := fmt.Sprintf(handler.config.Assistant.Link.Text, code)
-	w.AddSimple(speech, text)
+	vars := map[string]string{"code": code.Value}
+	addSimpleTemplate(w, handler.config.Assistant.Link, vars)
 	w.AddSuggestions(handler.config.Assistant.SuggestionAuth)
 	w.AddSessionParam("code", code.Value)
 }

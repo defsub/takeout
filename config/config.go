@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/defsub/takeout"
@@ -56,8 +57,24 @@ type DatabaseConfig struct {
 }
 
 type AssistantResponse struct {
-	Speech string
-	Text   string
+	Speech         string
+	Text           string
+	speechTemplate *template.Template
+	textTemplate   *template.Template
+}
+
+func (r AssistantResponse) SpeechTemplate() *template.Template {
+	if r.speechTemplate == nil {
+		r.speechTemplate = template.Must(template.New("t").Parse(r.Speech))
+	}
+	return r.speechTemplate
+}
+
+func (r AssistantResponse) TextTemplate() *template.Template {
+	if r.textTemplate == nil {
+		r.textTemplate = template.Must(template.New("t").Parse(r.Text))
+	}
+	return r.textTemplate
 }
 
 type AssistantConfig struct {
@@ -279,12 +296,12 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Assistant.Play.Text", "")
 	v.SetDefault("Assistant.Error.Speech", "Please try again")
 	v.SetDefault("Assistant.Error.Text", "Please try again")
-	v.SetDefault("Assistant.Link.Speech", "Link this device to Takeout using code %s")
-	v.SetDefault("Assistant.Link.Text", "Link code is: %s")
-	v.SetDefault("Assistant.Linked.Speech", "Device is now linked")
-	v.SetDefault("Assistant.Linked.Text", "Device is now linked")
-	v.SetDefault("Assistant.Guest.Speech", "Guest not supported. Verified user is required.")
-	v.SetDefault("Assistant.Guest.Text", "Guest not supported. Verified user is required.")
+	v.SetDefault("Assistant.Link.Speech", "Link this device to Takeout using code {{code}}")
+	v.SetDefault("Assistant.Link.Text", "Link code is: {{code}}")
+	v.SetDefault("Assistant.Linked.Speech", "Takeout is now linked")
+	v.SetDefault("Assistant.Linked.Text", "Takeout is now linked")
+	v.SetDefault("Assistant.Guest.Speech", "Guest not supported. A verified user is required.")
+	v.SetDefault("Assistant.Guest.Text", "Guest not supported. A verified user is required.")
 	v.SetDefault("Assistant.SuggestionAuth", "Next")
 	v.SetDefault("Assistant.SuggestionNew", "What's new")
 }
