@@ -63,14 +63,14 @@ type AssistantResponse struct {
 	textTemplate   *template.Template
 }
 
-func (r AssistantResponse) SpeechTemplate() *template.Template {
+func (r *AssistantResponse) SpeechTemplate() *template.Template {
 	if r.speechTemplate == nil {
 		r.speechTemplate = template.Must(template.New("t").Parse(r.Speech))
 	}
 	return r.speechTemplate
 }
 
-func (r AssistantResponse) TextTemplate() *template.Template {
+func (r *AssistantResponse) TextTemplate() *template.Template {
 	if r.textTemplate == nil {
 		r.textTemplate = template.Must(template.New("t").Parse(r.Text))
 	}
@@ -78,16 +78,36 @@ func (r AssistantResponse) TextTemplate() *template.Template {
 }
 
 type AssistantConfig struct {
-	SearchLimit    int
-	RecentLimit    int
-	Welcome        AssistantResponse
-	Play           AssistantResponse
-	Error          AssistantResponse
-	Link           AssistantResponse
-	Linked         AssistantResponse
-	Guest          AssistantResponse
-	SuggestionAuth string
-	SuggestionNew  string
+	SearchLimit       int
+	RecentLimit       int
+	Welcome           AssistantResponse
+	Play              AssistantResponse
+	Error             AssistantResponse
+	Link              AssistantResponse
+	Linked            AssistantResponse
+	Guest             AssistantResponse
+	Recent            AssistantResponse
+	Release           AssistantResponse
+	SuggestionAuth    string
+	SuggestionNew     string
+	MediaObjectName   string
+	MediaObjectDesc   string
+	mediaNameTemplate *template.Template
+	mediaDescTemplate *template.Template
+}
+
+func (c *AssistantConfig) MediaObjectNameTemplate() *template.Template {
+	if c.mediaNameTemplate == nil {
+		c.mediaNameTemplate = template.Must(template.New("t").Parse(c.MediaObjectName))
+	}
+	return c.mediaNameTemplate
+}
+
+func (c *AssistantConfig) MediaObjectDescTemplate() *template.Template {
+	if c.mediaDescTemplate == nil {
+		c.mediaDescTemplate = template.Must(template.New("t").Parse(c.MediaObjectDesc))
+	}
+	return c.mediaDescTemplate
 }
 
 type MusicConfig struct {
@@ -302,8 +322,14 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Assistant.Linked.Text", "Takeout is now linked")
 	v.SetDefault("Assistant.Guest.Speech", "Guest not supported. A verified user is required.")
 	v.SetDefault("Assistant.Guest.Text", "Guest not supported. A verified user is required.")
+	v.SetDefault("Assistant.Recent.Speech", "Recently added albums are ")
+	v.SetDefault("Assistant.Recent.Text", "Recent Albums: ")
+	v.SetDefault("Assistant.Release.Speech", "{{.Name}} by {{.Artist}}")
+	v.SetDefault("Assistant.Release.Text", "{{.Artist}} \u2022 {{.Name}}")
 	v.SetDefault("Assistant.SuggestionAuth", "Next")
 	v.SetDefault("Assistant.SuggestionNew", "What's new")
+	v.SetDefault("Assistant.MediaObjectName", "{{.Title}}")
+	v.SetDefault("Assistant.MediaObjectDesc", "{{.Artist}} \u2022 {{.Release}}")
 }
 
 func userAgent() string {

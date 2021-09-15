@@ -150,40 +150,36 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 	latest := r.LatestParam()
 	query := ""
 
-	if artist != "" && radio != "" {
-		// play [artist] radio
+	if artist != "" {
 		a := m.ArtistLike(artist)
 		if a != nil {
-			tracks = m.ArtistRadio(*a)
-		}
-	} else if popular != "" {
-		// play popular songs by [artist]
-		a := m.ArtistLike(artist)
-		if a != nil {
-			tracks = m.ArtistPopularTracks(*a)
-		}
-	} else if artist != "" && latest != "" {
-		// play the new [artist]
-		// play the latest [artist]
-		// play the latest by/from [artist]
-		a := m.ArtistLike(artist)
-		if a != nil {
-			releases := m.ArtistReleases(a)
-			if len(releases) > 0 {
-				r := releases[len(releases)-1]
-				tracks = m.ReleaseTracks(r)
+			if radio != "" {
+				// play [artist] radio
+				tracks = m.ArtistRadio(*a)
+			} else if popular != "" {
+				// play popular songs by [artist]
+				tracks = m.ArtistPopularTracks(*a)
+			} else if latest != "" {
+				// play the new [artist]
+				// play the latest [artist]
+				// play the latest by/from [artist]
+				releases := m.ArtistReleases(a)
+				if len(releases) > 0 {
+					r := releases[len(releases)-1]
+					tracks = m.ReleaseTracks(r)
+				}
+			} else if song != "" {
+				// play [song] by [artist]
+				query = fmt.Sprintf(`+artist:"%s" +title:"%s*"`, artist, song)
+			} else if release != "" {
+				// play album [release] by [artist]
+				query = fmt.Sprintf(`+artist:"%s" +release:"%s"`, artist, release)
+			} else {
+				// play [artist] songs
+				// play songs by [artist]
+				query = fmt.Sprintf(`+artist:"%s" +type:"single"`, artist)
 			}
 		}
-	} else if artist != "" && song != "" {
-		// play [song] by [artist]
-		query = fmt.Sprintf(`+artist:"%s" +title:"%s*"`, artist, song)
-	} else if artist != "" && release != "" {
-		// play album [release] by [artist]
-		query = fmt.Sprintf(`+artist:"%s" +release:"%s"`, artist, release)
-	} else if artist != "" {
-		// play [artist] songs
-		// play songs by [artist]
-		query = fmt.Sprintf(`+artist:"%s" +type:"single"`, artist)
 	} else if song != "" {
 		// play song [song]
 		// play [song]
@@ -201,8 +197,9 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 	if len(tracks) > 0 {
 		addSimple(w, handler.config.Assistant.Play)
 		for _, t := range tracks {
-			w.AddMedia(t.Title,
-				fmt.Sprintf("%s \u2022 %s", t.Artist, t.Release),
+			name := execute(handler.config.Assistant.MediaObjectNameTemplate(), t)
+			desc := execute(handler.config.Assistant.MediaObjectDescTemplate(), t)
+			w.AddMedia(name, desc,
 				m.TrackURL(&t).String(),
 				m.TrackImage(t).String())
 		}
@@ -214,17 +211,19 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 func (handler *UserHandler) fulfillNew(r *actions.WebhookRequest, w *actions.WebhookResponse,
 	m *music.Music, v *video.Video) {
 	home := handler.homeView(m, v)
-	speech := "Recent additions are "
-	text := ""
+
+	speech := handler.config.Assistant.Recent.Speech
+	text := handler.config.Assistant.Recent.Text
+
 	for i, rel := range home.AddedReleases {
 		if i == handler.config.Assistant.RecentLimit {
 			break
 		} else if i > 0 {
-			speech += " and "
+			speech += " and " // TODO
 			text += ", "
 		}
-		speech += fmt.Sprintf("album %s by %s", rel.Name, rel.Artist)
-		text += fmt.Sprintf("%s \u2022 %s", rel.Artist, rel.Name)
+		speech += execute(handler.config.Assistant.Release.SpeechTemplate(), rel)
+		text += execute(handler.config.Assistant.Release.TextTemplate(), rel)
 	}
 	w.AddSimple(speech, text)
 }
