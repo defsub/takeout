@@ -66,6 +66,7 @@ type Params struct {
 	Radio   *Param `json:"radio"`
 	Popular *Param `json:"popular"`
 	Latest  *Param `json:"latest"`
+	Any     *Param `json:"any"`
 }
 
 type Intent struct {
@@ -298,6 +299,13 @@ func (r WebhookRequest) LatestParam() string {
 		return ""
 	}
 	return r.Intent.Params.Latest.Resolved
+}
+
+func (r WebhookRequest) AnyParam() string {
+	if r.Intent == nil || r.Intent.Params == nil || r.Intent.Params.Any == nil {
+		return ""
+	}
+	return r.Intent.Params.Any.Resolved
 }
 
 func (r WebhookRequest) SupportsRichResponse() bool {

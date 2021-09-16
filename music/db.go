@@ -655,6 +655,15 @@ func (m *Music) ReleasePopular(release Release) []Track {
 	return tracks
 }
 
+func (m *Music) ReleasesLike(name string) []Release {
+	var releases []Release
+	m.db.Where("name like ? and re_id in"+
+		" (select distinct(re_id) from tracks)", name).
+		Order("date").
+		Find(&releases)
+	return releases
+}
+
 // Lookup a release given the internal record ID.
 func (m *Music) LookupRelease(id int) (Release, error) {
 	var release Release

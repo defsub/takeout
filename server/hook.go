@@ -148,6 +148,7 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 	radio := r.RadioParam()
 	popular := r.PopularParam()
 	latest := r.LatestParam()
+	any := r.AnyParam()
 	query := ""
 
 	if artist != "" {
@@ -173,7 +174,19 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 				query = fmt.Sprintf(`+artist:"%s" +title:"%s*"`, artist, song)
 			} else if release != "" {
 				// play album [release] by [artist]
-				query = fmt.Sprintf(`+artist:"%s" +release:"%s"`, artist, release)
+
+				// first try to find a fuzzy match
+				releases := m.ArtistReleases(a)
+				for _, r := range releases {
+					if music.FuzzyName(r.Name) == music.FuzzyName(release) {
+						tracks = m.ReleaseTracks(r)
+						break
+					}
+				}
+				// fallback to search
+				if len(tracks) == 0 {
+					query = fmt.Sprintf(`+artist:"%s" +release:"%s"`, artist, release)
+				}
 			} else {
 				// play [artist] songs
 				// play songs by [artist]
@@ -182,11 +195,33 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 		}
 	} else if song != "" {
 		// play song [song]
-		// play [song]
 		query = fmt.Sprintf(`+title:"%s*"`, song)
 	} else if release != "" {
 		// play album [release]
-		query = fmt.Sprintf(`+release:"%s"`, release)
+		releases := m.ReleasesLike("%"+release+"%")
+		if len(releases) > 0 {
+			r := releases[0]
+			tracks = m.ReleaseTracks(r)
+		}
+		if len(tracks) == 0 {
+			query = fmt.Sprintf(`+release:"%s*"`, release)
+		}
+	} else if any != "" {
+		// play [any]
+		a := m.ArtistLike(any)
+		if a != nil {
+			tracks = m.ArtistPopularTracks(*a)
+		}
+		if len(tracks) == 0 {
+			releases := m.ReleasesLike("%"+any+"%")
+			if len(releases) > 0 {
+				r := releases[0]
+				tracks = m.ReleaseTracks(r)
+			}
+		}
+		if len(tracks) == 0 {
+			query = fmt.Sprintf(`+title:"%s*"`, any)
+		}
 	}
 
 	if query != "" {
@@ -197,6 +232,8 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 	if len(tracks) > 0 {
 		addSimple(w, handler.config.Assistant.Play)
 		for _, t := range tracks {
+			fmt.Printf("%d. %s/%s/%s\n",
+				t.TrackNum, t.Artist, t.Release, t.Title)
 			name := execute(handler.config.Assistant.MediaObjectNameTemplate(), t)
 			desc := execute(handler.config.Assistant.MediaObjectDescTemplate(), t)
 			w.AddMedia(name, desc,

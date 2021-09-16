@@ -23,6 +23,7 @@ Screens running on Chrome 85 for Android 10:
 * Album covers from the [Cover Art Archive](https://coverartarchive.org/)
 * Artist artwork from [Fanart.tv](https://fanart.tv/)
 * Movie data and artwork from [The Movie Database (TMDb)](https://www.themoviedb.org/)
+* Supports [Google Assistant](https://assistant.google.com/). See [ACTIONS](ACTIONS.md) for more details.
 * Media streaming directly from S3 using pre-signed time-based URLs
 * Recently added and released
 * Similar artists and releases
