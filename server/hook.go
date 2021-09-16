@@ -48,7 +48,7 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 
 	hookRequest := actions.NewWebhookRequest(r)
 	hookResponse := actions.NewWebhookResponse(hookRequest)
-	fmt.Printf("got intent=%s %+v\n", hookRequest.IntentName(), hookRequest)
+	fmt.Printf("got intent=%s %+v\n",  hookRequest.IntentName(), hookRequest)
 	fmt.Printf("got user %+v\n", *hookRequest.User)
 	if hookRequest.User != nil && hookRequest.User.Params != nil {
 		for k, v := range hookRequest.User.Params {
@@ -138,6 +138,20 @@ func (handler *UserHandler) fulfillIntent(resp http.ResponseWriter,
 	}
 }
 
+func (handler *UserHandler) artistPopular(m *music.Music, a *music.Artist) []music.Track {
+	return m.ArtistPopularTracks(*a, handler.config.Assistant.TrackLimit)
+}
+
+func (handler *UserHandler) releaseLike(m *music.Music, release string) []music.Track {
+	var tracks []music.Track
+	releases := m.ReleasesLike("%"+release+"%")
+	if len(releases) > 0 {
+		r := releases[0]
+		tracks = m.ReleaseTracks(r)
+	}
+	return tracks
+}
+
 func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.WebhookResponse,
 	m *music.Music, v *video.Video) {
 	var tracks []music.Track
@@ -159,7 +173,7 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 				tracks = m.ArtistRadio(*a)
 			} else if popular != "" {
 				// play popular songs by [artist]
-				tracks = m.ArtistPopularTracks(*a)
+				tracks = handler.artistPopular(m, a)
 			} else if latest != "" {
 				// play the new [artist]
 				// play the latest [artist]
@@ -198,11 +212,7 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 		query = fmt.Sprintf(`+title:"%s*"`, song)
 	} else if release != "" {
 		// play album [release]
-		releases := m.ReleasesLike("%"+release+"%")
-		if len(releases) > 0 {
-			r := releases[0]
-			tracks = m.ReleaseTracks(r)
-		}
+		tracks = handler.releaseLike(m, release)
 		if len(tracks) == 0 {
 			query = fmt.Sprintf(`+release:"%s*"`, release)
 		}
@@ -210,14 +220,10 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 		// play [any]
 		a := m.ArtistLike(any)
 		if a != nil {
-			tracks = m.ArtistPopularTracks(*a)
+			tracks = handler.artistPopular(m, a)
 		}
 		if len(tracks) == 0 {
-			releases := m.ReleasesLike("%"+any+"%")
-			if len(releases) > 0 {
-				r := releases[0]
-				tracks = m.ReleaseTracks(r)
-			}
+			tracks = handler.releaseLike(m, any)
 		}
 		if len(tracks) == 0 {
 			query = fmt.Sprintf(`+title:"%s*"`, any)
@@ -225,7 +231,7 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 	}
 
 	if query != "" {
-		tracks = m.Search(query, handler.config.Assistant.SearchLimit)
+		tracks = m.Search(query, handler.config.Assistant.TrackLimit)
 		fmt.Printf("search for %s -> %d tracks\n", query, len(tracks))
 	}
 
