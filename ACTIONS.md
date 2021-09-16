@@ -32,20 +32,26 @@ linking the code, the following phases can be used to confirm authentication
 using the TAKEOUT_AUTH intent.
 
 > Next
-> Go
+
 > Auth
+
 > Link
+
 > Authenticate
 
 ### TAKEOUT_NEW
 
 A linked user can use the following phrases to send the TAKEOUT_NEW intent.
 
-> New albums
-> New
-> New music
 > What's new
+
 > Tell me what's new
+
+> New
+
+> New albums
+
+> New music
 
 ### TAKEOUT_PLAY
 
@@ -65,7 +71,9 @@ supported and example phrases are:
 #### Play the latest album release from the specified artist.
 
 > play the new [artist]
+
 > play the latest [artist]
+
 > play the latest by/from [artist]
 
 #### Play artist radio which is popular tracks from the artist and similar artists.
@@ -87,6 +95,7 @@ supported and example phrases are:
 #### Play singles by an artist.
 
 > play [artist] songs
+
 > play songs by [artist]
 
 #### Play a specific song or songs by name.
