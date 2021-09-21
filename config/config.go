@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/defsub/takeout"
@@ -53,6 +54,60 @@ type DatabaseConfig struct {
 	Driver  string
 	Source  string
 	LogMode bool
+}
+
+type AssistantResponse struct {
+	Speech         string
+	Text           string
+	speechTemplate *template.Template
+	textTemplate   *template.Template
+}
+
+func (r *AssistantResponse) SpeechTemplate() *template.Template {
+	if r.speechTemplate == nil {
+		r.speechTemplate = template.Must(template.New("t").Parse(r.Speech))
+	}
+	return r.speechTemplate
+}
+
+func (r *AssistantResponse) TextTemplate() *template.Template {
+	if r.textTemplate == nil {
+		r.textTemplate = template.Must(template.New("t").Parse(r.Text))
+	}
+	return r.textTemplate
+}
+
+type AssistantConfig struct {
+	TrackLimit        int
+	RecentLimit       int
+	Welcome           AssistantResponse
+	Play              AssistantResponse
+	Error             AssistantResponse
+	Link              AssistantResponse
+	Linked            AssistantResponse
+	Guest             AssistantResponse
+	Recent            AssistantResponse
+	Release           AssistantResponse
+	SuggestionAuth    string
+	SuggestionNew     string
+	MediaObjectName   string
+	MediaObjectDesc   string
+	mediaNameTemplate *template.Template
+	mediaDescTemplate *template.Template
+}
+
+func (c *AssistantConfig) MediaObjectNameTemplate() *template.Template {
+	if c.mediaNameTemplate == nil {
+		c.mediaNameTemplate = template.Must(template.New("t").Parse(c.MediaObjectName))
+	}
+	return c.mediaNameTemplate
+}
+
+func (c *AssistantConfig) MediaObjectDescTemplate() *template.Template {
+	if c.mediaDescTemplate == nil {
+		c.mediaDescTemplate = template.Must(template.New("t").Parse(c.MediaObjectDesc))
+	}
+	return c.mediaDescTemplate
 }
 
 type MusicConfig struct {
@@ -106,6 +161,7 @@ type TMDBAPIConfig struct {
 type AuthConfig struct {
 	DB            DatabaseConfig
 	MaxAge        time.Duration
+	CodeAge       time.Duration
 	SecureCookies bool
 }
 
@@ -127,17 +183,18 @@ type ClientConfig struct {
 }
 
 type Config struct {
-	Auth    AuthConfig
-	Buckets []BucketConfig
-	Client  ClientConfig
-	DataDir string
-	Fanart  FanartAPIConfig
-	LastFM  LastFMAPIConfig
-	Music   MusicConfig
-	TMDB    TMDBAPIConfig
-	Search  SearchConfig
-	Server  ServerConfig
-	Video   VideoConfig
+	Auth      AuthConfig
+	Buckets   []BucketConfig
+	Client    ClientConfig
+	DataDir   string
+	Fanart    FanartAPIConfig
+	LastFM    LastFMAPIConfig
+	Music     MusicConfig
+	TMDB      TMDBAPIConfig
+	Search    SearchConfig
+	Server    ServerConfig
+	Video     VideoConfig
+	Assistant AssistantConfig
 }
 
 func (mc *MusicConfig) UserArtistID(name string) (string, bool) {
@@ -165,6 +222,7 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Auth.DB.LogMode", "false")
 	v.SetDefault("Auth.DB.Source", "auth.db")
 	v.SetDefault("Auth.MaxAge", "24h")
+	v.SetDefault("Auth.CodeAge", "1h")
 	v.SetDefault("Auth.SecureCookies", "true")
 
 	// TODO apply as default
@@ -249,6 +307,29 @@ func configDefaults(v *viper.Viper) {
 		"Covers":      "+type:cover",
 		"Live Hits":   "+type:live +popularity:<3",
 	})
+
+	v.SetDefault("Assistant.TrackLimit", "10")
+	v.SetDefault("Assistant.RecentLimit", "3")
+	v.SetDefault("Assistant.Welcome.Speech", "Welcome to Takeout")
+	v.SetDefault("Assistant.Welcome.Text", "Welcome to Takeout")
+	v.SetDefault("Assistant.Play.Speech", "Enjoy the music")
+	v.SetDefault("Assistant.Play.Text", "")
+	v.SetDefault("Assistant.Error.Speech", "Please try again")
+	v.SetDefault("Assistant.Error.Text", "Please try again")
+	v.SetDefault("Assistant.Link.Speech", "Link this device to Takeout using code {{.Code}}")
+	v.SetDefault("Assistant.Link.Text", "Link code is: {{.Code}}")
+	v.SetDefault("Assistant.Linked.Speech", "Takeout is now linked")
+	v.SetDefault("Assistant.Linked.Text", "Takeout is now linked")
+	v.SetDefault("Assistant.Guest.Speech", "Guest not supported. A verified user is required.")
+	v.SetDefault("Assistant.Guest.Text", "Guest not supported. A verified user is required.")
+	v.SetDefault("Assistant.Recent.Speech", "Recently added albums are ")
+	v.SetDefault("Assistant.Recent.Text", "Recent Albums: ")
+	v.SetDefault("Assistant.Release.Speech", "{{.Name}} by {{.Artist}}")
+	v.SetDefault("Assistant.Release.Text", "{{.Artist}} \u2022 {{.Name}}")
+	v.SetDefault("Assistant.SuggestionAuth", "Next")
+	v.SetDefault("Assistant.SuggestionNew", "What's new")
+	v.SetDefault("Assistant.MediaObjectName", "{{.Title}}")
+	v.SetDefault("Assistant.MediaObjectDesc", "{{.Artist}} \u2022 {{.Release}}")
 }
 
 func userAgent() string {

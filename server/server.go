@@ -37,13 +37,17 @@ import (
 	"github.com/defsub/takeout/video"
 )
 
+const (
+	ApplicationJson = "application/json"
+)
+
 type UserHandler struct {
 	user       *auth.User
 	config     *config.Config
 	userConfig *config.Config
 }
 
-func (handler *UserHandler) NewMusic(w http.ResponseWriter, r *http.Request) *music.Music {
+func (handler *UserHandler) NewMusic(w http.ResponseWriter) *music.Music {
 	music := music.NewMusic(handler.userConfig)
 	if music.Open() != nil {
 		http.Error(w, "bummer", http.StatusInternalServerError)
@@ -52,7 +56,7 @@ func (handler *UserHandler) NewMusic(w http.ResponseWriter, r *http.Request) *mu
 	return music
 }
 
-func (handler *UserHandler) NewVideo(w http.ResponseWriter, r *http.Request) *video.Video {
+func (handler *UserHandler) NewVideo(w http.ResponseWriter) *video.Video {
 	vid := video.NewVideo(handler.userConfig)
 	if vid.Open() != nil {
 		http.Error(w, "bummer", http.StatusInternalServerError)
@@ -72,7 +76,7 @@ func (handler *UserHandler) NewAuth() *auth.Auth {
 }
 
 func (handler *UserHandler) doit(w http.ResponseWriter, r *http.Request) {
-	m := handler.NewMusic(w, r)
+	m := handler.NewMusic(w)
 	if m == nil {
 		return
 	}
@@ -292,6 +296,25 @@ func (handler *UserHandler) doLogin(user, pass string) (http.Cookie, error) {
 	return a.Login(user, pass)
 }
 
+func (handler *UserHandler) doCodeAuth(user, pass, value string) error {
+	a := handler.NewAuth()
+	if a == nil {
+		return errors.New("noauth")
+	}
+	defer a.Close()
+	cookie, err := a.Login(user, pass)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("login -> %+v\n", cookie)
+	err = a.AuthorizeCode(value, cookie.Value)
+	fmt.Printf("auth -> %+v\n", err)
+	if err != nil {
+		return errors.New("invalid code")
+	}
+	return nil
+}
+
 func (handler *UserHandler) loginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseForm()
@@ -306,6 +329,21 @@ func (handler *UserHandler) loginHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	http.Error(w, "bummer", http.StatusUnauthorized)
+}
+
+func (handler *UserHandler) linkHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseForm()
+		user := r.Form.Get("user")
+		pass := r.Form.Get("pass")
+		value := r.Form.Get("code")
+		err := handler.doCodeAuth(user, pass, value)
+		if err == nil {
+			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+			return
+		}
+	}
+	http.Redirect(w, r, "/static/link.html", http.StatusTemporaryRedirect)
 }
 
 func (handler *UserHandler) authorized(w http.ResponseWriter, r *http.Request) bool {
@@ -335,7 +373,7 @@ func (handler *UserHandler) authorized(w http.ResponseWriter, r *http.Request) b
 		return false
 	}
 
-	handler.user, err = a.User(*cookie)
+	handler.user, err = a.UserAuth(*cookie)
 	if err != nil {
 		a.Logout(*cookie)
 		http.Error(w, "bummer", http.StatusUnauthorized)
@@ -370,13 +408,13 @@ func (handler *UserHandler) viewHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	m := handler.NewMusic(w, r)
+	m := handler.NewMusic(w)
 	if m == nil {
 		return
 	}
 	defer m.Close()
 
-	vid := handler.NewVideo(w, r)
+	vid := handler.NewVideo(w)
 	if vid == nil {
 		return
 	}
@@ -468,7 +506,9 @@ func Serve(config *config.Config) {
 	http.HandleFunc("/", handler.viewHandler)
 	http.HandleFunc("/v", handler.viewHandler)
 	http.HandleFunc("/login", handler.loginHandler)
+	http.HandleFunc("/link", handler.linkHandler)
 	http.HandleFunc("/api/", handler.apiHandler)
+	http.HandleFunc("/hook/", handler.hookHandler)
 	log.Printf("listening on %s\n", config.Server.Listen)
 	http.ListenAndServe(config.Server.Listen, nil)
 }

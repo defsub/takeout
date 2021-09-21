@@ -90,12 +90,7 @@ func (r *Resolver) resolveArtistRef(id, res string, entries []spiff.Entry) ([]sp
 	case "shuffle":
 		tracks = r.music.ArtistShuffle(artist, r.config.Music.RadioLimit)
 	case "similar":
-		tracks = r.music.ArtistSimilar(artist,
-			r.config.Music.ArtistRadioDepth,
-			r.config.Music.ArtistRadioBreadth)
-		if len(tracks) > r.config.Music.RadioLimit {
-			tracks = tracks[:r.config.Music.RadioLimit]
-		}
+		tracks = r.music.ArtistRadio(artist)
 	case "deep":
 		tracks = r.music.ArtistDeep(artist, r.config.Music.RadioLimit)
 	}

@@ -410,7 +410,7 @@ func (handler *UserHandler) apiSearch(w http.ResponseWriter, r *http.Request, m 
 // 200: success
 // 500: error
 func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-type", "application/json")
+	w.Header().Set("Content-type", ApplicationJson)
 
 	if r.URL.Path == "/api/login" {
 		handler.apiLogin(w, r)
@@ -438,13 +438,13 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		m := handler.NewMusic(w, r)
+		m := handler.NewMusic(w)
 		if m == nil {
 			return
 		}
 		defer m.Close()
 
-		vid := handler.NewVideo(w, r)
+		vid := handler.NewVideo(w)
 		if vid == nil {
 			return
 		}

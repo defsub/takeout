@@ -334,7 +334,7 @@ func fuzzyArtist(name string) string {
 	return re.ReplaceAllString(name, "")
 }
 
-func fuzzyName(name string) string {
+func FuzzyName(name string) string {
 	// treat "№" the same as "No" for comparison - STP album №4
 	name = strings.Replace(name, "№", "No", -1)
 	re := regexp.MustCompile(`[^a-zA-Z0-9]`)
@@ -563,7 +563,7 @@ func (m *Music) fixTrackReleases() (bool, error) {
 			matched := false
 			for _, r := range releases {
 				// try fuzzy match
-				if fuzzyName(t.Release) == fuzzyName(r.Name) &&
+				if FuzzyName(t.Release) == FuzzyName(r.Name) &&
 					t.TrackCount == r.TrackCount {
 					fixReleases[t.Release] = true
 					fixTracks = append(fixTracks, map[string]interface{}{

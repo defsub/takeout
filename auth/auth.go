@@ -21,7 +21,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"errors"
-	"fmt"
+	rando "math/rand"
 	"net/http"
 	"strings"
 	"time"
@@ -41,10 +41,17 @@ const (
 
 type User struct {
 	gorm.Model
-	Name    string `gorm:"unique_index:idx_user_name"`
-	Key     []byte
-	Salt    []byte
-	Media   string
+	Name  string `gorm:"unique_index:idx_user_name"`
+	Key   []byte
+	Salt  []byte
+	Media string
+}
+
+type Code struct {
+	gorm.Model
+	Value   string `gorm:"unique_index:idx_code_value"`
+	Expires time.Time
+	Cookie  string
 }
 
 func (u *User) MediaList() []string {
@@ -100,7 +107,7 @@ func (a *Auth) Open() (err error) {
 		return
 	}
 
-	err = a.db.AutoMigrate(&Session{}, &User{})
+	err = a.db.AutoMigrate(&Code{}, &Session{}, &User{})
 	return
 }
 
@@ -116,13 +123,11 @@ func (a *Auth) AddUser(email, pass string) error {
 	salt := make([]byte, 8)
 	_, err := rand.Read(salt)
 	if err != nil {
-		fmt.Printf("rand: %s\n", err)
 		return err
 	}
 
 	key, err := a.key(pass, salt)
 	if err != nil {
-		fmt.Printf("key: %s\n", err)
 		return err
 	}
 
@@ -140,19 +145,16 @@ func (a *Auth) Login(email, pass string) (http.Cookie, error) {
 
 	key, err := a.key(pass, u.Salt)
 	if err != nil {
-		fmt.Printf("err %s\n", err)
 		return http.Cookie{}, err
 	}
 
 	if !bytes.Equal(u.Key, key) {
-		fmt.Printf("bad match\n")
 		return http.Cookie{}, errors.New("key mismatch")
 	}
 
 	session := a.session(&u)
 	err = a.createSession(session)
 	if err != nil {
-		fmt.Printf("err %s\n", err)
 		return http.Cookie{}, err
 	}
 
@@ -169,13 +171,11 @@ func (a *Auth) ChangePass(email, newpass string) error {
 	salt := make([]byte, 8)
 	_, err = rand.Read(salt)
 	if err != nil {
-		fmt.Printf("rand: %s\n", err)
 		return err
 	}
 
 	key, err := a.key(newpass, salt)
 	if err != nil {
-		fmt.Printf("key: %s\n", err)
 		return err
 	}
 
@@ -212,12 +212,10 @@ func (a *Auth) newCookie(session *Session) http.Cookie {
 
 func (a *Auth) Valid(cookie http.Cookie) bool {
 	if cookie.Name != CookieName {
-		fmt.Printf("bad name %s\n", cookie.Name)
 		return false
 	}
-	session := a.findSession(cookie)
+	session := a.findCookieSession(cookie)
 	if session == nil {
-		fmt.Printf("session not found %+v\n", cookie)
 		return false
 	}
 	now := time.Now()
@@ -228,7 +226,7 @@ func (a *Auth) Valid(cookie http.Cookie) bool {
 }
 
 func (a *Auth) Refresh(cookie *http.Cookie) error {
-	session := a.findSession(*cookie)
+	session := a.findCookieSession(*cookie)
 	if session == nil {
 		return errors.New("session not found")
 	}
@@ -237,8 +235,13 @@ func (a *Auth) Refresh(cookie *http.Cookie) error {
 	return nil
 }
 
-func (a *Auth) User(cookie http.Cookie) (*User, error) {
-	session := a.findSession(cookie)
+func (a *Auth) UserAuth(cookie http.Cookie) (*User, error) {
+	return a.UserAuthValue(cookie.Value)
+}
+
+// TODO make private later
+func (a *Auth) UserAuthValue(value string) (*User, error) {
+	session := a.findSession(value)
 	if session == nil {
 		return nil, errors.New("session not found")
 	}
@@ -254,7 +257,7 @@ func (a *Auth) User(cookie http.Cookie) (*User, error) {
 }
 
 func (a *Auth) Logout(cookie http.Cookie) {
-	session := a.findSession(cookie)
+	session := a.findCookieSession(cookie)
 	if session != nil {
 		a.db.Delete(session)
 	}
@@ -264,9 +267,13 @@ func (a *Auth) key(pass string, salt []byte) ([]byte, error) {
 	return scrypt.Key([]byte(pass), salt, 32768, 8, 1, 32)
 }
 
-func (a *Auth) findSession(cookie http.Cookie) *Session {
+func (a *Auth) findCookieSession(cookie http.Cookie) *Session {
+	return a.findSession(cookie.Value)
+}
+
+func (a *Auth) findSession(value string) *Session {
 	var session Session
-	err := a.db.Where("cookie = ?", cookie.Value).First(&session).Error
+	err := a.db.Where("cookie = ?", value).First(&session).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil
 	}
@@ -304,6 +311,75 @@ func (a *Auth) maxAge() time.Duration {
 	return a.config.Auth.MaxAge
 }
 
+func (a *Auth) codeAge() time.Duration {
+	return a.config.Auth.CodeAge
+}
+
 func (s *Session) maxAge() int {
 	return int(s.Expires.Sub(time.Now()).Seconds())
+}
+
+const (
+	CodeChars = "123456789ABCDEFGHILKMNPQRSTUVWXYZ"
+	CodeSize  = 6
+)
+
+func randomCode() string {
+	var code string
+	rando.Seed(time.Now().UnixNano())
+	for i := 0; i < CodeSize; i++ {
+		n := rando.Intn(len(CodeChars))
+		code += string(CodeChars[n])
+	}
+	return code
+}
+
+func (a *Auth) createCode(c *Code) (err error) {
+	err = a.db.Create(c).Error
+	return
+}
+
+func (a *Auth) findCode(value string) *Code {
+	var code Code
+	err := a.db.Where("value = ?", value).First(&code).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil
+	}
+	return &code
+}
+
+func (a *Auth) GenerateCode() *Code {
+	value := randomCode()
+	expires := time.Now().Add(a.codeAge())
+	c := &Code{Value: value, Expires: expires}
+	a.db.Create(c)
+	return c
+}
+
+func (c *Code) expired() bool {
+	now := time.Now()
+	return now.After(c.Expires)
+}
+
+func (a *Auth) LinkedCode(value string) *Code {
+	code := a.findCode(value)
+	if code == nil || code.Cookie == "" || code.expired() {
+		return nil
+	}
+	return code
+}
+
+// This assumes cookie is valid
+func (a *Auth) AuthorizeCode(value, cookie string) error {
+	code := a.findCode(value)
+	if code == nil {
+		return errors.New("code not found")
+	}
+	if code.expired() {
+		return errors.New("code has expired")
+	}
+	if code.Cookie != "" {
+		return errors.New("code already authorized")
+	}
+	return a.db.Model(code).Update("cookie", cookie).Error
 }
