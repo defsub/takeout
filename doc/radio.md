@@ -1,11 +1,11 @@
-# Radio
+# Takeout Radio
 
 The radio feature is one of the primary reasons Takeout was created. Radio is
 intended to be a way to avoid manual creation of playlists and instead
 dynamically find and (re)discover songs in a music collection.
 
 Radio stations can be created from anything in the vast search index of
-metadata. The [search index](SEARCH.md) contains the usual artist, album and
+metadata. The [search index](search.md) contains the usual artist, album and
 track names but also goes deep into metadata:
 
 * Genres
@@ -18,7 +18,7 @@ track names but also goes deep into metadata:
 * Live songs
 
 Radio stations are search queries. You can create your own by adding them to
-the [config file](CONFIG.md). Test queries using the search interface and see
+the [config file](config.md). Test queries using the search interface and see
 what you can find. The defaults are:
 
 * Series Hits:  +series:*

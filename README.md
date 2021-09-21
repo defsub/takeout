@@ -1,29 +1,20 @@
 # Takeout
 
-Takeout is media service that indexes organized media files in S3 buckets using
-MusicBrainz, Last.fm, Fanart.tv, and The Movie Database to make media available for
-streaming using a [Flutter app](https://github.com/defsub/takeout_app), web
-interface and VLC. Media is browsed using the Takeout server and streamed
-directly from S3 using pre-signed time-based URLs. REST APIs are available to
-build custom interfaces.
-
-Screens running on Chrome 85 for Android 10:
-
-<p align="center">
-<img src="https://github.com/defsub/defsub.github.io/blob/master/takeout/screens/2020-09-07/Screenshot_20200907-082736.png" width="200">
-<img src="https://github.com/defsub/defsub.github.io/blob/master/takeout/screens/2020-09-07/Screenshot_20200907-082827.png" width="200">
-<img src="https://github.com/defsub/defsub.github.io/blob/master/takeout/screens/2020-09-07/Screenshot_20200907-083006.png" width="200">
-<img src="https://github.com/defsub/defsub.github.io/blob/master/takeout/screens/2020-09-07/Screenshot_20200907-083707.png" width="200">
-</p>
+Takeout is a copyleft media service that indexes organized media files in S3
+buckets using MusicBrainz, Last.fm, Fanart.tv, and The Movie Database to make
+media available for streaming using a [Flutter app](https://github.com/defsub/takeout_app),
+TV app, web interface and VLC. Media is browsed using the Takeout server and
+streamed directly from S3 using pre-signed time-based URLs. REST APIs are available
+to build custom interfaces.
 
 ## Features
 
-* Powerful search and playlists using [Bleve](https://blevesearch.com/). See [SEARCH.md](SEARCH.md).
-* Metadata from [MusicBrainz](https://musicbrainz.org/) and [Last.fm](https://last.fm/)
+* Powerful search and playlists using [Bleve](https://blevesearch.com/). See [search.md](doc/search.md)
+* Music metadata from [MusicBrainz](https://musicbrainz.org/) and [Last.fm](https://last.fm/)
 * Album covers from the [Cover Art Archive](https://coverartarchive.org/)
 * Artist artwork from [Fanart.tv](https://fanart.tv/)
-* Movie data and artwork from [The Movie Database (TMDb)](https://www.themoviedb.org/)
-* Supports [Google Assistant](https://assistant.google.com/). See [ACTIONS](ACTIONS.md) for more details.
+* Movie metadata and artwork from [The Movie Database (TMDb)](https://www.themoviedb.org/)
+* Support for [Google Assistant](https://assistant.google.com/). See [actions.md](doc/actions.md) for more details.
 * Media streaming directly from S3 using pre-signed time-based URLs
 * Recently added and released
 * Similar artists and releases
@@ -42,7 +33,7 @@ Screens running on Chrome 85 for Android 10:
 ## Quick Start
 
 * Tag your media with [Picard](https://picard.musicbrainz.org/) (highly recommeded)
-* Put your organized media in a S3 bucket ([Wasabi](https://wasabi.com/),
+* Put your organized media in an S3 bucket ([Wasabi](https://wasabi.com/),
   [Minio](https://min.io/), [AWS](https://aws.amazon.com/))
 * Optionally setup a virtual server ([Linode](https://www.linode.com/),
   [EC2](https://aws.amazon.com/), [Compute Engine](https://cloud.google.com/compute))
@@ -53,7 +44,7 @@ Screens running on Chrome 85 for Android 10:
   * cd takeout/cmd/takeout
   * go build
   * go install
-* Create your [takeout.ini](CONFIG.md)
+* Create your [takeout.ini](docs/config.md)
 * Sync your data
   * ./takeout sync
 * Databases may need ~100MB and Bleve index ~100MB, depending on the media library

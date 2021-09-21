@@ -1,31 +1,34 @@
-# MusicBrainz
+# Takeout TODO
+
+## MusicBrainz
 
 * Prefer physical media over digital media or prefer releases with media that have titles
 
-# Last.fm
+## Last.fm
 
 * Scrobble tracks?
 
-# Search
+## Search
 
 * Resulting ordering other than Bleve default?
 
-# Music
+## Music
 
 * Full screen now playing view (web ui)
 * Play history
 
-# General
+## General
 
-* Add users with UI or command line tool
-* Improved web UI
+* Add users with UI (command line tool now supported)
+* Improved web ui
 * Use [Castjs](https://github.com/Fenny/Castjs) to cast media to TV, hub, etc.
 
-# Dev work
+## Dev work
 
 * Refactor public/private usage
 * Refactor use of pointers
 
-# Future
+## Future
 
 * Photos
+* Alexa Skill

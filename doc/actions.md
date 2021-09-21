@@ -1,8 +1,9 @@
 # Actions
 
-Takeout supports a Google Assistant webhook to play music using the Google
-Assistant app, Nest Audio, Nest Hub, Google Home, and related products. Details
-related to how this is designed and implemented are described below.
+Takeout optionally supports a Google Assistant webhook to play music using the
+Google Assistant app, Nest Audio, Nest Hub, Google Home, and related products
+and services. Details related to how this is designed and implemented are
+described below.
 
 ## Verified Users
 
