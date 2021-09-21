@@ -13,7 +13,7 @@ privacy@defsub.com.
 The Takeout server requires a username and password for each user to access
 related media and services. The usernames and passwords are stored in the
 server _auth_ database. The username is stored in the clear and the password is
-stored with (Scrypt)[https://en.wikipedia.org/wiki/Scrypt]. No other personal
+stored with [Scrypt](https://en.wikipedia.org/wiki/Scrypt). No other personal
 information is requested or stored by Takeout.
 
 The Takeout server may temporarily store access logs that contain request
@@ -54,17 +54,17 @@ any music, video, or movie media.
 Media stored in your S3 bucket can potentially be visible to the S3 bucket
 service provider. Contact your service provider to obtain further information
 regarding the S3 bucket privacy policy. Personal S3 bucket hosting options,
-such as (Minio)[https://min.io/], are available.
+such as [Minio](https://min.io/), are available.
 
 ## Metadata
 
 The Takeout server uses the following services to discover your media metadata:
 
-- (Cover Art Archive)[https://coverartarchive.org/] - obtain links to cover images
-- (Fanart.tv)[https://fanart.tv/] - obtain links to Artist images (requires API key)
-- (MusicBrainz)[https://musicbrainz.org/] - obtain music metadata
-- (Last.fm)[https://www.last.fm/] - obtain popular tracks, artist name resolving (requires API key)
-- (The Movie Database)[https://www.themoviedb.org/] - obtain movie metadata (requires API key)
+- [Cover Art Archive](https://coverartarchive.org/) - obtain links to cover images
+- [Fanart.tv](https://fanart.tv/) - obtain links to Artist images (requires API key)
+- [MusicBrainz](https://musicbrainz.org/) - obtain music metadata
+- [Last.fm](https://www.last.fm/) - obtain popular tracks, artist name resolving (requires API key)
+- [The Movie Database](https://www.themoviedb.org/) - obtain movie metadata (requires API key)
 
 The Takeout server uses the respective service APIs to query and store related
 metadata based on your S3 bucket object file names. Requests to the service
@@ -95,8 +95,8 @@ the Takeout server.
 
 The Takeout server can optionally be used with Google Assistant enabled devices
 and apps. A cookie is used to link your Google Assistant user to your Takeout
-user.  The cookie is stored in your Google Assistant (user
-storage)[https://developers.google.com/assistant/conversational/storage-user].
+user.  The cookie is stored in your Google Assistant [user
+storage](https://developers.google.com/assistant/conversational/storage-user).
 This process requires you to enable voice match, personal results, and web &
 app activity. See the corresponding Google privacy policy for information
 regarding these settings.
@@ -120,4 +120,4 @@ By using the Takeout project, you consent to this privacy policy.
 ## Changes
 
 Any changes made to this privacy policy will be made available in this file at
-the (Takeout server github repository)[https://github.com/defsub/takeout].
+the [Takeout server github repository](https://github.com/defsub/takeout).
