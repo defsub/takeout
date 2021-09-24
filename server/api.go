@@ -605,20 +605,13 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			// /api/(genres)/str
-			otherRegexp := regexp.MustCompile(`/api/([a-z]+)/([a-zA-Z]+)`)
-			matches = otherRegexp.FindStringSubmatch(r.URL.Path)
+			// /api/movies/genres/name
+			// allow dash and space in name
+			genresRegexp := regexp.MustCompile(`/api/movies/genres/([a-zA-Z -]+)`)
+			matches = genresRegexp.FindStringSubmatch(r.URL.Path)
 			if matches != nil {
-				v := matches[1]
-				name := strings.TrimSpace(matches[2])
-				fmt.Printf("%s %s\n", v, name)
-				switch v {
-				case "genres":
-					// /api/genres/str
-					handler.apiView(w, r, handler.genreView(vid, name))
-				default:
-					http.Error(w, "bummer", http.StatusNotFound)
-				}
+				name := strings.TrimSpace(matches[1])
+				handler.apiView(w, r, handler.genreView(vid, name))
 				return
 			}
 

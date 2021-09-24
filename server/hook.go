@@ -26,6 +26,7 @@ import (
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/lib/actions"
+	"github.com/defsub/takeout/lib/token"
 	"github.com/defsub/takeout/music"
 	"github.com/defsub/takeout/video"
 )
@@ -46,9 +47,17 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	tokenString := r.Header.Get(actions.GoogleAssistantSignature)
+	err := token.ValidateGoogleToken(handler.config, tokenString, handler.config.Assistant.ProjectID)
+	if err != nil {
+		fmt.Printf("bummer err %+v\n", err)
+		http.Error(w, "bummer", http.StatusInternalServerError)
+		return
+	}
+
 	hookRequest := actions.NewWebhookRequest(r)
 	hookResponse := actions.NewWebhookResponse(hookRequest)
-	fmt.Printf("got intent=%s %+v\n",  hookRequest.IntentName(), hookRequest)
+	fmt.Printf("got intent=%s %+v\n", hookRequest.IntentName(), hookRequest)
 	fmt.Printf("got user %+v\n", *hookRequest.User)
 	if hookRequest.User != nil && hookRequest.User.Params != nil {
 		for k, v := range hookRequest.User.Params {
@@ -144,7 +153,7 @@ func (handler *UserHandler) artistPopular(m *music.Music, a *music.Artist) []mus
 
 func (handler *UserHandler) releaseLike(m *music.Music, release string) []music.Track {
 	var tracks []music.Track
-	releases := m.ReleasesLike("%"+release+"%")
+	releases := m.ReleasesLike("%" + release + "%")
 	if len(releases) > 0 {
 		r := releases[0]
 		tracks = m.ReleaseTracks(r)

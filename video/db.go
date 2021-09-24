@@ -183,6 +183,7 @@ func (v *Video) deleteGenres(tmid int) {
 
 func (v *Video) Person(peid int) (*Person, error) {
 	var person Person
+	// TODO fix this logs an error every time and it's not an error
 	err := v.db.Where("pe_id = ?", peid).First(&person).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errors.New("person not found")
