@@ -32,6 +32,8 @@ import (
 )
 
 const (
+	GoogleAssistantSignature = "google-assistant-signature"
+
 	MediaTypeAudio = "AUDIO"
 
 	MediaControlPaused  = "PAUSED"

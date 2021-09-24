@@ -78,6 +78,7 @@ func (r *AssistantResponse) TextTemplate() *template.Template {
 }
 
 type AssistantConfig struct {
+	ProjectID         string
 	TrackLimit        int
 	RecentLimit       int
 	Welcome           AssistantResponse
@@ -308,6 +309,7 @@ func configDefaults(v *viper.Viper) {
 		"Live Hits":   "+type:live +popularity:<3",
 	})
 
+	v.SetDefault("Assistant.ProjectID", "undefined")
 	v.SetDefault("Assistant.TrackLimit", "10")
 	v.SetDefault("Assistant.RecentLimit", "3")
 	v.SetDefault("Assistant.Welcome.Speech", "Welcome to Takeout")
