@@ -125,14 +125,16 @@ func (handler *UserHandler) fulfillIntent(resp http.ResponseWriter,
 		return
 	}
 
-	mus := handler.NewMusic(resp)
-	if mus == nil {
+	mus, err := handler.NewMusic()
+	if err != nil {
+		http.Error(resp, "bummer", http.StatusInternalServerError)
 		return
 	}
 	defer mus.Close()
 
-	vid := handler.NewVideo(resp)
-	if vid == nil {
+	vid, err := handler.NewVideo()
+	if err != nil {
+		http.Error(resp, "bummer", http.StatusInternalServerError)
 		return
 	}
 	defer vid.Close()

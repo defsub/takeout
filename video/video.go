@@ -96,24 +96,40 @@ func (v *Video) MovieURL(m *Movie) *url.URL {
 	return v.buckets[0].Presign(m.Key)
 }
 
-func (v *Video) MoviePoster(m Movie) *url.URL {
+func (v *Video) MoviePoster(m Movie) string {
 	client := tmdb.NewTMDB(v.config)
-	return client.MoviePoster(m.PosterPath, tmdb.Poster342)
+	url := client.MoviePoster(m.PosterPath, tmdb.Poster342)
+	if url == nil {
+		return ""
+	}
+	return url.String()
 }
 
-func (v *Video) MoviePosterSmall(m Movie) *url.URL {
+func (v *Video) MoviePosterSmall(m Movie) string {
 	client := tmdb.NewTMDB(v.config)
-	return client.MoviePoster(m.PosterPath, tmdb.Poster154)
+	url := client.MoviePoster(m.PosterPath, tmdb.Poster154)
+	if url == nil {
+		return ""
+	}
+	return url.String()
 }
 
-func (v *Video) MovieBackdrop(m Movie) *url.URL {
+func (v *Video) MovieBackdrop(m Movie) string {
 	client := tmdb.NewTMDB(v.config)
-	return client.MovieBackdrop(m.BackdropPath, tmdb.Backdrop1280)
+	url := client.MovieBackdrop(m.BackdropPath, tmdb.Backdrop1280)
+	if url == nil {
+		return ""
+	}
+	return url.String()
 }
 
-func (v *Video) PersonProfile(p Person) *url.URL {
+func (v *Video) PersonProfile(p Person) string {
 	client := tmdb.NewTMDB(v.config)
-	return client.PersonProfile(p.ProfilePath, tmdb.Profile185)
+	url := client.PersonProfile(p.ProfilePath, tmdb.Profile185)
+	if url == nil {
+		return ""
+	}
+	return url.String()
 }
 
 func (v *Video) HasMovies() bool {

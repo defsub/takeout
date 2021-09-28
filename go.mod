@@ -48,4 +48,4 @@ require (
 	gorm.io/gorm v1.21.10
 )
 
-go 1.13
+go 1.16

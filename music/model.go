@@ -65,6 +65,14 @@ func (r Release) official() bool {
 	return r.Status == "Official"
 }
 
+func (r Release) Cover(size string) string {
+	return Cover(r, size)
+}
+
+func (r Release) CoverSmall() string {
+	return Cover(r, "250")
+}
+
 // Release Media from MusicBrainz.
 type Media struct {
 	gorm.Model

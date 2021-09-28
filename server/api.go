@@ -52,6 +52,8 @@ type status struct {
 // 401: fail
 // 500: error
 func (handler *UserHandler) apiLogin(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-type", ApplicationJson)
+
 	if r.Method != "POST" {
 		http.Error(w, "bummer", http.StatusInternalServerError)
 		return
@@ -409,221 +411,210 @@ func (handler *UserHandler) apiSearch(w http.ResponseWriter, r *http.Request, m 
 //
 // 200: success
 // 500: error
-func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
+func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m *music.Music, vid *video.Video) {
 	w.Header().Set("Content-type", ApplicationJson)
 
-	if r.URL.Path == "/api/login" {
-		handler.apiLogin(w, r)
-	} else {
-		// if r.URL.Path == "/api/live" {
-		// 	m := &music.Music{}
-		// 	//defer music.Close()
-		// 	handler.apiLive(w, r, m)
-		// 	return
-		// }
+	// if r.URL.Path == "/api/live" {
+	// 	m := &music.Music{}
+	// 	//defer music.Close()
+	// 	handler.apiLive(w, r, m)
+	// 	return
+	// }
 
-		// if r.URL.Path == "/api/watch" {
-		// 	v := video.NewVideo(handler.config)
-		// 	v.Open()
-		// 	movie, _ := v.Movie(11)
-		// 	fmt.Printf("%+v\n", movie)
-		// 	u := v.MovieURL(movie)
-		// 	fmt.Printf("url %s\n", u.String())
-		// 	w.WriteHeader(http.StatusOK)
-		// 	w.Write([]byte(u.String()))
-		// 	return
-		// }
+	// if r.URL.Path == "/api/watch" {
+	// 	v := video.NewVideo(handler.config)
+	// 	v.Open()
+	// 	movie, _ := v.Movie(11)
+	// 	fmt.Printf("%+v\n", movie)
+	// 	u := v.MovieURL(movie)
+	// 	fmt.Printf("url %s\n", u.String())
+	// 	w.WriteHeader(http.StatusOK)
+	// 	w.Write([]byte(u.String()))
+	// 	return
+	// }
 
-		if !handler.authorized(w, r) {
+	switch r.URL.Path {
+	case "/api/playlist":
+		handler.apiPlaylist(w, r, m)
+	case "/api/radio":
+		handler.apiRadio(w, r, m)
+	case "/api/live":
+		handler.apiLive(w, r, m)
+	case "/api/home":
+		handler.apiView(w, r, handler.homeView(m, vid))
+	case "/api/artists":
+		handler.apiView(w, r, handler.artistsView(m))
+	case "/api/search":
+		handler.apiSearch(w, r, m, vid)
+	case "/api/movies":
+		handler.apiView(w, r, handler.moviesView(vid))
+	default:
+		// /api/(movies|tracks)/id/location
+		locationRegexp := regexp.MustCompile(`/api/(movies|tracks)/([0-9]+)/location`)
+		matches := locationRegexp.FindStringSubmatch(r.URL.Path)
+		if matches != nil {
+			var url *url.URL
+			src := matches[1]
+			if src == "tracks" {
+				id := str.Atoi(matches[2])
+				track, _ := m.LookupTrack(id)
+				url = m.TrackURL(&track)
+			} else if src == "movies" {
+				id := str.Atoi(matches[2])
+				movie, _ := vid.LookupMovie(id)
+				url = vid.MovieURL(movie)
+			}
+			// TODO use 307 instead?
+			fmt.Printf("location is %s\n", url.String())
+			http.Redirect(w, r, url.String(), http.StatusFound)
 			return
 		}
 
-		m := handler.NewMusic(w)
-		if m == nil {
-			return
-		}
-		defer m.Close()
-
-		vid := handler.NewVideo(w)
-		if vid == nil {
-			return
-		}
-		defer vid.Close()
-
-		switch r.URL.Path {
-		case "/api/playlist":
-			handler.apiPlaylist(w, r, m)
-		case "/api/radio":
-			handler.apiRadio(w, r, m)
-		case "/api/live":
-			handler.apiLive(w, r, m)
-		case "/api/home":
-			handler.apiView(w, r, handler.homeView(m, vid))
-		case "/api/artists":
-			handler.apiView(w, r, handler.artistsView(m))
-		case "/api/search":
-			handler.apiSearch(w, r, m, vid)
-		case "/api/movies":
-			handler.apiView(w, r, handler.moviesView(vid))
-		default:
-			// /api/(movies|tracks)/id/location
-			locationRegexp := regexp.MustCompile(`/api/(movies|tracks)/([0-9]+)/location`)
-			matches := locationRegexp.FindStringSubmatch(r.URL.Path)
-			if matches != nil {
-				var url *url.URL
-				src := matches[1]
-				if src == "tracks" {
-					id := str.Atoi(matches[2])
-					track, _ := m.LookupTrack(id)
-					url = m.TrackURL(&track)
-				} else if src == "movies" {
-					id := str.Atoi(matches[2])
-					movie, _ := vid.LookupMovie(id)
-					url = vid.MovieURL(movie)
-				}
-				// TODO use 307 instead?
-				fmt.Printf("location is %s\n", url.String())
-				http.Redirect(w, r, url.String(), http.StatusFound)
+		// /api/artists/id/(popular|singles)/playlist
+		subPlayistRegexp := regexp.MustCompile(`/api/artists/([0-9]+)/([a-z]+)/playlist(\.xspf)?`)
+		matches = subPlayistRegexp.FindStringSubmatch(r.URL.Path)
+		if matches != nil {
+			id := str.Atoi(matches[1])
+			artist, _ := m.LookupArtist(id)
+			image := m.ArtistImage(&artist)
+			sub := matches[2]
+			ext := matches[3]
+			if ext != "" && ext != ".xspf" {
+				http.Error(w, "bummer", http.StatusNotFound)
 				return
 			}
+			switch sub {
+			case "popular":
+				// /api/artists/id/popular/playlist
+				handler.apiRefPlaylist(w, r, m,
+					artist.Name,
+					fmt.Sprintf("%s \u2013 Popular", artist.Name),
+					image,
+					fmt.Sprintf("/music/artists/%d/popular", id))
+			case "singles":
+				// /api/artists/id/singles/playlist
+				handler.apiRefPlaylist(w, r, m,
+					artist.Name,
+					fmt.Sprintf("%s \u2013 Singles", artist.Name),
+					image,
+					fmt.Sprintf("/music/artists/%d/singles", id))
+			default:
+				http.Error(w, "bummer", http.StatusNotFound)
+			}
+			return
+		}
 
-			// /api/artists/id/(popular|singles)/playlist
-			subPlayistRegexp := regexp.MustCompile(`/api/artists/([0-9]+)/([a-z]+)/playlist(\.xspf)?`)
-			matches = subPlayistRegexp.FindStringSubmatch(r.URL.Path)
-			if matches != nil {
-				id := str.Atoi(matches[1])
+		// /api/(artists|releases)/id/(playlist|popular|radio|singles)
+		playlistRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)/(playlist|popular|singles|radio)(\.xspf)?`)
+		matches = playlistRegexp.FindStringSubmatch(r.URL.Path)
+		if matches != nil {
+			v := matches[1]
+			id := str.Atoi(matches[2])
+			res := matches[3]
+			switch v {
+			case "artists":
 				artist, _ := m.LookupArtist(id)
 				image := m.ArtistImage(&artist)
-				sub := matches[2]
-				ext := matches[3]
-				if ext != "" && ext != ".xspf" {
-					http.Error(w, "bummer", http.StatusNotFound)
-					return
-				}
-				switch sub {
-				case "popular":
-					// /api/artists/id/popular/playlist
+				if res == "playlist" {
+					// /api/artists/1/playlist
 					handler.apiRefPlaylist(w, r, m,
 						artist.Name,
-						fmt.Sprintf("%s \u2013 Popular", artist.Name),
+						fmt.Sprintf("%s \u2013 Shuffle", artist.Name),
 						image,
-						fmt.Sprintf("/music/artists/%d/popular", id))
-				case "singles":
-					// /api/artists/id/singles/playlist
+						fmt.Sprintf("/music/artists/%d/shuffle", id))
+				} else if res == "radio" {
+					// /api/artists/1/radio
 					handler.apiRefPlaylist(w, r, m,
-						artist.Name,
-						fmt.Sprintf("%s \u2013 Singles", artist.Name),
+						"Radio",
+						fmt.Sprintf("%s \u2013 Radio", artist.Name),
 						image,
-						fmt.Sprintf("/music/artists/%d/singles", id))
-				default:
+						fmt.Sprintf("/music/artists/%d/similar", id))
+				} else if res == "popular" {
+					// /api/artists/1/popular
+					handler.apiView(w, r, handler.popularView(m, artist))
+				} else if res == "singles" {
+					// /api/artists/1/singles
+					handler.apiView(w, r, handler.singlesView(m, artist))
+				} else {
 					http.Error(w, "bummer", http.StatusNotFound)
 				}
-				return
-			}
-
-			// /api/(artists|releases)/id/(playlist|popular|radio|singles)
-			playlistRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)/(playlist|popular|singles|radio)(\.xspf)?`)
-			matches = playlistRegexp.FindStringSubmatch(r.URL.Path)
-			if matches != nil {
-				v := matches[1]
-				id := str.Atoi(matches[2])
-				res := matches[3]
-				switch v {
-				case "artists":
-					artist, _ := m.LookupArtist(id)
-					image := m.ArtistImage(&artist)
-					if res == "playlist" {
-						// /api/artists/1/playlist
-						handler.apiRefPlaylist(w, r, m,
-							artist.Name,
-							fmt.Sprintf("%s \u2013 Shuffle", artist.Name),
-							image,
-							fmt.Sprintf("/music/artists/%d/shuffle", id))
-					} else if res == "radio" {
-						// /api/artists/1/radio
-						handler.apiRefPlaylist(w, r, m,
-							"Radio",
-							fmt.Sprintf("%s \u2013 Radio", artist.Name),
-							image,
-							fmt.Sprintf("/music/artists/%d/similar", id))
-					} else if res == "popular" {
-						// /api/artists/1/popular
-						handler.apiView(w, r, handler.popularView(m, artist))
-					} else if res == "singles" {
-						// /api/artists/1/singles
-						handler.apiView(w, r, handler.singlesView(m, artist))
-					} else {
-						http.Error(w, "bummer", http.StatusNotFound)
-					}
-				case "releases":
-					// /api/releases/1/playlist
-					if res == "playlist" {
-						release, _ := m.LookupRelease(id)
-						handler.apiRefPlaylist(w, r, m,
-							release.Artist,
-							release.Name,
-							m.Cover(release, "250"),
-							fmt.Sprintf("/music/releases/%d/tracks", id))
-					} else {
-						http.Error(w, "bummer", http.StatusNotFound)
-					}
-				default:
-					http.Error(w, "bummer", http.StatusNotFound)
-				}
-				return
-			}
-
-			// /api/(artists|radio|releases|movies|profiles)/id
-			resourceRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)`)
-			matches = resourceRegexp.FindStringSubmatch(r.URL.Path)
-			if matches != nil {
-				v := matches[1]
-				id := str.Atoi(matches[2])
-				switch v {
-				case "artists":
-					// /api/artists/1
-					artist, _ := m.LookupArtist(id)
-					handler.apiView(w, r, handler.artistView(m, artist))
-				case "releases":
-					// /api/releases/1
+			case "releases":
+				// /api/releases/1/playlist
+				if res == "playlist" {
 					release, _ := m.LookupRelease(id)
-					handler.apiView(w, r, handler.releaseView(m, release))
-				case "radio":
-					// /api/radio/1
-					handler.apiStation(w, r, m, id)
-				case "movies":
-					// /api/movies/1
-					movie, _ := vid.LookupMovie(id)
-					handler.apiView(w, r, handler.movieView(vid, movie))
-				case "profiles":
-					// /api/profiles/1
-					person, _ := vid.LookupPerson(id)
-					handler.apiView(w, r, handler.profileView(vid, person))
-				default:
+					handler.apiRefPlaylist(w, r, m,
+						release.Artist,
+						release.Name,
+						release.Cover("250"),
+						fmt.Sprintf("/music/releases/%d/tracks", id))
+				} else {
 					http.Error(w, "bummer", http.StatusNotFound)
 				}
-				return
+			default:
+				http.Error(w, "bummer", http.StatusNotFound)
 			}
-
-			// /api/movies/genres/name
-			// allow dash and space in name
-			genresRegexp := regexp.MustCompile(`/api/movies/genres/([a-zA-Z -]+)`)
-			matches = genresRegexp.FindStringSubmatch(r.URL.Path)
-			if matches != nil {
-				name := strings.TrimSpace(matches[1])
-				handler.apiView(w, r, handler.genreView(vid, name))
-				return
-			}
-
-			http.Error(w, "bummer", http.StatusNotFound)
+			return
 		}
+
+		// /api/(artists|radio|releases|movies|profiles)/id
+		resourceRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)`)
+		matches = resourceRegexp.FindStringSubmatch(r.URL.Path)
+		if matches != nil {
+			v := matches[1]
+			id := str.Atoi(matches[2])
+			switch v {
+			case "artists":
+				// /api/artists/1
+				artist, _ := m.LookupArtist(id)
+				handler.apiView(w, r, handler.artistView(m, artist))
+			case "releases":
+				// /api/releases/1
+				release, _ := m.LookupRelease(id)
+				handler.apiView(w, r, handler.releaseView(m, release))
+			case "radio":
+				// /api/radio/1
+				handler.apiStation(w, r, m, id)
+			case "movies":
+				// /api/movies/1
+				movie, _ := vid.LookupMovie(id)
+				handler.apiView(w, r, handler.movieView(vid, movie))
+			case "profiles":
+				// /api/profiles/1
+				person, _ := vid.LookupPerson(id)
+				handler.apiView(w, r, handler.profileView(vid, person))
+			default:
+				http.Error(w, "bummer", http.StatusNotFound)
+			}
+			return
+		}
+
+		// /api/movies/genres/name
+		// allow dash and space in name
+		genresRegexp := regexp.MustCompile(`/api/movies/genres/([a-zA-Z -]+)`)
+		matches = genresRegexp.FindStringSubmatch(r.URL.Path)
+		if matches != nil {
+			name := strings.TrimSpace(matches[1])
+			handler.apiView(w, r, handler.genreView(vid, name))
+			return
+		}
+
+		http.Error(w, "bummer", http.StatusNotFound)
 	}
 }
 
-func (UserHandler) LocateTrack(t music.Track) string {
+
+func locateTrack(t music.Track) string {
 	return fmt.Sprintf("/api/tracks/%d/location", t.ID)
 }
 
-func (UserHandler) LocateMovie(v video.Movie) string {
+func locateMovie(v video.Movie) string {
 	return fmt.Sprintf("/api/movies/%d/location", v.ID)
+}
+
+func (UserHandler) LocateTrack(t music.Track) string {
+	return locateTrack(t)
+}
+
+func (UserHandler) LocateMovie(v video.Movie) string {
+	return locateMovie(v)
 }
