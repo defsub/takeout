@@ -40,12 +40,13 @@ const (
 	VariousArtists = "Various Artists"
 )
 
+var coverCache map[string]string = make(map[string]string)
+
 type Music struct {
 	config     *config.Config
 	db         *gorm.DB
 	buckets    []bucket.Bucket
 	client     *client.Client
-	coverCache map[string]string
 	lastfm     *lastfm.Lastfm
 	fanart     *fanart.Fanart
 	mbz        *musicbrainz.MusicBrainz
@@ -54,7 +55,6 @@ type Music struct {
 func NewMusic(config *config.Config) *Music {
 	return &Music{
 		config:     config,
-		coverCache: make(map[string]string),
 		client:     client.NewClient(config),
 		fanart:     fanart.NewFanart(config),
 		lastfm:     lastfm.NewLastfm(config),
@@ -78,7 +78,7 @@ func (m *Music) Close() {
 // REID front cover.
 //
 // See https://musicbrainz.org/doc/Cover_Art_Archive/API
-func (m *Music) Cover(r Release, size string) string {
+func Cover(r Release, size string) string {
 	var url string
 	if r.GroupArtwork {
 		url = fmt.Sprintf("https://coverartarchive.org/release-group/%s", r.RGID)
@@ -96,10 +96,20 @@ func (m *Music) Cover(r Release, size string) string {
 	}
 }
 
+func (m *Music) CoverSmall(o interface{}) string {
+	switch o.(type) {
+	case Release:
+		return o.(Release).Cover("250")
+	case Track:
+		return m.TrackCover(o.(Track), "250")
+	}
+	return ""
+}
+
 // Track cover based on assigned release.
 func (m *Music) TrackCover(t Track, size string) string {
 	// TODO should expire the cache
-	v, ok := m.coverCache[t.REID]
+	v, ok := coverCache[t.REID]
 	if ok {
 		return v
 	}
@@ -107,9 +117,9 @@ func (m *Music) TrackCover(t Track, size string) string {
 	if release == nil {
 		v = ""
 	} else {
-		v = m.Cover(*release, size)
+		v = Cover(*release, size)
 	}
-	m.coverCache[t.REID] = v
+	coverCache[t.REID] = v
 	return v
 }
 

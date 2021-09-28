@@ -18,13 +18,14 @@
 package server
 
 import (
+	"embed"
+	_ "embed"
 	"errors"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -42,27 +43,22 @@ const (
 )
 
 type UserHandler struct {
-	user       *auth.User
 	config     *config.Config
+	template   *template.Template
+	user       *auth.User
 	userConfig *config.Config
 }
 
-func (handler *UserHandler) NewMusic(w http.ResponseWriter) *music.Music {
-	music := music.NewMusic(handler.userConfig)
-	if music.Open() != nil {
-		http.Error(w, "bummer", http.StatusInternalServerError)
-		return nil
-	}
-	return music
+func (handler *UserHandler) NewMusic() (*music.Music, error) {
+	m := music.NewMusic(handler.userConfig)
+	err := m.Open()
+	return m, err
 }
 
-func (handler *UserHandler) NewVideo(w http.ResponseWriter) *video.Video {
+func (handler *UserHandler) NewVideo() (*video.Video, error) {
 	vid := video.NewVideo(handler.userConfig)
-	if vid.Open() != nil {
-		http.Error(w, "bummer", http.StatusInternalServerError)
-		return nil
-	}
-	return vid
+	err := vid.Open()
+	return vid, err
 }
 
 func (handler *UserHandler) NewAuth() *auth.Auth {
@@ -75,13 +71,7 @@ func (handler *UserHandler) NewAuth() *auth.Auth {
 	return a
 }
 
-func (handler *UserHandler) doit(w http.ResponseWriter, r *http.Request) {
-	m := handler.NewMusic(w)
-	if m == nil {
-		return
-	}
-	defer m.Close()
-
+func (handler *UserHandler) tracksHandler(w http.ResponseWriter, r *http.Request, m *music.Music) {
 	var tracks []music.Track
 	if v := r.URL.Query().Get("q"); v != "" {
 		tracks = m.Search(strings.TrimSpace(v))
@@ -108,31 +98,10 @@ func (handler *UserHandler) doSpiff(m *music.Music, title string, tracks []music
 	encoder.Footer()
 }
 
-func (handler *UserHandler) doTracks(w http.ResponseWriter, r *http.Request) {
-	handler.doit(w, r)
-}
-
-func parseTemplates(templ *template.Template, dir string) *template.Template {
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if strings.Contains(path, ".html") {
-			_, err = templ.ParseFiles(path)
-			if err != nil {
-				return err
-			}
-		}
-		return err
-	})
-
-	log.CheckError(err)
-
-	return templ
-}
-
-func (handler *UserHandler) render(m *music.Music, vid *video.Video, temp string, view interface{},
-	w http.ResponseWriter, r *http.Request) {
-	funcMap := template.FuncMap{
+func doFuncMap() template.FuncMap {
+	return template.FuncMap{
 		"join": strings.Join,
-		"ymd": date.YMD,
+		"ymd":  date.YMD,
 		"link": func(o interface{}) string {
 			var link string
 			switch o.(type) {
@@ -141,8 +110,7 @@ func (handler *UserHandler) render(m *music.Music, vid *video.Video, temp string
 			case music.Artist:
 				link = fmt.Sprintf("/v?artist=%d", o.(music.Artist).ID)
 			case music.Track:
-				t := o.(music.Track)
-				link = handler.LocateTrack(t)
+				link = locateTrack(o.(music.Track))
 			case video.Movie:
 				// m := o.(video.Movie)
 				// link = handler.LocateMovie(m)
@@ -154,11 +122,9 @@ func (handler *UserHandler) render(m *music.Music, vid *video.Video, temp string
 			var loc string
 			switch o.(type) {
 			case music.Track:
-				t := o.(music.Track)
-				loc = handler.LocateTrack(t)
+				loc = locateTrack(o.(music.Track))
 			case video.Movie:
-				m := o.(video.Movie)
-				loc = handler.LocateMovie(m)
+				loc = locateMovie(o.(video.Movie))
 			}
 			return loc
 		},
@@ -197,77 +163,6 @@ func (handler *UserHandler) render(m *music.Music, vid *video.Video, temp string
 		"home": func() string {
 			return "/v?home=1"
 		},
-		"coverSmall": func(o interface{}) string {
-			switch o.(type) {
-			case music.Release:
-				return m.Cover(o.(music.Release), "250")
-			case music.Track:
-				return m.TrackCover(o.(music.Track), "250")
-			}
-			return ""
-		},
-		"coverLarge": func(o interface{}) string {
-			switch o.(type) {
-			case music.Release:
-				return m.Cover(o.(music.Release), "500")
-			case music.Track:
-				return m.TrackCover(o.(music.Track), "500")
-			}
-			return ""
-		},
-		"coverExtraLarge": func(o interface{}) string {
-			switch o.(type) {
-			case music.Release:
-				return m.Cover(o.(music.Release), "1200")
-			case music.Track:
-				return m.TrackCover(o.(music.Track), "1200")
-			}
-			return ""
-		},
-		"poster":  func(o interface{}) string {
-			switch o.(type) {
-			case video.Movie:
-				url := vid.MoviePoster(o.(video.Movie))
-				if url == nil {
-					return ""
-				}
-				return url.String()
-			}
-			return ""
-		},
-		"posterSmall":  func(o interface{}) string {
-			switch o.(type) {
-			case video.Movie:
-				url := vid.MoviePosterSmall(o.(video.Movie))
-				if url == nil {
-					return ""
-				}
-				return url.String()
-			}
-			return ""
-		},
-		"backdrop":  func(o interface{}) string {
-			switch o.(type) {
-			case video.Movie:
-				url := vid.MovieBackdrop(o.(video.Movie))
-				if url == nil {
-					return ""
-				}
-				return url.String()
-			}
-			return ""
-		},
-		"profile":  func(o interface{}) string {
-			switch o.(type) {
-			case video.Person:
-				url := vid.PersonProfile(o.(video.Person))
-				if url == nil {
-					return ""
-				}
-				return url.String()
-			}
-			return ""
-		},
 		"runtime": func(m video.Movie) string {
 			hours := m.Runtime / 60
 			mins := m.Runtime % 60
@@ -277,11 +172,11 @@ func (handler *UserHandler) render(m *music.Music, vid *video.Video, temp string
 			return a.SortName[0:1]
 		},
 	}
+}
 
-	var templates = parseTemplates(template.New("").Funcs(funcMap),
-		fmt.Sprintf("%s/template", handler.config.Server.WebDir))
-
-	err := templates.ExecuteTemplate(w, temp, view)
+func (handler *UserHandler) render(m *music.Music, vid *video.Video, temp string, view interface{},
+	w http.ResponseWriter, r *http.Request) {
+	err := handler.template.ExecuteTemplate(w, temp, view)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -322,12 +217,12 @@ func (handler *UserHandler) loginHandler(w http.ResponseWriter, r *http.Request)
 		pass := r.Form.Get("pass")
 		cookie, err := handler.doLogin(user, pass)
 		if err == nil {
+			// success
 			http.SetCookie(w, &cookie)
 			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 			return
 		}
 	}
-
 	http.Error(w, "bummer", http.StatusUnauthorized)
 }
 
@@ -339,6 +234,7 @@ func (handler *UserHandler) linkHandler(w http.ResponseWriter, r *http.Request) 
 		value := r.Form.Get("code")
 		err := handler.doCodeAuth(user, pass, value)
 		if err == nil {
+			// success
 			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 			return
 		}
@@ -403,23 +299,7 @@ func (handler *UserHandler) authorized(w http.ResponseWriter, r *http.Request) b
 	return true
 }
 
-func (handler *UserHandler) viewHandler(w http.ResponseWriter, r *http.Request) {
-	if !handler.authorized(w, r) {
-		return
-	}
-
-	m := handler.NewMusic(w)
-	if m == nil {
-		return
-	}
-	defer m.Close()
-
-	vid := handler.NewVideo(w)
-	if vid == nil {
-		return
-	}
-	defer vid.Close()
-
+func (handler *UserHandler) viewHandler(w http.ResponseWriter, r *http.Request, m *music.Music, vid *video.Video) {
 	var view interface{}
 	var temp string
 
@@ -498,17 +378,131 @@ func (handler *UserHandler) viewHandler(w http.ResponseWriter, r *http.Request) 
 	handler.render(m, vid, temp, view, w, r)
 }
 
+//go:embed res/static
+var resStatic embed.FS
+
+func getStaticFS(config *config.Config) http.FileSystem {
+	// dev := false
+	// if dev {
+	// 	return http.FS(os.DirFS(fmt.Sprintf("%s/static", config.Server.WebDir)))
+	// }
+	fsys, err := fs.Sub(resStatic, "res")
+	if err != nil {
+		panic(err)
+	}
+	return http.FS(fsys)
+}
+
+//go:embed res/template
+var resTemplates embed.FS
+
+func getTemplateFS(config *config.Config) fs.FS {
+	// dev := false
+	// if dev {
+	// 	return os.DirFS(fmt.Sprintf("%s/template", config.Server.WebDir))
+	// }
+	return resTemplates
+}
+
+func getTemplates(config *config.Config) *template.Template {
+	t, err := template.New("").Funcs(doFuncMap()).ParseFS(getTemplateFS(config),
+		"res/template/*.html",
+		"res/template/music/*.html",
+		"res/template/video/*.html")
+	if err != nil {
+		panic(err)
+	}
+	return t
+}
+
 func Serve(config *config.Config) {
-	handler := &UserHandler{config: config}
-	fs := http.FileServer(http.Dir(fmt.Sprintf("%s/static", config.Server.WebDir)))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
-	http.HandleFunc("/tracks", handler.doTracks)
-	http.HandleFunc("/", handler.viewHandler)
-	http.HandleFunc("/v", handler.viewHandler)
-	http.HandleFunc("/login", handler.loginHandler)
-	http.HandleFunc("/link", handler.linkHandler)
-	http.HandleFunc("/api/", handler.apiHandler)
-	http.HandleFunc("/hook/", handler.hookHandler)
+	template := getTemplates(config)
+
+	makeHandler := func() *UserHandler {
+		return &UserHandler{
+			config:   config,
+			template: template,
+		}
+	}
+
+	loginHandler := func(w http.ResponseWriter, r *http.Request) {
+		makeHandler().loginHandler(w, r)
+	}
+
+	linkHandler := func(w http.ResponseWriter, r *http.Request) {
+		makeHandler().linkHandler(w, r)
+	}
+
+	tracksHandler := func(w http.ResponseWriter, r *http.Request) {
+		// TODO keep this? auth?
+		handler := makeHandler()
+		m, err := handler.NewMusic()
+		if err != nil {
+			http.Error(w, "bummer", http.StatusInternalServerError)
+			return
+		}
+		defer m.Close()
+		handler.tracksHandler(w, r, m)
+	}
+
+	viewHandler := func(w http.ResponseWriter, r *http.Request) {
+		handler := makeHandler()
+		if !handler.authorized(w, r) {
+			return
+		}
+		m, err := handler.NewMusic()
+		if err != nil {
+			http.Error(w, "bummer", http.StatusInternalServerError)
+			return
+		}
+		defer m.Close()
+		v, err := handler.NewVideo()
+		if err != nil {
+			http.Error(w, "bummer", http.StatusInternalServerError)
+			return
+		}
+		defer v.Close()
+		handler.viewHandler(w, r, m, v)
+	}
+
+	apiLoginHandler := func(w http.ResponseWriter, r *http.Request) {
+		makeHandler().apiLogin(w, r)
+	}
+
+	apiHandler := func(w http.ResponseWriter, r *http.Request) {
+		handler := makeHandler()
+		if !handler.authorized(w, r) {
+			return
+		}
+		m, err := handler.NewMusic()
+		if err != nil {
+			http.Error(w, "bummer", http.StatusInternalServerError)
+			return
+		}
+		defer m.Close()
+		v, err := handler.NewVideo()
+		if err != nil {
+			http.Error(w, "bummer", http.StatusInternalServerError)
+			return
+		}
+		defer v.Close()
+		handler.apiHandler(w, r, m, v)
+	}
+
+	hookHandler := func(w http.ResponseWriter, r *http.Request) {
+		makeHandler().hookHandler(w, r)
+	}
+
+	fs := http.FileServer(getStaticFS(config))
+	http.Handle("/static/", fs)
+	http.HandleFunc("/tracks", tracksHandler)
+	http.HandleFunc("/", viewHandler)
+	http.HandleFunc("/v", viewHandler)
+	http.HandleFunc("/login", loginHandler)
+	http.HandleFunc("/link", linkHandler)
+	http.HandleFunc("/api/login", apiLoginHandler)
+	http.HandleFunc("/api/", apiHandler)
+	http.HandleFunc("/hook/", hookHandler)
 	log.Printf("listening on %s\n", config.Server.Listen)
 	http.ListenAndServe(config.Server.Listen, nil)
 }

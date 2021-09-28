@@ -2,7 +2,7 @@
   <h1>{{ .Release.Name }}</h1>
   <div class="parent3">
     <div class="middle">
-      <a data-playlist="add-ref" data-ref="{{.Release|ref}}"><img src="{{.Release|coverSmall}}" class="release-cover-small"></a>
+      <a data-playlist="add-ref" data-ref="{{.Release|ref}}"><img src="{{call .CoverSmall .Release}}" class="release-cover-small"></a>
     </div>
     <div class="middle">
       <a data-link="{{.Artist|link}}">{{ .Artist.Name }}</a>
@@ -35,7 +35,7 @@
 		 data-creator="{{.Artist}}"
 		 data-album="{{.ReleaseTitle}}"
 		 data-title="{{.Title}}"
-		 data-image="{{.|coverSmall}}"
+		 data-image="{{call $.CoverSmall .}}"
 		 data-location="{{.|link}}">
 		{{ .Title }}
 	      </a>
@@ -73,7 +73,7 @@
 		 data-creator="{{.Artist}}"
 		 data-album="{{.ReleaseTitle}}"
 		 data-title="{{.Title}}"
-		 data-image="{{.|coverSmall}}"
+		 data-image="{{call $.CoverSmall .}}"
 		 data-location="{{.|link}}">
 		{{ .Title }}
 	      </a>
@@ -101,7 +101,7 @@
     {{ range .Similar }}
     <div style="padding: 10px; max-width: 110px; display: inline-block;">
       <a data-link="{{.|link}}" style="text-decoration: none;">
-	<img width="110" height="110" src="{{.|coverSmall}}" style="border-radius: 10px;">
+	<img width="110" height="110" src="{{call $.CoverSmall .}}" style="border-radius: 10px;">
 	<br/>
 	<div class="release-small-title">{{ .Name }}</div>
 	<br style="display: none"/>

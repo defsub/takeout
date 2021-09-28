@@ -3,17 +3,17 @@
   <div>
     <div class="parent">
       <div class="left">
-	<a class="nodecor" data-playlist="add-ref" data-ref='{{ref .Artist "popular"}}'>
-	  <h2>Polular Tracks</h2>
+	<a class="nodecor" data-playlist="add-ref" data-ref='{{ref .Artist "singles"}}'>
+	  <h2>Singles</h2>
 	</a>
       </div>
       <div class="right">
-	<a data-playlist="append-ref" data-ref='{{ref .Artist "popular"}}'>
-	  <img src="/static/playlist_add-white-24dp.svg"/>
+	<a data-playlist="append-ref" data-ref='{{ref .Artist "singles"}}'>
+	  <img src="/static/playlist_add-white-24dp.svg">
 	</a>
       </div>
     </div>
-    {{ range .Popular }}
+    {{ range .Singles }}
     <div class="parent">
       <div class="left" style="cursor: pointer;">
 	<div class="parent2">
@@ -24,7 +24,7 @@
 	       data-creator="{{.Artist}}"
 	       data-album="{{.ReleaseTitle}}"
 	       data-title="{{.Title}}"
-	       data-image="{{.|coverSmall}}"
+	       data-image="{{call $.CoverSmall .}}"
 	       data-location="{{.|link}}">
 	      {{ .Title }}
 	    </a>

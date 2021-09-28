@@ -24,6 +24,12 @@ import (
 	"time"
 )
 
+type CoverFunc func(interface{}) string
+
+type PosterFunc func(video.Movie) string
+type BackdropFunc func(video.Movie) string
+type ProfileFunc func(video.Person) string
+
 type IndexView struct {
 	Time      int64
 	HasMusic  bool
@@ -35,10 +41,13 @@ type HomeView struct {
 	NewReleases   []music.Release
 	AddedMovies   []video.Movie
 	NewMovies     []video.Movie
+	CoverSmall    CoverFunc `json:"-"`
+	PosterSmall PosterFunc `json:"-"`
 }
 
 type ArtistsView struct {
-	Artists []music.Artist
+	Artists    []music.Artist
+	CoverSmall CoverFunc `json:"-"`
 }
 
 type ArtistView struct {
@@ -49,77 +58,97 @@ type ArtistView struct {
 	Popular    []music.Track
 	Singles    []music.Track
 	Similar    []music.Artist
+	CoverSmall CoverFunc `json:"-"`
 }
 
 type PopularView struct {
-	Artist  music.Artist
-	Popular []music.Track
+	Artist     music.Artist
+	Popular    []music.Track
+	CoverSmall CoverFunc `json:"-"`
 }
 
 type SinglesView struct {
-	Artist  music.Artist
-	Singles []music.Track
+	Artist     music.Artist
+	Singles    []music.Track
+	CoverSmall CoverFunc `json:"-"`
 }
 
 type ReleaseView struct {
-	Artist  music.Artist
-	Release music.Release
-	Tracks  []music.Track
-	Singles []music.Track
-	Popular []music.Track
-	Similar []music.Release
+	Artist     music.Artist
+	Release    music.Release
+	Tracks     []music.Track
+	Singles    []music.Track
+	Popular    []music.Track
+	Similar    []music.Release
+	CoverSmall CoverFunc `json:"-"`
 }
 
 type SearchView struct {
-	Artists  []music.Artist
-	Releases []music.Release
-	Tracks   []music.Track
-	Movies   []video.Movie
-	Query    string
-	Hits     int
+	Artists     []music.Artist
+	Releases    []music.Release
+	Tracks      []music.Track
+	Movies      []video.Movie
+	Query       string
+	Hits        int
+	CoverSmall  CoverFunc  `json:"-"`
+	PosterSmall PosterFunc `json:"-"`
 }
 
 type RadioView struct {
-	Artist  []music.Station
-	Genre   []music.Station
-	Similar []music.Station
-	Period  []music.Station
-	Series  []music.Station
-	Other   []music.Station
+	Artist     []music.Station
+	Genre      []music.Station
+	Similar    []music.Station
+	Period     []music.Station
+	Series     []music.Station
+	Other      []music.Station
+	CoverSmall CoverFunc `json:"-"`
 }
 
 type MoviesView struct {
-	Movies []video.Movie
+	Movies      []video.Movie
+	PosterSmall PosterFunc   `json:"-"`
+	Backdrop    BackdropFunc `json:"-"`
 }
 
 type MovieView struct {
-	Movie      video.Movie
-	Collection video.Collection
-	Other      []video.Movie
-	Cast       []video.Cast
-	Crew       []video.Crew
-	Starring   []video.Person
-	Directing  []video.Person
-	Writing    []video.Person
-	Genres     []string
-	Vote       int
-	VoteCount  int
+	Movie       video.Movie
+	Collection  video.Collection
+	Other       []video.Movie
+	Cast        []video.Cast
+	Crew        []video.Crew
+	Starring    []video.Person
+	Directing   []video.Person
+	Writing     []video.Person
+	Genres      []string
+	Vote        int
+	VoteCount   int
+	Poster      PosterFunc   `json:"-"`
+	PosterSmall PosterFunc   `json:"-"`
+	Backdrop    BackdropFunc `json:"-"`
+	Profile     ProfileFunc  `json:"-"`
 }
 
 type ProfileView struct {
-	Person    video.Person
-	Starring  []video.Movie
-	Directing []video.Movie
-	Writing   []video.Movie
+	Person      video.Person
+	Starring    []video.Movie
+	Directing   []video.Movie
+	Writing     []video.Movie
+	PosterSmall PosterFunc   `json:"-"`
+	Backdrop    BackdropFunc `json:"-"`
+	Profile     ProfileFunc  `json:"-"`
 }
 
 type GenreView struct {
-	Name   string
-	Movies []video.Movie
+	Name        string
+	Movies      []video.Movie
+	PosterSmall PosterFunc   `json:"-"`
+	Backdrop    BackdropFunc `json:"-"`
 }
 
 type WatchView struct {
-	Movie video.Movie
+	Movie       video.Movie
+	PosterSmall PosterFunc   `json:"-"`
+	Backdrop    BackdropFunc `json:"-"`
 }
 
 func (handler *UserHandler) indexView(m *music.Music, v *video.Video) *IndexView {
@@ -136,12 +165,15 @@ func (handler *UserHandler) homeView(m *music.Music, v *video.Video) *HomeView {
 	view.NewReleases = m.RecentlyReleased()
 	view.AddedMovies = v.RecentlyAdded()
 	view.NewMovies = v.RecentlyReleased()
+	view.CoverSmall = m.CoverSmall
+	view.PosterSmall = v.MoviePosterSmall
 	return view
 }
 
 func (handler *UserHandler) artistsView(m *music.Music) *ArtistsView {
 	view := &ArtistsView{}
 	view.Artists = m.Artists()
+	view.CoverSmall = m.CoverSmall
 	return view
 }
 
@@ -161,6 +193,7 @@ func (handler *UserHandler) artistView(m *music.Music, artist music.Artist) *Art
 	view.Similar = m.SimilarArtists(&artist)
 	view.Image = m.ArtistImage(&artist)
 	view.Background = m.ArtistBackground(&artist)
+	view.CoverSmall = m.CoverSmall
 	return view
 }
 
@@ -172,6 +205,7 @@ func (handler *UserHandler) popularView(m *music.Music, artist music.Artist) *Po
 	if len(view.Popular) > limit {
 		view.Popular = view.Popular[:limit]
 	}
+	view.CoverSmall = m.CoverSmall
 	return view
 }
 
@@ -183,6 +217,7 @@ func (handler *UserHandler) singlesView(m *music.Music, artist music.Artist) *Si
 	if len(view.Singles) > limit {
 		view.Singles = view.Singles[:limit]
 	}
+	view.CoverSmall = m.CoverSmall
 	return view
 }
 
@@ -194,6 +229,7 @@ func (handler *UserHandler) releaseView(m *music.Music, release music.Release) *
 	view.Singles = m.ReleaseSingles(release)
 	view.Popular = m.ReleasePopular(release)
 	view.Similar = m.SimilarReleases(&view.Artist, release)
+	view.CoverSmall = m.CoverSmall
 	return view
 }
 
@@ -206,6 +242,8 @@ func (handler *UserHandler) searchView(m *music.Music, v *video.Video, query str
 	view.Tracks = m.Search(query)
 	view.Movies = v.Search(query)
 	view.Hits = len(view.Artists) + len(view.Releases) + len(view.Tracks) + len(view.Movies)
+	view.CoverSmall = m.CoverSmall
+	view.PosterSmall = v.MoviePosterSmall
 	return view
 }
 
@@ -233,6 +271,8 @@ func (handler *UserHandler) radioView(m *music.Music, user *auth.User) *RadioVie
 func (handler *UserHandler) moviesView(v *video.Video) *MoviesView {
 	view := &MoviesView{}
 	view.Movies = v.Movies()
+	view.PosterSmall = v.MoviePosterSmall
+	view.Backdrop = v.MovieBackdrop
 	return view
 }
 
@@ -262,6 +302,10 @@ func (handler *UserHandler) movieView(v *video.Video, m *video.Movie) *MovieView
 	view.Genres = v.Genres(m)
 	view.Vote = int(m.VoteAverage * 10)
 	view.VoteCount = m.VoteCount
+	view.Poster = v.MoviePoster
+	view.PosterSmall = v.MoviePosterSmall
+	view.Backdrop = v.MovieBackdrop
+	view.Profile = v.PersonProfile
 	return view
 }
 
@@ -271,6 +315,9 @@ func (handler *UserHandler) profileView(v *video.Video, p *video.Person) *Profil
 	view.Starring = v.Starring(p)
 	view.Writing = v.Writing(p)
 	view.Directing = v.Directing(p)
+	view.PosterSmall = v.MoviePosterSmall
+	view.Backdrop = v.MovieBackdrop
+	view.Profile = v.PersonProfile
 	return view
 }
 
@@ -278,11 +325,15 @@ func (handler *UserHandler) genreView(v *video.Video, name string) *GenreView {
 	view := &GenreView{}
 	view.Name = name
 	view.Movies = v.Genre(name)
+	view.PosterSmall = v.MoviePosterSmall
+	view.Backdrop = v.MovieBackdrop
 	return view
 }
 
 func (handler *UserHandler) watchView(v *video.Video, m *video.Movie) *WatchView {
 	view := &WatchView{}
 	view.Movie = *m
+	view.PosterSmall = v.MoviePosterSmall
+	view.Backdrop = v.MovieBackdrop
 	return view
 }

@@ -1,7 +1,7 @@
-<div style="background-size: cover; background-position: center; background-repeat: no-repeat; background-image: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.4)), url('{{.Movie|backdrop}}');">
+<div style="background-size: cover; background-position: center; background-repeat: no-repeat; background-image: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.4)), url('{{call .Backdrop .Movie}}');">
   <div style="display: flex; padding-top: 10px;">
     <div style="padding-left: 25px; padding-right: 25px;">
-      <img src="{{.Movie|poster}}">
+      <img src="{{call .Poster .Movie}}">
     </div>
     <div style="padding-right: 25px;">
       <div style="padding: 10px 0px 10px 0px;">
@@ -77,7 +77,7 @@
     {{ range $i, $c := .Cast }}
     {{ if lt $i 5 }}
     <div class="card">
-      <a data-link="/v?profile={{ $c.Person.ID }}"><img src="{{$c.Person|profile}}"></a>
+      <a data-link="/v?profile={{ $c.Person.ID }}"><img src="{{call $.Profile $c.Person}}"></a>
       <p class="person">{{ $c.Person.Name }}</p>
       <p class="character">{{ $c.Character }}</p>
     </div>
@@ -90,7 +90,7 @@
   <div style="display: flex; padding-left: 25px;">
     {{ range .Other }}
     <div style="padding: 10px;">
-      <div><a data-link="{{.|link}}"><img src="{{.|posterSmall}}"></a></div>
+      <div><a data-link="{{.|link}}"><img src="{{call $.PosterSmall .}}"></a></div>
       <div style="padding-top: 10px; max-width: 154px;" class="movie-title">{{ .Title }}</div>
     </div>
     {{ end }}
