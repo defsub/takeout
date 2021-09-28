@@ -131,7 +131,6 @@ Note: only sqlite3 is supported
 ### Server
 
 * Server.Listen - Address and port to listen on (default 127.0.0.1:3000)
-* Server.WebDir - Directory with web static files and templates
 
 Note: use Nginx or other frontend with TLS (and Let's Encrypt)
 
