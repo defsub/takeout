@@ -47,7 +47,7 @@ func (v *Video) openDB() (err error) {
 		return
 	}
 
-	v.db.AutoMigrate(&Cast{}, &Collection{}, &Crew{}, &Genre{}, &Movie{}, &Person{})
+	v.db.AutoMigrate(&Cast{}, &Collection{}, &Crew{}, &Genre{}, &Keyword{}, &Movie{}, &Person{})
 	return
 }
 
