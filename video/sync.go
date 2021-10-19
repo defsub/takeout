@@ -39,6 +39,7 @@ const (
 	FieldCrew       = "crew"
 	FieldDate       = "date"
 	FieldGenre      = "genre"
+	FieldKeyword    = "keyword"
 	FieldRating     = "rating"
 	FieldRevenue    = "revenue"
 	FieldRuntime    = "runtime"
@@ -46,7 +47,6 @@ const (
 	FieldTitle      = "title"
 	FieldVote       = "vote"
 	FieldVoteCount  = "vote_count"
-
 )
 
 func (v *Video) Sync() error {
@@ -133,6 +133,7 @@ func (v *Video) syncMovie(client *tmdb.TMDB, tmid int,
 	v.deleteCollections(tmid)
 	v.deleteCrew(tmid)
 	v.deleteGenres(tmid)
+	v.deleteKeywords(tmid)
 
 	fields := make(search.FieldMap)
 
@@ -183,7 +184,7 @@ func (v *Video) syncMovie(client *tmdb.TMDB, tmid int,
 	search.AddField(fields, FieldRuntime, m.Runtime)
 	search.AddField(fields, FieldTitle, m.Title)
 	search.AddField(fields, FieldTagline, m.Tagline)
-	search.AddField(fields, FieldVote, int(m.VoteAverage * 10))
+	search.AddField(fields, FieldVote, int(m.VoteAverage*10))
 	search.AddField(fields, FieldVoteCount, m.VoteCount)
 
 	err = v.createMovie(&m)
@@ -216,6 +217,23 @@ func (v *Video) syncMovie(client *tmdb.TMDB, tmid int,
 			return fields, err
 		}
 		search.AddField(fields, FieldGenre, g.Name)
+	}
+
+	// keywords
+	keywords, err := client.MovieKeywordNames(tmid)
+	if err != nil {
+		return fields, err
+	}
+	for _, keyword := range keywords {
+		k := Keyword{
+			Name: keyword,
+			TMID: m.TMID,
+		}
+		err = v.createKeyword(&k)
+		if err != nil {
+			return fields, err
+		}
+		search.AddField(fields, FieldKeyword, k.Name)
 	}
 
 	// credits

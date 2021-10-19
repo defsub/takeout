@@ -60,6 +60,12 @@ type Genre struct {
 	Name string
 }
 
+type Keyword struct {
+	gorm.Model
+	TMID int64
+	Name string
+}
+
 type Person struct {
 	gorm.Model
 	PEID        int64 `gorm:"uniqueIndex:idx_person_peid"`

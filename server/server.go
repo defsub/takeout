@@ -20,7 +20,6 @@ package server
 import (
 	"embed"
 	_ "embed"
-	"errors"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -61,14 +60,10 @@ func (handler *UserHandler) NewVideo() (*video.Video, error) {
 	return vid, err
 }
 
-func (handler *UserHandler) NewAuth() *auth.Auth {
+func (handler *UserHandler) NewAuth() (*auth.Auth, error) {
 	a := auth.NewAuth(handler.config)
 	err := a.Open()
-	log.CheckError(err)
-	if err != nil {
-		return nil
-	}
-	return a
+	return a, err
 }
 
 func (handler *UserHandler) tracksHandler(w http.ResponseWriter, r *http.Request, m *music.Music) {
@@ -80,7 +75,7 @@ func (handler *UserHandler) tracksHandler(w http.ResponseWriter, r *http.Request
 	if len(tracks) > 0 {
 		handler.doSpiff(m, "Takeout", tracks, w, r)
 	} else {
-		http.Error(w, "bummer", http.StatusInternalServerError)
+		notFoundErr(w)
 		return
 	}
 }
@@ -178,34 +173,32 @@ func (handler *UserHandler) render(m *music.Music, vid *video.Video, temp string
 	w http.ResponseWriter, r *http.Request) {
 	err := handler.template.ExecuteTemplate(w, temp, view)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverErr(w, err)
 	}
 }
 
 func (handler *UserHandler) doLogin(user, pass string) (http.Cookie, error) {
-	a := handler.NewAuth()
-	if a == nil {
-		return http.Cookie{}, errors.New("noauth")
+	a, err := handler.NewAuth()
+	if err != nil {
+		return http.Cookie{}, err
 	}
 	defer a.Close()
 	return a.Login(user, pass)
 }
 
 func (handler *UserHandler) doCodeAuth(user, pass, value string) error {
-	a := handler.NewAuth()
-	if a == nil {
-		return errors.New("noauth")
+	a, err := handler.NewAuth()
+	if err != nil {
+		return err
 	}
 	defer a.Close()
 	cookie, err := a.Login(user, pass)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("login -> %+v\n", cookie)
 	err = a.AuthorizeCode(value, cookie.Value)
-	fmt.Printf("auth -> %+v\n", err)
 	if err != nil {
-		return errors.New("invalid code")
+		return ErrInvalidCode
 	}
 	return nil
 }
@@ -223,7 +216,7 @@ func (handler *UserHandler) loginHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	}
-	http.Error(w, "bummer", http.StatusUnauthorized)
+	authErr(w, ErrUnauthorized)
 }
 
 func (handler *UserHandler) linkHandler(w http.ResponseWriter, r *http.Request) {
@@ -243,9 +236,9 @@ func (handler *UserHandler) linkHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func (handler *UserHandler) authorized(w http.ResponseWriter, r *http.Request) bool {
-	a := handler.NewAuth()
-	if a == nil {
-		http.Error(w, "bummer", http.StatusInternalServerError)
+	a, err := handler.NewAuth()
+	if err != nil {
+		serverErr(w, err)
 		return false
 	}
 	defer a.Close()
@@ -265,14 +258,14 @@ func (handler *UserHandler) authorized(w http.ResponseWriter, r *http.Request) b
 		a.Logout(*cookie)
 		a.Expire(cookie)
 		http.SetCookie(w, cookie)
-		http.Error(w, "bummer", http.StatusUnauthorized)
+		authErr(w, ErrUnauthorized)
 		return false
 	}
 
 	handler.user, err = a.UserAuth(*cookie)
 	if err != nil {
 		a.Logout(*cookie)
-		http.Error(w, "bummer", http.StatusUnauthorized)
+		authErr(w, ErrUnauthorized)
 		a.Expire(cookie)
 		http.SetCookie(w, cookie)
 		return false
@@ -281,22 +274,31 @@ func (handler *UserHandler) authorized(w http.ResponseWriter, r *http.Request) b
 	a.Refresh(cookie)
 	http.SetCookie(w, cookie)
 
+	err = handler.configure(w)
+	if err != nil {
+		serverErr(w, err)
+		return false
+	}
+
+	return true
+}
+
+// after user authentication, configure available media
+func (handler *UserHandler) configure(w http.ResponseWriter) error {
+	var err error
 	// only supports one media collection right now
 	media := handler.user.FirstMedia()
 	if media == "" {
-		http.Error(w, "bummer", http.StatusServiceUnavailable)
-		return false
+		return ErrNoMedia
 	}
 	path := fmt.Sprintf("%s/%s", handler.config.DataDir, media)
-
+	// load relative media configuration
 	handler.userConfig, err = config.LoadConfig(path)
 	if err != nil {
-		http.Error(w, "bummer", http.StatusInternalServerError)
-		return false
+		return err
 	}
 	handler.userConfig.Server.URL = handler.config.Server.URL // TODO FIXME
-
-	return true
+	return nil
 }
 
 func (handler *UserHandler) viewHandler(w http.ResponseWriter, r *http.Request, m *music.Music, vid *video.Video) {
@@ -364,6 +366,11 @@ func (handler *UserHandler) viewHandler(w http.ResponseWriter, r *http.Request, 
 		name := strings.TrimSpace(v)
 		view = handler.genreView(vid, name)
 		temp = "genre.html"
+	} else if v := r.URL.Query().Get("keyword"); v != "" {
+		// /v?keyword={keyword-name}
+		name := strings.TrimSpace(v)
+		view = handler.keywordView(vid, name)
+		temp = "keyword.html"
 	} else if v := r.URL.Query().Get("watch"); v != "" {
 		// /v?watch={movie-id}
 		id, _ := strconv.Atoi(v)
@@ -405,14 +412,10 @@ func getTemplateFS(config *config.Config) fs.FS {
 }
 
 func getTemplates(config *config.Config) *template.Template {
-	t, err := template.New("").Funcs(doFuncMap()).ParseFS(getTemplateFS(config),
+	return template.Must(template.New("").Funcs(doFuncMap()).ParseFS(getTemplateFS(config),
 		"res/template/*.html",
 		"res/template/music/*.html",
-		"res/template/video/*.html")
-	if err != nil {
-		panic(err)
-	}
-	return t
+		"res/template/video/*.html"))
 }
 
 func Serve(config *config.Config) {
@@ -438,7 +441,7 @@ func Serve(config *config.Config) {
 		handler := makeHandler()
 		m, err := handler.NewMusic()
 		if err != nil {
-			http.Error(w, "bummer", http.StatusInternalServerError)
+			serverErr(w, err)
 			return
 		}
 		defer m.Close()
@@ -452,13 +455,13 @@ func Serve(config *config.Config) {
 		}
 		m, err := handler.NewMusic()
 		if err != nil {
-			http.Error(w, "bummer", http.StatusInternalServerError)
+			serverErr(w, err)
 			return
 		}
 		defer m.Close()
 		v, err := handler.NewVideo()
 		if err != nil {
-			http.Error(w, "bummer", http.StatusInternalServerError)
+			serverErr(w, err)
 			return
 		}
 		defer v.Close()
@@ -476,13 +479,13 @@ func Serve(config *config.Config) {
 		}
 		m, err := handler.NewMusic()
 		if err != nil {
-			http.Error(w, "bummer", http.StatusInternalServerError)
+			serverErr(w, err)
 			return
 		}
 		defer m.Close()
 		v, err := handler.NewVideo()
 		if err != nil {
-			http.Error(w, "bummer", http.StatusInternalServerError)
+			serverErr(w, err)
 			return
 		}
 		defer v.Close()
@@ -493,8 +496,7 @@ func Serve(config *config.Config) {
 		makeHandler().hookHandler(w, r)
 	}
 
-	fs := http.FileServer(getStaticFS(config))
-	http.Handle("/static/", fs)
+	http.Handle("/static/", http.FileServer(getStaticFS(config)))
 	http.HandleFunc("/tracks", tracksHandler)
 	http.HandleFunc("/", viewHandler)
 	http.HandleFunc("/v", viewHandler)

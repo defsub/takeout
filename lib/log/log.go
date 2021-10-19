@@ -23,8 +23,13 @@ import (
 )
 
 type Logger interface {
+	// Print followed by Panic
+	Panicf(format string, v ...interface{})
+	Panicln(v ...interface{})
+	// Print followed by Exit
 	Fatalf(format string, v ...interface{})
 	Fatalln(v ...interface{})
+	// Print
 	Printf(format string, v ...interface{})
 	Println(v ...interface{})
 }
@@ -35,12 +40,20 @@ func defaultLogger() Logger {
 	return l.New(os.Stdout, "", l.LstdFlags)
 }
 
+// Panic if err
 func CheckError(err error) {
 	if err != nil {
-		logger.Fatalln(err)
+		logger.Panicln(err)
 	}
 }
 
+func Panicf(format string, v ...interface{}) {
+	logger.Panicf(format, v...)
+}
+
+func Panicln(v ...interface{}) {
+	logger.Panicln(v...)
+}
 func Fatalf(format string, v ...interface{}) {
 	logger.Fatalf(format, v...)
 }

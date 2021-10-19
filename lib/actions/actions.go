@@ -42,7 +42,7 @@ const (
 	CapabilitySpeech            = "SPEECH"
 	CapabilityRichResponse      = "RICH_RESPONSE"
 	CapabilityLongFormAudio     = "LONG_FORM_AUDIO"
-	CapabilityInteractiveCanvas = "LONG_FORM_AUDIO"
+	CapabilityInteractiveCanvas = "INTERACTIVE_CANVAS"
 	CapabilityWebLink           = "WEB_LINK"
 	CapabilityHomeStorage       = "HOME_STORAGE"
 

@@ -39,6 +39,16 @@ const (
 	CookieName = takeout.AppName
 )
 
+var (
+	ErrBadDriver       = errors.New("driver not supported")
+	ErrUserNotFound    = errors.New("user not found")
+	ErrKeyMismatch     = errors.New("key mismatch")
+	ErrSessionNotFound = errors.New("session not found")
+	ErrCodeNotFound    = errors.New("code not found")
+	ErrCodeExpired     = errors.New("code has expired")
+	ErrCodeAlreadyUsed = errors.New("code already authorized")
+)
+
 type User struct {
 	gorm.Model
 	Name  string `gorm:"unique_index:idx_user_name"`
@@ -100,7 +110,7 @@ func (a *Auth) Open() (err error) {
 	if a.config.Auth.DB.Driver == "sqlite3" {
 		a.db, err = gorm.Open(sqlite.Open(a.config.Auth.DB.Source), cfg)
 	} else {
-		err = errors.New("driver not supported")
+		err = ErrBadDriver
 	}
 
 	if err != nil {
@@ -140,7 +150,7 @@ func (a *Auth) Login(email, pass string) (http.Cookie, error) {
 	var u User
 	err := a.db.Where("name = ?", email).First(&u).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return http.Cookie{}, errors.New("user not found")
+		return http.Cookie{}, ErrUserNotFound
 	}
 
 	key, err := a.key(pass, u.Salt)
@@ -149,7 +159,7 @@ func (a *Auth) Login(email, pass string) (http.Cookie, error) {
 	}
 
 	if !bytes.Equal(u.Key, key) {
-		return http.Cookie{}, errors.New("key mismatch")
+		return http.Cookie{}, ErrKeyMismatch
 	}
 
 	session := a.session(&u)
@@ -165,7 +175,7 @@ func (a *Auth) ChangePass(email, newpass string) error {
 	var u User
 	err := a.db.Where("name = ?", email).First(&u).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return errors.New("user not found")
+		return ErrUserNotFound
 	}
 
 	salt := make([]byte, 8)
@@ -189,7 +199,7 @@ func (a *Auth) AssignMedia(email, media string) error {
 	var u User
 	err := a.db.Where("name = ?", email).First(&u).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return errors.New("user not found")
+		return ErrUserNotFound
 	}
 	u.Media = media
 	return a.db.Model(u).Update("media", u.Media).Error
@@ -228,7 +238,7 @@ func (a *Auth) Valid(cookie http.Cookie) bool {
 func (a *Auth) Refresh(cookie *http.Cookie) error {
 	session := a.findCookieSession(*cookie)
 	if session == nil {
-		return errors.New("session not found")
+		return ErrSessionNotFound
 	}
 	a.touch(session)
 	cookie.MaxAge = session.maxAge()
@@ -243,14 +253,14 @@ func (a *Auth) UserAuth(cookie http.Cookie) (*User, error) {
 func (a *Auth) UserAuthValue(value string) (*User, error) {
 	session := a.findSession(value)
 	if session == nil {
-		return nil, errors.New("session not found")
+		return nil, ErrSessionNotFound
 	}
 
 	// TODO add cache
 	var u User
 	err := a.db.Where("name = ?", session.User).First(&u).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, errors.New("user not found")
+		return nil, ErrUserNotFound
 	}
 
 	return &u, nil
@@ -373,13 +383,13 @@ func (a *Auth) LinkedCode(value string) *Code {
 func (a *Auth) AuthorizeCode(value, cookie string) error {
 	code := a.findCode(value)
 	if code == nil {
-		return errors.New("code not found")
+		return ErrCodeNotFound
 	}
 	if code.expired() {
-		return errors.New("code has expired")
+		return ErrCodeExpired
 	}
 	if code.Cookie != "" {
-		return errors.New("code already authorized")
+		return ErrCodeAlreadyUsed
 	}
 	return a.db.Model(code).Update("cookie", cookie).Error
 }

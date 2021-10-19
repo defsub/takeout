@@ -18,6 +18,7 @@
 package config
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -56,59 +57,45 @@ type DatabaseConfig struct {
 	LogMode bool
 }
 
+type Template struct {
+	Text  string
+	templ *template.Template
+}
+
+func (t *Template) Template() *template.Template {
+	if t.templ == nil {
+		t.templ = template.Must(template.New("t").Parse(t.Text))
+	}
+	return t.templ
+}
+
+func (t *Template) Execute(vars interface{}) string {
+	var buf bytes.Buffer
+	_ = t.Template().Execute(&buf, vars)
+	return buf.String()
+}
+
 type AssistantResponse struct {
-	Speech         string
-	Text           string
-	speechTemplate *template.Template
-	textTemplate   *template.Template
-}
-
-func (r *AssistantResponse) SpeechTemplate() *template.Template {
-	if r.speechTemplate == nil {
-		r.speechTemplate = template.Must(template.New("t").Parse(r.Speech))
-	}
-	return r.speechTemplate
-}
-
-func (r *AssistantResponse) TextTemplate() *template.Template {
-	if r.textTemplate == nil {
-		r.textTemplate = template.Must(template.New("t").Parse(r.Text))
-	}
-	return r.textTemplate
+	Speech Template
+	Text   Template
 }
 
 type AssistantConfig struct {
-	ProjectID         string
-	TrackLimit        int
-	RecentLimit       int
-	Welcome           AssistantResponse
-	Play              AssistantResponse
-	Error             AssistantResponse
-	Link              AssistantResponse
-	Linked            AssistantResponse
-	Guest             AssistantResponse
-	Recent            AssistantResponse
-	Release           AssistantResponse
-	SuggestionAuth    string
-	SuggestionNew     string
-	MediaObjectName   string
-	MediaObjectDesc   string
-	mediaNameTemplate *template.Template
-	mediaDescTemplate *template.Template
-}
-
-func (c *AssistantConfig) MediaObjectNameTemplate() *template.Template {
-	if c.mediaNameTemplate == nil {
-		c.mediaNameTemplate = template.Must(template.New("t").Parse(c.MediaObjectName))
-	}
-	return c.mediaNameTemplate
-}
-
-func (c *AssistantConfig) MediaObjectDescTemplate() *template.Template {
-	if c.mediaDescTemplate == nil {
-		c.mediaDescTemplate = template.Must(template.New("t").Parse(c.MediaObjectDesc))
-	}
-	return c.mediaDescTemplate
+	ProjectID       string
+	TrackLimit      int
+	RecentLimit     int
+	Welcome         AssistantResponse
+	Play            AssistantResponse
+	Error           AssistantResponse
+	Link            AssistantResponse
+	Linked          AssistantResponse
+	Guest           AssistantResponse
+	Recent          AssistantResponse
+	Release         AssistantResponse
+	SuggestionAuth  string
+	SuggestionNew   string
+	MediaObjectName Template
+	MediaObjectDesc Template
 }
 
 type MusicConfig struct {
@@ -156,7 +143,8 @@ type FanartAPIConfig struct {
 }
 
 type TMDBAPIConfig struct {
-	Key string
+	Key          string
+	FileTemplate Template
 }
 
 type AuthConfig struct {
@@ -267,6 +255,8 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Music.DB.LogMode", "false")
 
 	v.SetDefault("TMDB.Key", "903a776b0638da68e9ade38ff538e1d3")
+	v.SetDefault("TMDB.FileTemplate.Text",
+		"{{.Title}} ({{.Year}}){{if .Definition}} - {{.Definition}}{{end}}{{.Extension}}")
 
 	v.SetDefault("Search.BleveDir", ".")
 
@@ -310,26 +300,26 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Assistant.ProjectID", "undefined")
 	v.SetDefault("Assistant.TrackLimit", "10")
 	v.SetDefault("Assistant.RecentLimit", "3")
-	v.SetDefault("Assistant.Welcome.Speech", "Welcome to Takeout")
-	v.SetDefault("Assistant.Welcome.Text", "Welcome to Takeout")
-	v.SetDefault("Assistant.Play.Speech", "Enjoy the music")
-	v.SetDefault("Assistant.Play.Text", "")
-	v.SetDefault("Assistant.Error.Speech", "Please try again")
-	v.SetDefault("Assistant.Error.Text", "Please try again")
-	v.SetDefault("Assistant.Link.Speech", "Link this device to Takeout using code {{.Code}}")
-	v.SetDefault("Assistant.Link.Text", "Link code is: {{.Code}}")
-	v.SetDefault("Assistant.Linked.Speech", "Takeout is now linked")
-	v.SetDefault("Assistant.Linked.Text", "Takeout is now linked")
-	v.SetDefault("Assistant.Guest.Speech", "Guest not supported. A verified user is required.")
-	v.SetDefault("Assistant.Guest.Text", "Guest not supported. A verified user is required.")
-	v.SetDefault("Assistant.Recent.Speech", "Recently added albums are ")
-	v.SetDefault("Assistant.Recent.Text", "Recent Albums: ")
-	v.SetDefault("Assistant.Release.Speech", "{{.Name}} by {{.Artist}}")
-	v.SetDefault("Assistant.Release.Text", "{{.Artist}} \u2022 {{.Name}}")
+	v.SetDefault("Assistant.Welcome.Speech.Text", "Welcome to Takeout")
+	v.SetDefault("Assistant.Welcome.Text.Text", "Welcome to Takeout")
+	v.SetDefault("Assistant.Play.Speech.Text", "Enjoy the music")
+	v.SetDefault("Assistant.Play.Text.Text", "")
+	v.SetDefault("Assistant.Error.Speech.Text", "Please try again")
+	v.SetDefault("Assistant.Error.Text.Text", "Please try again")
+	v.SetDefault("Assistant.Link.Speech.Text", "Link this device to Takeout using code {{.Code}}")
+	v.SetDefault("Assistant.Link.Text.Text", "Link code is: {{.Code}}")
+	v.SetDefault("Assistant.Linked.Speech.Text", "Takeout is now linked")
+	v.SetDefault("Assistant.Linked.Text.Text", "Takeout is now linked")
+	v.SetDefault("Assistant.Guest.Speech.Text", "Guest not supported. A verified user is required.")
+	v.SetDefault("Assistant.Guest.Text.Text", "Guest not supported. A verified user is required.")
+	v.SetDefault("Assistant.Recent.Speech.Text", "Recently added albums are ")
+	v.SetDefault("Assistant.Recent.Text.Text", "Recent Albums: ")
+	v.SetDefault("Assistant.Release.Speech.Text", "{{.Name}} by {{.Artist}}")
+	v.SetDefault("Assistant.Release.Text.Text", "{{.Artist}} \u2022 {{.Name}}")
 	v.SetDefault("Assistant.SuggestionAuth", "Next")
 	v.SetDefault("Assistant.SuggestionNew", "What's new")
-	v.SetDefault("Assistant.MediaObjectName", "{{.Title}}")
-	v.SetDefault("Assistant.MediaObjectDesc", "{{.Artist}} \u2022 {{.Release}}")
+	v.SetDefault("Assistant.MediaObjectName.Text", "{{.Title}}")
+	v.SetDefault("Assistant.MediaObjectDesc.Text", "{{.Artist}} \u2022 {{.Release}}")
 }
 
 func userAgent() string {

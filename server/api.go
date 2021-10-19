@@ -55,7 +55,7 @@ func (handler *UserHandler) apiLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", ApplicationJson)
 
 	if r.Method != "POST" {
-		http.Error(w, "bummer", http.StatusInternalServerError)
+		serverErr(w, ErrInvalidMethod)
 		return
 	}
 
@@ -63,7 +63,7 @@ func (handler *UserHandler) apiLogin(w http.ResponseWriter, r *http.Request) {
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, &l)
 	if err != nil {
-		http.Error(w, "bummer", http.StatusInternalServerError)
+		serverErr(w, err)
 		return
 	}
 
@@ -77,7 +77,7 @@ func (handler *UserHandler) apiLogin(w http.ResponseWriter, r *http.Request) {
 			Cookie:  cookie.Value,
 		}
 	} else {
-		http.Error(w, "bummer", http.StatusUnauthorized)
+		authErr(w, err)
 		result = status{
 			Status:  http.StatusUnauthorized,
 			Message: "error",
@@ -93,7 +93,7 @@ func (handler *UserHandler) recvStation(w http.ResponseWriter, r *http.Request,
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, s)
 	if err != nil {
-		http.Error(w, "bummer", http.StatusInternalServerError)
+		serverErr(w, err)
 		return err
 	}
 	if s.Name == "" || s.Ref == "" {
@@ -131,8 +131,7 @@ func (handler *UserHandler) apiRadio(w http.ResponseWriter, r *http.Request, m *
 		}
 		err = m.CreateStation(&s)
 		if err != nil {
-			log.Println(err)
-			http.Error(w, "bummer2", http.StatusInternalServerError)
+			serverErr(w, err)
 			return
 		}
 		w.WriteHeader(http.StatusCreated)
@@ -190,11 +189,11 @@ func (handler *UserHandler) apiLive(w http.ResponseWriter, r *http.Request, m *m
 func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, m *music.Music, id int) {
 	s, err := m.LookupStation(id)
 	if err != nil {
-		http.Error(w, "bummer", http.StatusNotFound)
+		notFoundErr(w)
 		return
 	}
 	if !s.Visible(handler.user) {
-		http.Error(w, "bummer", http.StatusNotFound)
+		notFoundErr(w)
 		return
 	}
 
@@ -215,8 +214,7 @@ func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, m
 		s.Playlist = up.Playlist
 		err = m.UpdateStation(&s)
 		if err != nil {
-			log.Println(err)
-			http.Error(w, "bummer", http.StatusInternalServerError)
+			serverErr(w, err)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -224,7 +222,7 @@ func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, m
 		patch, _ := ioutil.ReadAll(r.Body)
 		s.Playlist, err = spiff.Patch(s.Playlist, patch)
 		if err != nil {
-			http.Error(w, "bummer", http.StatusInternalServerError)
+			serverErr(w, err)
 			return
 		}
 		// unmarshal & resovle
@@ -241,7 +239,7 @@ func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, m
 	} else if r.Method == "DELETE" {
 		err = m.DeleteStation(&s)
 		if err != nil {
-			http.Error(w, "bummer", http.StatusInternalServerError)
+			serverErr(w, err)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -322,7 +320,7 @@ func (handler *UserHandler) apiPlaylist(w http.ResponseWriter, r *http.Request, 
 		p = &music.Playlist{User: handler.user.Name, Playlist: data}
 		err := m.CreatePlaylist(p)
 		if err != nil {
-			http.Error(w, "bummer", http.StatusInternalServerError)
+			serverErr(w, err)
 			return
 		}
 	}
@@ -336,7 +334,7 @@ func (handler *UserHandler) apiPlaylist(w http.ResponseWriter, r *http.Request, 
 		patch, _ := ioutil.ReadAll(r.Body)
 		p.Playlist, err = spiff.Patch(p.Playlist, patch)
 		if err != nil {
-			http.Error(w, "bummer", http.StatusInternalServerError)
+			serverErr(w, err)
 			return
 		}
 		plist, _ = spiff.Unmarshal(p.Playlist)
@@ -377,7 +375,7 @@ func (handler *UserHandler) apiSearch(w http.ResponseWriter, r *http.Request, m 
 		view := handler.searchView(m, vid, strings.TrimSpace(v))
 		handler.apiView(w, r, view)
 	} else {
-		http.Error(w, "bummer", http.StatusNotFound)
+		notFoundErr(w)
 	}
 }
 
@@ -465,7 +463,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 				url = vid.MovieURL(movie)
 			}
 			// TODO use 307 instead?
-			fmt.Printf("location is %s\n", url.String())
+			//fmt.Printf("location is %s\n", url.String())
 			http.Redirect(w, r, url.String(), http.StatusFound)
 			return
 		}
@@ -480,7 +478,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 			sub := matches[2]
 			ext := matches[3]
 			if ext != "" && ext != ".xspf" {
-				http.Error(w, "bummer", http.StatusNotFound)
+				notFoundErr(w)
 				return
 			}
 			switch sub {
@@ -499,7 +497,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 					image,
 					fmt.Sprintf("/music/artists/%d/singles", id))
 			default:
-				http.Error(w, "bummer", http.StatusNotFound)
+				notFoundErr(w)
 			}
 			return
 		}
@@ -536,7 +534,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 					// /api/artists/1/singles
 					handler.apiView(w, r, handler.singlesView(m, artist))
 				} else {
-					http.Error(w, "bummer", http.StatusNotFound)
+					notFoundErr(w)
 				}
 			case "releases":
 				// /api/releases/1/playlist
@@ -548,10 +546,10 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 						release.Cover("250"),
 						fmt.Sprintf("/music/releases/%d/tracks", id))
 				} else {
-					http.Error(w, "bummer", http.StatusNotFound)
+					notFoundErr(w)
 				}
 			default:
-				http.Error(w, "bummer", http.StatusNotFound)
+				notFoundErr(w)
 			}
 			return
 		}
@@ -583,7 +581,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 				person, _ := vid.LookupPerson(id)
 				handler.apiView(w, r, handler.profileView(vid, person))
 			default:
-				http.Error(w, "bummer", http.StatusNotFound)
+				notFoundErr(w)
 			}
 			return
 		}
@@ -598,7 +596,17 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 			return
 		}
 
-		http.Error(w, "bummer", http.StatusNotFound)
+		// /api/movies/keywords/name
+		// allow dash and space in name
+		keywordsRegexp := regexp.MustCompile(`/api/movies/keywords/([a-zA-Z -]+)`)
+		matches = keywordsRegexp.FindStringSubmatch(r.URL.Path)
+		if matches != nil {
+			name := strings.TrimSpace(matches[1])
+			handler.apiView(w, r, handler.keywordView(vid, name))
+			return
+		}
+
+		notFoundErr(w)
 	}
 }
 

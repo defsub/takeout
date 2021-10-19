@@ -18,10 +18,8 @@
 package server
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
-	"text/template"
 
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
@@ -43,39 +41,38 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-type", ApplicationJson)
 
 	if r.Method != "POST" {
-		http.Error(w, "bummer", http.StatusInternalServerError)
+		serverErr(w, ErrInvalidMethod)
 		return
 	}
 
 	tokenString := r.Header.Get(actions.GoogleAssistantSignature)
 	err := token.ValidateGoogleToken(handler.config, tokenString, handler.config.Assistant.ProjectID)
 	if err != nil {
-		fmt.Printf("bummer err %+v\n", err)
-		http.Error(w, "bummer", http.StatusInternalServerError)
+		serverErr(w, err)
 		return
 	}
 
 	hookRequest := actions.NewWebhookRequest(r)
 	hookResponse := actions.NewWebhookResponse(hookRequest)
-	fmt.Printf("got intent=%s %+v\n", hookRequest.IntentName(), hookRequest)
-	fmt.Printf("got user %+v\n", *hookRequest.User)
-	if hookRequest.User != nil && hookRequest.User.Params != nil {
-		for k, v := range hookRequest.User.Params {
-			fmt.Printf("request user[%s]=%s\n", k, v)
-		}
-	}
-	if hookRequest.Session != nil && hookRequest.Session.Params != nil {
-		for k, v := range hookRequest.Session.Params {
-			fmt.Printf("request session[%s]=%s\n", k, v)
-		}
-	}
+	// fmt.Printf("got intent=%s %+v\n", hookRequest.IntentName(), hookRequest)
+	// fmt.Printf("got user %+v\n", *hookRequest.User)
+	// if hookRequest.User != nil && hookRequest.User.Params != nil {
+	// 	for k, v := range hookRequest.User.Params {
+	// 		fmt.Printf("request user[%s]=%s\n", k, v)
+	// 	}
+	// }
+	// if hookRequest.Session != nil && hookRequest.Session.Params != nil {
+	// 	for k, v := range hookRequest.Session.Params {
+	// 		fmt.Printf("request session[%s]=%s\n", k, v)
+	// 	}
+	// }
 
 	if !hookRequest.Verified() {
 		handler.verificationRequired(hookRequest, hookResponse)
 	} else {
-		a := handler.NewAuth()
-		if a == nil {
-			http.Error(w, "bummer", http.StatusInternalServerError)
+		a, err := handler.NewAuth()
+		if err != nil {
+			serverErr(w, err)
 			return
 		}
 		defer a.Close()
@@ -95,46 +92,38 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	fmt.Printf("sending %+v\n", hookResponse)
-	if hookResponse.User != nil && hookResponse.User.Params != nil {
-		for k, v := range hookResponse.User.Params {
-			fmt.Printf("response user[%s]=%s\n", k, v)
-		}
-	}
-	if hookResponse.Session != nil && hookResponse.Session.Params != nil {
-		for k, v := range hookResponse.Session.Params {
-			fmt.Printf("response session[%s]=%s\n", k, v)
-		}
-	}
+	// fmt.Printf("sending %+v\n", hookResponse)
+	// if hookResponse.User != nil && hookResponse.User.Params != nil {
+	// 	for k, v := range hookResponse.User.Params {
+	// 		fmt.Printf("response user[%s]=%s\n", k, v)
+	// 	}
+	// }
+	// if hookResponse.Session != nil && hookResponse.Session.Params != nil {
+	// 	for k, v := range hookResponse.Session.Params {
+	// 		fmt.Printf("response session[%s]=%s\n", k, v)
+	// 	}
+	// }
 	hookResponse.Send(w)
 }
 
 func (handler *UserHandler) fulfillIntent(resp http.ResponseWriter,
 	r *actions.WebhookRequest, w *actions.WebhookResponse) {
-	var err error
-	media := handler.user.FirstMedia()
-	if media == "" {
-		http.Error(resp, "bummer", http.StatusServiceUnavailable)
-		return
-	}
-	path := fmt.Sprintf("%s/%s", handler.config.DataDir, media)
-
-	handler.userConfig, err = config.LoadConfig(path)
+	err := handler.configure(resp)
 	if err != nil {
-		http.Error(resp, "bummer", http.StatusInternalServerError)
+		serverErr(resp, err)
 		return
 	}
 
 	mus, err := handler.NewMusic()
 	if err != nil {
-		http.Error(resp, "bummer", http.StatusInternalServerError)
+		serverErr(resp, err)
 		return
 	}
 	defer mus.Close()
 
 	vid, err := handler.NewVideo()
 	if err != nil {
-		http.Error(resp, "bummer", http.StatusInternalServerError)
+		serverErr(resp, err)
 		return
 	}
 	defer vid.Close()
@@ -243,16 +232,13 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 
 	if query != "" {
 		tracks = m.Search(query, handler.config.Assistant.TrackLimit)
-		fmt.Printf("search for %s -> %d tracks\n", query, len(tracks))
 	}
 
 	if len(tracks) > 0 {
 		addSimple(w, handler.config.Assistant.Play)
 		for _, t := range tracks {
-			fmt.Printf("%d. %s/%s/%s\n",
-				t.TrackNum, t.Artist, t.Release, t.Title)
-			name := execute(handler.config.Assistant.MediaObjectNameTemplate(), t)
-			desc := execute(handler.config.Assistant.MediaObjectDescTemplate(), t)
+			name := handler.config.Assistant.MediaObjectName.Execute(t)
+			desc := handler.config.Assistant.MediaObjectDesc.Execute(t)
 			w.AddMedia(name, desc,
 				m.TrackURL(&t).String(),
 				m.TrackImage(t).String())
@@ -266,8 +252,8 @@ func (handler *UserHandler) fulfillNew(r *actions.WebhookRequest, w *actions.Web
 	m *music.Music, v *video.Video) {
 	home := handler.homeView(m, v)
 
-	speech := handler.config.Assistant.Recent.Speech
-	text := handler.config.Assistant.Recent.Text
+	speech := handler.config.Assistant.Recent.Speech.Text
+	text := handler.config.Assistant.Recent.Text.Text
 
 	for i, rel := range home.AddedReleases {
 		if i == handler.config.Assistant.RecentLimit {
@@ -276,8 +262,8 @@ func (handler *UserHandler) fulfillNew(r *actions.WebhookRequest, w *actions.Web
 			speech += " and " // TODO
 			text += ", "
 		}
-		speech += execute(handler.config.Assistant.Release.SpeechTemplate(), rel)
-		text += execute(handler.config.Assistant.Release.TextTemplate(), rel)
+		speech += handler.config.Assistant.Release.Speech.Execute(rel)
+		text += handler.config.Assistant.Release.Speech.Execute(rel)
 	}
 	w.AddSimple(speech, text)
 }
@@ -289,17 +275,11 @@ func (handler *UserHandler) fulfillWelcome(r *actions.WebhookRequest, w *actions
 }
 
 func addSimple(w *actions.WebhookResponse, m config.AssistantResponse) {
-	w.AddSimple(m.Speech, m.Text)
+	w.AddSimple(m.Speech.Text, m.Text.Text)
 }
 
 func addSimpleTemplate(w *actions.WebhookResponse, m config.AssistantResponse, vars interface{}) {
-	w.AddSimple(execute(m.SpeechTemplate(), vars), execute(m.TextTemplate(), vars))
-}
-
-func execute(t *template.Template, vars interface{}) string {
-	var buf bytes.Buffer
-	_ = t.Execute(&buf, vars)
-	return buf.String()
+	w.AddSimple(m.Speech.Execute(vars), m.Text.Execute(vars))
 }
 
 func (handler *UserHandler) authRequired(r *actions.WebhookRequest, w *actions.WebhookResponse, a *auth.Auth) {

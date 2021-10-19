@@ -120,6 +120,7 @@ type MovieView struct {
 	Directing   []video.Person
 	Writing     []video.Person
 	Genres      []string
+	Keywords    []string
 	Vote        int
 	VoteCount   int
 	Poster      PosterFunc   `json:"-"`
@@ -139,6 +140,13 @@ type ProfileView struct {
 }
 
 type GenreView struct {
+	Name        string
+	Movies      []video.Movie
+	PosterSmall PosterFunc   `json:"-"`
+	Backdrop    BackdropFunc `json:"-"`
+}
+
+type KeywordView struct {
 	Name        string
 	Movies      []video.Movie
 	PosterSmall PosterFunc   `json:"-"`
@@ -300,6 +308,7 @@ func (handler *UserHandler) movieView(v *video.Video, m *video.Movie) *MovieView
 		view.Starring = append(view.Starring, c.Person)
 	}
 	view.Genres = v.Genres(m)
+	view.Keywords = v.Keywords(m)
 	view.Vote = int(m.VoteAverage * 10)
 	view.VoteCount = m.VoteCount
 	view.Poster = v.MoviePoster
@@ -325,6 +334,15 @@ func (handler *UserHandler) genreView(v *video.Video, name string) *GenreView {
 	view := &GenreView{}
 	view.Name = name
 	view.Movies = v.Genre(name)
+	view.PosterSmall = v.MoviePosterSmall
+	view.Backdrop = v.MovieBackdrop
+	return view
+}
+
+func (handler *UserHandler) keywordView(v *video.Video, name string) *KeywordView {
+	view := &KeywordView{}
+	view.Name = name
+	view.Movies = v.Keyword(name)
 	view.PosterSmall = v.MoviePosterSmall
 	view.Backdrop = v.MovieBackdrop
 	return view

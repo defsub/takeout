@@ -192,6 +192,16 @@ type genreList struct {
 
 type Genres map[int]string
 
+type Keywords struct {
+	ID       int       `json:"id"`
+	Keywords []Keyword `json:"keywords"`
+}
+
+type Keyword struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
 type imagesConfig struct {
 	BaseURL       string   `json:"base_url"`
 	SecureBaseURL string   `json:"secure_base_url"`
@@ -318,6 +328,19 @@ func (m *TMDB) MoveGenreNames() []string {
 		result = append(result, v)
 	}
 	return result
+}
+
+func (m *TMDB) MovieKeywordNames(id int) ([]string, error) {
+	url := fmt.Sprintf(
+		"https://%s/3/movie/%d/keywords?api_key=%s", endpoint, id, m.config.TMDB.Key)
+	var result Keywords
+	err := m.client.GetJson(url, &result)
+	var names []string
+	for _, v := range result.Keywords {
+		names = append(names, v.Name)
+	}
+	return names, err
+
 }
 
 func (m *TMDB) configuration() (*apiConfig, error) {

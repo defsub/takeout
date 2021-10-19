@@ -68,6 +68,11 @@
       <div>
 	{{ .Movie.Overview }}
 	<a data-link="/v?watch={{ .Movie.ID }}">watch it</a>
+	<div>
+	  {{ range .Keywords }}
+	  <a data-link="/v?keyword={{.|urlquery}}">{{.}}</a>
+	  {{ end }}
+	</div>
       </div>
     </div>
   </div>

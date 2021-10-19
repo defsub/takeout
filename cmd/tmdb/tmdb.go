@@ -44,7 +44,7 @@ func getConfig() *config.Config {
 		configPath = os.Getenv("TAKEOUT_HOME")
 	}
 	if configName == "" {
-		configName = os.Getenv("TAKEOUT_CONFIG")
+		configName = os.Getenv("TMDB_CONFIG")
 	}
 	if configFile != "" {
 		config.SetConfigFile(configFile)
@@ -53,7 +53,7 @@ func getConfig() *config.Config {
 			configPath = "."
 		}
 		if configName == "" {
-			configName = "takeout"
+			configName = "tmdb"
 		}
 		config.AddConfigPath(configPath)
 		config.SetConfigName(configName)

@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/defsub/takeout/lib/tmdb"
 	"github.com/defsub/takeout/lib/date"
+	"github.com/defsub/takeout/lib/tmdb"
 	"github.com/spf13/cobra"
 )
 
@@ -37,10 +37,11 @@ var searchCmd = &cobra.Command{
 
 var optQuery string
 var optFile string
+var optDef string
+var optExt string
 
 func fixColon(name string) string {
-	// not generalluy good to have colons in filenames so change "foo: bar"
-	// to "foo - bar"
+	// change "foo: bar" to "foo - bar"
 	colon := regexp.MustCompile(`([A-Za-z0-9])\s*(:)\s`)
 	name = colon.ReplaceAllString(name, "${1} - ")
 	return name
@@ -48,12 +49,16 @@ func fixColon(name string) string {
 
 func doit() {
 	var query string
-	m := tmdb.NewTMDB(getConfig())
+	config := getConfig()
+	m := tmdb.NewTMDB(config)
 	if optFile != "" {
-		fileRegexp := regexp.MustCompile(`([^\/]+)_t\d+\.mkv$`)
+		fileRegexp := regexp.MustCompile(`([^\/]+)_t\d+(\.mkv)$`)
 		matches := fileRegexp.FindStringSubmatch(optFile)
 		if matches != nil {
 			query = matches[1]
+			if optExt == "" {
+				optExt = matches[2]
+			}
 		}
 	} else if optQuery != "" {
 		query = optQuery
@@ -65,7 +70,17 @@ func doit() {
 			return
 		}
 		for _, v := range results {
-			title := fmt.Sprintf("%s (%d)", v.Title, date.ParseDate(v.ReleaseDate).Year())
+			vars := map[string]interface{}{
+				"Title":      fixColon(v.Title),
+				"Year":       date.ParseDate(v.ReleaseDate).Year(),
+				"Definition": optDef,
+				"Def":        optDef,
+				"Extension":  optExt,
+				"Ext":        optExt,
+			}
+
+			title := config.TMDB.FileTemplate.Execute(vars)
+
 			fmt.Printf("%s\n", title)
 			fmt.Printf("%s\n", m.MovieOriginalPoster(v.PosterPath).String())
 			if len(v.GenreIDs) > 0 {
@@ -78,7 +93,7 @@ func doit() {
 				fmt.Println()
 			}
 			if optFile != "" {
-				fmt.Printf("mv '%s' '%s - HD.mkv'\n", optFile, title)
+				fmt.Printf("mv '%s' '%s'\n", optFile, title)
 			}
 			fmt.Printf("\n")
 		}
@@ -89,5 +104,7 @@ func init() {
 	searchCmd.Flags().StringVarP(&configFile, "config", "c", "", "config file")
 	searchCmd.Flags().StringVarP(&optQuery, "query", "q", "", "search query")
 	searchCmd.Flags().StringVarP(&optFile, "file", "f", "", "search file")
+	searchCmd.Flags().StringVarP(&optDef, "def", "d", "", "SD, HD, UHD, 4k, etc")
+	searchCmd.Flags().StringVarP(&optDef, "ext", "e", "", "file extension w/ dot")
 	rootCmd.AddCommand(searchCmd)
 }

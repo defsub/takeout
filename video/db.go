@@ -82,6 +82,23 @@ func (v *Video) Genres(m *Movie) []string {
 	return list
 }
 
+func (v *Video) Keyword(name string) []Movie {
+	var movies []Movie
+	v.db.Where("movies.tm_id in (select tm_id from keywords where name = ?)", name).
+		Order("movies.date").Find(&movies)
+	return movies
+}
+
+func (v *Video) Keywords(m *Movie) []string {
+	var keywords []Keyword
+	var list []string
+	v.db.Where("tm_id = ?", m.TMID).Order("name").Find(&keywords)
+	for _, g := range keywords {
+		list = append(list, g.Name)
+	}
+	return list
+}
+
 func (v *Video) Collections() []Collection {
 	var collections []Collection
 	v.db.Group("name").Order("sort_name").Find(&collections)
@@ -175,6 +192,14 @@ func (v *Video) deleteCrew(tmid int) {
 
 func (v *Video) deleteGenres(tmid int) {
 	var list []Genre
+	v.db.Where("tm_id = ?", tmid).Find(&list)
+	for _, o := range list {
+		v.db.Unscoped().Delete(o)
+	}
+}
+
+func (v *Video) deleteKeywords(tmid int) {
+	var list []Keyword
 	v.db.Where("tm_id = ?", tmid).Find(&list)
 	for _, o := range list {
 		v.db.Unscoped().Delete(o)
@@ -312,6 +337,10 @@ func (v *Video) createCrew(c *Crew) error {
 
 func (v *Video) createGenre(g *Genre) error {
 	return v.db.Create(g).Error
+}
+
+func (v *Video) createKeyword(k *Keyword) error {
+	return v.db.Create(k).Error
 }
 
 func (v *Video) createMovie(m *Movie) error {
