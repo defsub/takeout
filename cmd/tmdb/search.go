@@ -20,6 +20,7 @@ package main
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/defsub/takeout/lib/date"
 	"github.com/defsub/takeout/lib/tmdb"
@@ -56,6 +57,7 @@ func doit() {
 		matches := fileRegexp.FindStringSubmatch(optFile)
 		if matches != nil {
 			query = matches[1]
+			query = strings.Replace(query, "_", " ", -1)
 			if optExt == "" {
 				optExt = matches[2]
 			}
