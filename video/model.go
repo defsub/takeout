@@ -107,3 +107,8 @@ type Crew struct {
 func (Crew) TableName() string {
 	return "crew" // not crews
 }
+
+type Recommend struct {
+	Name   string
+	Movies []Movie
+}

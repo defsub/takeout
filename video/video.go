@@ -18,13 +18,15 @@
 package video
 
 import (
+	"net/url"
+
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/lib/bucket"
 	"github.com/defsub/takeout/lib/client"
+	"github.com/defsub/takeout/lib/date"
 	"github.com/defsub/takeout/lib/search"
 	"github.com/defsub/takeout/lib/tmdb"
 	"gorm.io/gorm"
-	"net/url"
 )
 
 type Video struct {
@@ -57,6 +59,7 @@ func (v *Video) newSearch() *search.Search {
 	s := search.NewSearch(v.config)
 	s.Keywords = []string{
 		FieldGenre,
+		FieldKeyword,
 	}
 	s.Open("video")
 	return s
@@ -134,4 +137,20 @@ func (v *Video) PersonProfile(p Person) string {
 
 func (v *Video) HasMovies() bool {
 	return v.MovieCount() > 0
+}
+
+func (v *Video) Recommend() []Recommend {
+	var recommend []Recommend
+	for _, r := range v.config.Video.Recommend.When {
+		if date.Match(r.Layout, r.Match) {
+			movies := v.Search(r.Query)
+			if len(movies) > 0 {
+				recommend = append(recommend, Recommend{
+					Name:   r.Name,
+					Movies: movies,
+				})
+			}
+		}
+	}
+	return recommend
 }

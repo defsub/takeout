@@ -39,9 +39,29 @@
   {{ end }}
 </div>
 {{ end }}
-{{ if or .AddedMovies .NewMovies }}
+{{ if or .AddedMovies .NewMovies .RecommendMovies }}
 <div>
   <h1>Movies</h1>
+  {{ if .RecommendMovies }}
+  <div>
+    <h2>Recommended</h2>
+    <div style="overflow-x: auto; overflow-y: hidden; white-space: nowrap;">
+      {{ range .RecommendMovies }}
+      {{ range .Movies }}
+      <div style="padding: 10px; max-width: 154px; display: inline-block;">
+	<a data-link="{{.|link}}" style="text-decoration: none;">
+	  <img src="{{call $.PosterSmall .}}" style="border-radius: 10px;">
+	  <br/>
+	  <div class="movie-small-title">{{ .Title }}</div>
+	  <br style="display: none"/>
+	  <div class="movie-small-year">{{ .Date.Year }}</div>
+	</a>
+      </div>
+      {{ end }}
+      {{ end }}
+    </div>
+  </div>
+  {{ end }}
   {{ if .AddedMovies }}
   <div>
     <h2>Recently Added</h2>

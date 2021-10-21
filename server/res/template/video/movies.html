@@ -1,12 +1,12 @@
 <div>
   <h1>Movies</h1>
   <div style="display: flex; text-align: center; width: 100%; justify-content: left; flex-wrap: wrap;">
-  {{ range .Movies }}
-  <div style="margin: 1em; flex: 0; min-width: 154px;">
-    <div><a data-link="{{.|link}}"><img src="{{call $.PosterSmall .}}"></a></div>
-    <div><span style="max-width: 154px; text-overflow: ellipsis;" class="movie-title">{{ .Title }}</span></div>
-    <div class="movie-detail">{{ .Date.Year }}</div>
-  </div>
+    {{ range .Movies }}
+    <div style="margin: 1em; flex: 0; min-width: 154px;">
+      <div><a data-link="{{.|link}}"><img src="{{call $.PosterSmall .}}"></a></div>
+      <div><span style="max-width: 154px; text-overflow: ellipsis;" class="movie-title">{{ .Title }}</span></div>
+      <div class="movie-detail">{{ .Date.Year }}</div>
+    </div>
     {{ end }}
   </div>
 </div>

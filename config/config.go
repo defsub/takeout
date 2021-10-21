@@ -130,6 +130,18 @@ type VideoConfig struct {
 	Recent           time.Duration
 	RecentLimit      int
 	SearchLimit      int
+	Recommend        RecommendConfig
+}
+
+type RecommendConfig struct {
+	When []DateRecommend
+}
+
+type DateRecommend struct {
+	Name   string
+	Layout string
+	Match  string
+	Query  string
 }
 
 type LastFMAPIConfig struct {
@@ -281,6 +293,13 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Video.Recent", "8760h") // 1 year
 	v.SetDefault("Video.RecentLimit", "50")
 	v.SetDefault("Video.SearchLimit", "100")
+	v.SetDefault("Video.Recommend.When", []DateRecommend{
+		{Name: "Friday 13th", Layout: "Mon 02", Match: "Fri 13", Query: `+character:voorhees`},
+		{Name: "St. Patricks Day", Layout: "Jan 02", Match: "Mar 17", Query: `+keyword:leprechaun`},
+		{Name: "July 4th", Layout: "Jan 02", Match: "Jul 04", Query: `+keyword:patriotism,patriotic,independence`},
+		{Name: "Halloween", Layout: "Jan", Match: "Oct", Query: `+keyword:halloween`},
+		{Name: "Christmas", Layout: "Jan", Match: "Dec", Query: `+keyword:christmas`},
+	})
 
 	// see https://musicbrainz.org/search (series)
 	v.SetDefault("Music.RadioSeries", []string{
