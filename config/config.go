@@ -294,11 +294,30 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Video.RecentLimit", "50")
 	v.SetDefault("Video.SearchLimit", "100")
 	v.SetDefault("Video.Recommend.When", []DateRecommend{
-		{Name: "Friday 13th", Layout: "Mon 02", Match: "Fri 13", Query: `+character:voorhees`},
-		{Name: "St. Patricks Day", Layout: "Jan 02", Match: "Mar 17", Query: `+keyword:leprechaun`},
-		{Name: "July 4th", Layout: "Jan 02", Match: "Jul 04", Query: `+keyword:patriotism,patriotic,independence`},
-		{Name: "Halloween", Layout: "Jan", Match: "Oct", Query: `+keyword:halloween`},
-		{Name: "Christmas", Layout: "Jan", Match: "Dec", Query: `+keyword:christmas`},
+		// day of week + day of month
+		{Name: "Friday 13th Movies", Layout: "Mon 02", Match: "Fri 13", Query: `+character:voorhees`},
+		// day of month
+		{Name: "Tolkien Movies", Layout: "Jan 02", Match: "Jan 03", Query: `+writing:tolkien`},
+		{Name: "Groundhog Day Movies", Layout: "Jan 02", Match: "Feb 02", Query: `+keyword:groundhog`},
+		{Name: "Valentine's Day Movies", Layout: "Jan 02", Match: "Feb 14", Query: `+genre:Romance`},
+		{Name: "Dr. Seuss Movies", Layout: "Jan 02", Match: "Feb 29", Query: `+writing:seuss`},
+		{Name: "Hitchcock Movies", Layout: "Jan 02", Match: "Mar 12", Query: `+directing:hitchcock`},
+		{Name: "St. Patrick's Day Movies", Layout: "Jan 02", Match: "Mar 17", Query: `+keyword:leprechaun`},
+		{Name: "Tarantino Movies", Layout: "Jan 02", Match: "Mar 27", Query: `+directing:tarantino`},
+		{Name: "April Fool's Movies", Layout: "Jan 02", Match: "Apr 1", Query: `+keyword:"april fool's day"`},
+		{Name: "Superhero Movies", Layout: "Jan 02", Match: "Apr 28", Query: `+keyword:superhero`},
+		{Name: "Harry Potter Movies", Layout: "Jan 02", Match: "May 02", Query: `+title:"harry potter"`},
+		{Name: "Star Wars Movies", Layout: "Jan 02", Match: "May 02", Query: `+title:"star wars"`},
+		{Name: "Twilight Zone Movies", Layout: "Jan 02", Match: "May 11", Query: `+title:"twilight zone"`},
+		{Name: "July 4th Movies", Layout: "Jan 02", Match: "Jul 04", Query: `+keyword:patriotism,patriotic,independence`},
+		{Name: "Spider-man Movies", Layout: "Jan 02", Match: "Aug 11", Query: `+title:"spider-man"`},
+		{Name: "Batman Movies", Layout: "Jan 02", Match: "Sep 17", Query: `+character:batman`},
+		{Name: "Hobbit Movies", Layout: "Jan 02", Match: "Sep 22", Query: `+keyword:hobbit`},
+		{Name: "Back to the Future Movies", Layout: "Jan 02", Match: "Oct 21", Query: `+title:"back to the future"`},
+		{Name: "Festivus Movies", Layout: "Jan 02", Match: "Dec 23", Query: `+keyword:festivus`},
+		// months
+		{Name: "Halloween Movies", Layout: "Jan", Match: "Oct", Query: `+keyword:halloween`},
+		{Name: "Christmas Movies", Layout: "Jan", Match: "Dec", Query: `+keyword:christmas`},
 	})
 
 	// see https://musicbrainz.org/search (series)
