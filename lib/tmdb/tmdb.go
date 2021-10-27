@@ -26,6 +26,11 @@ import (
 )
 
 const (
+	// ISO 639-1
+	LanguageEnglish = "en-US"
+)
+
+const (
 	Backdrop300      = "w300"
 	Backdrop780      = "w780"
 	Backdrop1280     = "w1280"
@@ -222,8 +227,11 @@ const (
 
 func (m *TMDB) moviePage(q string, page int) (*moviePage, error) {
 	url := fmt.Sprintf(
-		"https://%s/3/search/movie?api_key=%s&language=en-US&query=%s&page=%d",
-		endpoint, m.config.TMDB.Key, url.QueryEscape(q), page)
+		"https://%s/3/search/movie?api_key=%s&language=%s&query=%s&page=%d",
+		endpoint,
+		m.config.TMDB.Key,
+		m.config.TMDB.Language,
+		url.QueryEscape(q), page)
 	var result moviePage
 	err := m.client.GetJson(url, &result)
 	return &result, err
@@ -237,8 +245,10 @@ func (m *TMDB) MovieSearch(q string) ([]MovieResult, error) {
 
 func (m *TMDB) MovieDetail(tmid int) (*Movie, error) {
 	url := fmt.Sprintf(
-		"https://%s/3/movie/%d?api_key=%s",
-		endpoint, tmid, m.config.TMDB.Key)
+		"https://%s/3/movie/%d?api_key=%s&language=%s",
+		endpoint, tmid,
+		m.config.TMDB.Key,
+		m.config.TMDB.Language)
 	var result Movie
 	err := m.client.GetJson(url, &result)
 	return &result, err
@@ -246,8 +256,10 @@ func (m *TMDB) MovieDetail(tmid int) (*Movie, error) {
 
 func (m *TMDB) MovieCredits(tmid int) (*Credits, error) {
 	url := fmt.Sprintf(
-		"https://%s/3/movie/%d/credits?api_key=%s",
-		endpoint, tmid, m.config.TMDB.Key)
+		"https://%s/3/movie/%d/credits?api_key=%s&language=%s",
+		endpoint, tmid,
+		m.config.TMDB.Key,
+		m.config.TMDB.Language)
 	var result Credits
 	err := m.client.GetJson(url, &result)
 	return &result, err
@@ -271,8 +283,10 @@ func (m *TMDB) MovieReleases(tmid int) (map[string][]Release, error) {
 
 func (m *TMDB) MovieReleaseType(tmid int, country string, releaseType int) (*Release, error) {
 	url := fmt.Sprintf(
-		"https://%s/3/movie/%d/release_dates?api_key=%s",
-		endpoint, tmid, m.config.TMDB.Key)
+		"https://%s/3/movie/%d/release_dates?api_key=%s&language=%s",
+		endpoint, tmid,
+		m.config.TMDB.Key,
+		m.config.TMDB.Language)
 	var result Releases
 	err := m.client.GetJson(url, &result)
 	if err == nil {
@@ -291,8 +305,10 @@ func (m *TMDB) MovieReleaseType(tmid int, country string, releaseType int) (*Rel
 
 func (m *TMDB) PersonDetail(peid int) (*Person, error) {
 	url := fmt.Sprintf(
-		"https://%s/3/person/%d?api_key=%s",
-		endpoint, peid, m.config.TMDB.Key)
+		"https://%s/3/person/%d?api_key=%s&language=%s",
+		endpoint, peid,
+		m.config.TMDB.Key,
+		m.config.TMDB.Language)
 	var result Person
 	err := m.client.GetJson(url, &result)
 	return &result, err
@@ -301,7 +317,10 @@ func (m *TMDB) PersonDetail(peid int) (*Person, error) {
 func (m *TMDB) MovieGenres() (Genres, error) {
 	genres := make(Genres)
 	url := fmt.Sprintf(
-		"https://%s/3/genre/movie/list?api_key=%s", endpoint, m.config.TMDB.Key)
+		"https://%s/3/genre/movie/list?api_key=%s&language=%s",
+		endpoint,
+		m.config.TMDB.Key,
+		m.config.TMDB.Language)
 	var result genreList
 	err := m.client.GetJson(url, &result)
 	if err == nil {

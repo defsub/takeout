@@ -156,6 +156,7 @@ type FanartAPIConfig struct {
 
 type TMDBAPIConfig struct {
 	Key          string
+	Language     string
 	FileTemplate Template
 }
 
@@ -267,6 +268,7 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Music.DB.LogMode", "false")
 
 	v.SetDefault("TMDB.Key", "903a776b0638da68e9ade38ff538e1d3")
+	v.SetDefault("TMDB.Language", "en-US")
 	v.SetDefault("TMDB.FileTemplate.Text",
 		"{{.Title}} ({{.Year}}){{if .Definition}} - {{.Definition}}{{end}}{{.Extension}}")
 
@@ -295,29 +297,31 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Video.SearchLimit", "100")
 	v.SetDefault("Video.Recommend.When", []DateRecommend{
 		// day of week + day of month
-		{Name: "Friday 13th Movies", Layout: "Mon 02", Match: "Fri 13", Query: `+character:voorhees`},
+		{Match: "Fri 13", Layout: "Mon 02", Name: "Friday 13th Movies", Query: `+character:voorhees`},
 		// day of month
-		{Name: "Tolkien Movies", Layout: "Jan 02", Match: "Jan 03", Query: `+writing:tolkien`},
-		{Name: "Groundhog Day Movies", Layout: "Jan 02", Match: "Feb 02", Query: `+keyword:groundhog`},
-		{Name: "Valentine's Day Movies", Layout: "Jan 02", Match: "Feb 14", Query: `+genre:Romance`},
-		{Name: "Dr. Seuss Movies", Layout: "Jan 02", Match: "Feb 29", Query: `+writing:seuss`},
-		{Name: "Hitchcock Movies", Layout: "Jan 02", Match: "Mar 12", Query: `+directing:hitchcock`},
-		{Name: "St. Patrick's Day Movies", Layout: "Jan 02", Match: "Mar 17", Query: `+keyword:leprechaun`},
-		{Name: "Tarantino Movies", Layout: "Jan 02", Match: "Mar 27", Query: `+directing:tarantino`},
-		{Name: "April Fool's Movies", Layout: "Jan 02", Match: "Apr 1", Query: `+keyword:"april fool's day"`},
-		{Name: "Superhero Movies", Layout: "Jan 02", Match: "Apr 28", Query: `+keyword:superhero`},
-		{Name: "Harry Potter Movies", Layout: "Jan 02", Match: "May 02", Query: `+title:"harry potter"`},
-		{Name: "Star Wars Movies", Layout: "Jan 02", Match: "May 02", Query: `+title:"star wars"`},
-		{Name: "Twilight Zone Movies", Layout: "Jan 02", Match: "May 11", Query: `+title:"twilight zone"`},
-		{Name: "July 4th Movies", Layout: "Jan 02", Match: "Jul 04", Query: `+keyword:patriotism,patriotic,independence`},
-		{Name: "Spider-man Movies", Layout: "Jan 02", Match: "Aug 11", Query: `+title:"spider-man"`},
-		{Name: "Batman Movies", Layout: "Jan 02", Match: "Sep 17", Query: `+character:batman`},
-		{Name: "Hobbit Movies", Layout: "Jan 02", Match: "Sep 22", Query: `+keyword:hobbit`},
-		{Name: "Back to the Future Movies", Layout: "Jan 02", Match: "Oct 21", Query: `+title:"back to the future"`},
-		{Name: "Festivus Movies", Layout: "Jan 02", Match: "Dec 23", Query: `+keyword:festivus`},
+		{Match: "Jan 03", Layout: "Jan 02", Name: "Tolkien Movies", Query: `+writing:tolkien`},
+		{Match: "Feb 02", Layout: "Jan 02", Name: "Groundhog Day Movies", Query: `+keyword:groundhog`},
+		{Match: "Feb 14", Layout: "Jan 02", Name: "Valentine's Day Movies", Query: `+genre:Romance`},
+		{Match: "Mar 02", Layout: "Jan 02", Name: "Dr. Seuss Movies", Query: `+writing:seuss`},
+		{Match: "Mar 12", Layout: "Jan 02", Name: "Hitchcock Movies", Query: `+directing:hitchcock`},
+		{Match: "Mar 17", Layout: "Jan 02", Name: "St. Patrick's Day Movies", Query: `+keyword:leprechaun`},
+		{Match: "Mar 27", Layout: "Jan 02", Name: "Tarantino Movies", Query: `+directing:tarantino`},
+		{Match: "Apr 01", Layout: "Jan 02", Name: "April Fool's Movies", Query: `+keyword:"april fool's day"`},
+		{Match: "Apr 28", Layout: "Jan 02", Name: "Superhero Movies", Query: `+keyword:superhero`},
+		{Match: "May 02", Layout: "Jan 02", Name: "Harry Potter Movies", Query: `+title:"harry potter"`},
+		{Match: "May 04", Layout: "Jan 02", Name: "Star Wars Movies", Query: `+title:"star wars"`},
+		{Match: "May 11", Layout: "Jan 02", Name: "Twilight Zone Movies", Query: `+title:"twilight zone"`},
+		{Match: "Jul 04", Layout: "Jan 02", Name: "July 4th Movies", Query: `+keyword:patriotism,patriotic,independence`},
+		{Match: "Jul 04", Layout: "Jan 02", Name: "Alice in Wonderland",
+			Query: `character:"Alice Kingsleigh" character:"Mad Hatter" character:"Red Queen"`},
+		{Match: "Aug 11", Layout: "Jan 02", Name: "Spider-man Movies", Query: `+title:"spider-man"`},
+		{Match: "Sep 17", Layout: "Jan 02", Name: "Batman Movies", Query: `+character:batman`},
+		{Match: "Sep 22", Layout: "Jan 02", Name: "Hobbit Movies", Query: `+keyword:hobbit`},
+		{Match: "Oct 21", Layout: "Jan 02", Name: "Back to the Future Movies", Query: `+title:"back to the future"`},
+		{Match: "Dec 23", Layout: "Jan 02", Name: "It's Festivus", Query: `+keyword:festivus`},
 		// months
-		{Name: "Halloween Movies", Layout: "Jan", Match: "Oct", Query: `+keyword:halloween`},
-		{Name: "Christmas Movies", Layout: "Jan", Match: "Dec", Query: `+keyword:christmas`},
+		{Match: "Oct", Layout: "Jan", Name: "Halloween Movies", Query: `+keyword:halloween`},
+		{Match: "Dec", Layout: "Jan", Name: "Christmas Movies", Query: `+keyword:christmas`},
 	})
 
 	// see https://musicbrainz.org/search (series)
