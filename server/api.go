@@ -186,7 +186,7 @@ func (handler *UserHandler) apiLive(w http.ResponseWriter, r *http.Request, m *m
 // 204: success, no content
 // 404: not found
 // 500: error
-func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, m *music.Music, id int) {
+func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, m *music.Music, vid *video.Video, id int) {
 	s, err := m.LookupStation(id)
 	if err != nil {
 		notFoundErr(w)
@@ -198,7 +198,7 @@ func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, m
 	}
 
 	if r.Method == "GET" {
-		resolver := ref.NewResolver(handler.config, m, handler)
+		resolver := ref.NewResolver(handler.config, m, vid, handler)
 		resolver.RefreshStation(&s, handler.user)
 
 		w.WriteHeader(http.StatusOK)
@@ -227,7 +227,7 @@ func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, m
 		}
 		// unmarshal & resovle
 		plist, _ := spiff.Unmarshal(s.Playlist)
-		resolver := ref.NewResolver(handler.config, m, handler)
+		resolver := ref.NewResolver(handler.config, m, vid, handler)
 		resolver.Resolve(handler.user, plist)
 		if plist.Entries == nil {
 			plist.Entries = []spiff.Entry{}
@@ -250,15 +250,15 @@ func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, m
 
 // GET /api/{res}/id/playlist > spiff.Playlist{}
 // 200: success
-func (handler *UserHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Request, m *music.Music,
-	creator, title, image, nref string) {
+func (handler *UserHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Request,
+	m *music.Music, vid *video.Video, creator, title, image, nref string) {
 	plist := spiff.NewPlaylist()
 	plist.Spiff.Location = fmt.Sprintf("%s%s", handler.config.Server.URL, r.URL.Path)
 	plist.Spiff.Creator = creator
 	plist.Spiff.Title = title
 	plist.Spiff.Image = image
 	plist.Entries = []spiff.Entry{{Ref: nref}}
-	resolver := ref.NewResolver(handler.config, m, handler)
+	resolver := ref.NewResolver(handler.config, m, vid, handler)
 	resolver.Resolve(handler.user, plist)
 	if plist.Entries == nil {
 		plist.Entries = []spiff.Entry{}
@@ -282,15 +282,15 @@ func (handler *UserHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Reques
 					}
 					url = m.TrackURL(&track)
 					plist.Entries[i].Location = []string{url.String()}
-				// } else if src == "movies" {
-				// 	// TODO not supported yet
-				// 	id := str.Atoi(matches[2])
-				// 	movie, err := vid.LookupMovie(id)
-				// 	if err != nil {
-				// 		continue
-				// 	}
-				// 	url = vid.MovieURL(movie)
-				// 	plist.Entries[i].Location = []string{url.String()}
+					// } else if src == "movies" {
+					// 	// TODO not supported yet
+					// 	id := str.Atoi(matches[2])
+					// 	movie, err := vid.LookupMovie(id)
+					// 	if err != nil {
+					// 		continue
+					// 	}
+					// 	url = vid.MovieURL(movie)
+					// 	plist.Entries[i].Location = []string{url.String()}
 				}
 			}
 			encoder.Encode(plist.Entries[i])
@@ -311,7 +311,8 @@ func (handler *UserHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Reques
 // 200: success
 // 204: no change to track entries
 // 500: error
-func (handler *UserHandler) apiPlaylist(w http.ResponseWriter, r *http.Request, m *music.Music) {
+func (handler *UserHandler) apiPlaylist(w http.ResponseWriter, r *http.Request,
+	m *music.Music, vid *video.Video) {
 	p := m.LookupPlaylist(handler.user)
 	if p == nil {
 		plist := spiff.NewPlaylist()
@@ -338,7 +339,7 @@ func (handler *UserHandler) apiPlaylist(w http.ResponseWriter, r *http.Request, 
 			return
 		}
 		plist, _ = spiff.Unmarshal(p.Playlist)
-		resolver := ref.NewResolver(handler.config, m, handler)
+		resolver := ref.NewResolver(handler.config, m, vid, handler)
 		resolver.Resolve(handler.user, plist)
 		dirty = true
 	}
@@ -433,7 +434,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 
 	switch r.URL.Path {
 	case "/api/playlist":
-		handler.apiPlaylist(w, r, m)
+		handler.apiPlaylist(w, r, m, vid)
 	case "/api/radio":
 		handler.apiRadio(w, r, m)
 	case "/api/live":
@@ -484,14 +485,14 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 			switch sub {
 			case "popular":
 				// /api/artists/id/popular/playlist
-				handler.apiRefPlaylist(w, r, m,
+				handler.apiRefPlaylist(w, r, m, vid,
 					artist.Name,
 					fmt.Sprintf("%s \u2013 Popular", artist.Name),
 					image,
 					fmt.Sprintf("/music/artists/%d/popular", id))
 			case "singles":
 				// /api/artists/id/singles/playlist
-				handler.apiRefPlaylist(w, r, m,
+				handler.apiRefPlaylist(w, r, m, vid,
 					artist.Name,
 					fmt.Sprintf("%s \u2013 Singles", artist.Name),
 					image,
@@ -502,7 +503,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 			return
 		}
 
-		// /api/(artists|releases)/id/(playlist|popular|radio|singles)
+		// /api/(artists|releases|movies)/id/(playlist|popular|radio|singles)
 		playlistRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)/(playlist|popular|singles|radio)(\.xspf)?`)
 		matches = playlistRegexp.FindStringSubmatch(r.URL.Path)
 		if matches != nil {
@@ -515,14 +516,14 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 				image := m.ArtistImage(&artist)
 				if res == "playlist" {
 					// /api/artists/1/playlist
-					handler.apiRefPlaylist(w, r, m,
+					handler.apiRefPlaylist(w, r, m, vid,
 						artist.Name,
 						fmt.Sprintf("%s \u2013 Shuffle", artist.Name),
 						image,
 						fmt.Sprintf("/music/artists/%d/shuffle", id))
 				} else if res == "radio" {
 					// /api/artists/1/radio
-					handler.apiRefPlaylist(w, r, m,
+					handler.apiRefPlaylist(w, r, m, vid,
 						"Radio",
 						fmt.Sprintf("%s \u2013 Radio", artist.Name),
 						image,
@@ -540,11 +541,23 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 				// /api/releases/1/playlist
 				if res == "playlist" {
 					release, _ := m.LookupRelease(id)
-					handler.apiRefPlaylist(w, r, m,
+					handler.apiRefPlaylist(w, r, m, vid,
 						release.Artist,
 						release.Name,
 						release.Cover("250"),
 						fmt.Sprintf("/music/releases/%d/tracks", id))
+				} else {
+					notFoundErr(w)
+				}
+			case "movies":
+				// /api/movies/1/playlist
+				if res == "playlist" {
+					movie, _ := vid.LookupMovie(id)
+					handler.apiRefPlaylist(w, r, m, vid,
+						"",
+						movie.Title,
+						vid.MoviePoster(*movie),
+						fmt.Sprintf("/movies/%d", id))
 				} else {
 					notFoundErr(w)
 				}
@@ -571,7 +584,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 				handler.apiView(w, r, handler.releaseView(m, release))
 			case "radio":
 				// /api/radio/1
-				handler.apiStation(w, r, m, id)
+				handler.apiStation(w, r, m, vid, id)
 			case "movies":
 				// /api/movies/1
 				movie, _ := vid.LookupMovie(id)
@@ -609,7 +622,6 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 		notFoundErr(w)
 	}
 }
-
 
 func locateTrack(t music.Track) string {
 	return fmt.Sprintf("/api/tracks/%d/location", t.ID)

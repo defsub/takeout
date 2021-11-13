@@ -28,22 +28,26 @@ import (
 	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/lib/spiff"
 	"github.com/defsub/takeout/music"
+	"github.com/defsub/takeout/video"
 )
 
 type Locator interface {
 	LocateTrack(t music.Track) string
+	LocateMovie(m video.Movie) string
 }
 
 type Resolver struct {
 	config *config.Config
 	music  *music.Music
+	video  *video.Video
 	loc    Locator
 }
 
-func NewResolver(c *config.Config, m *music.Music, l Locator) *Resolver {
+func NewResolver(c *config.Config, m *music.Music, v *video.Video, l Locator) *Resolver {
 	return &Resolver{
 		config: c,
 		music:  m,
+		video:  v,
 		loc:    l,
 	}
 }
@@ -58,6 +62,21 @@ func (r *Resolver) addTrackEntries(tracks []music.Track, entries []spiff.Entry) 
 			Location:   []string{r.loc.LocateTrack(t)},
 			Identifier: []string{t.ETag},
 			Size:       []int64{t.Size}}
+		entries = append(entries, e)
+	}
+	return entries
+}
+
+func (r *Resolver) addMovieEntries(movies []video.Movie, entries []spiff.Entry) []spiff.Entry {
+	for _, m := range movies {
+		e := spiff.Entry{
+			Creator:    "",
+			Album:      m.Title,
+			Title:      m.Title,
+			Image:      r.video.MoviePoster(m),
+			Location:   []string{r.loc.LocateMovie(m)},
+			Identifier: []string{m.ETag},
+			Size:       []int64{m.Size}}
 		entries = append(entries, e)
 	}
 	return entries
@@ -124,6 +143,20 @@ func (r *Resolver) resolveTrackRef(id string, entries []spiff.Entry) ([]spiff.En
 		return entries, err
 	}
 	entries = r.addTrackEntries([]music.Track{t}, entries)
+	return entries, nil
+}
+
+// /movies/{id}
+func (r *Resolver) resolveMovieRef(id string, entries []spiff.Entry) ([]spiff.Entry, error) {
+	n, err := strconv.Atoi(id)
+	if err != nil {
+		return entries, err
+	}
+	m, err := r.video.LookupMovie(n)
+	if err != nil {
+		return entries, err
+	}
+	entries = r.addMovieEntries([]video.Movie{*m}, entries)
 	return entries, nil
 }
 
@@ -204,6 +237,7 @@ func (r *Resolver) Resolve(user *auth.User, plist *spiff.Playlist) (err error) {
 	tracksRegexp := regexp.MustCompile(`/music/tracks/([\d]+)`)
 	searchRegexp := regexp.MustCompile(`/music/search.*`)
 	radioRegexp := regexp.MustCompile(`/music/radio/([\d]+)`)
+	moviesRegexp := regexp.MustCompile(`/movies/([\d]+)`)
 
 	for _, e := range plist.Spiff.Entries {
 		if e.Ref == "" {
@@ -251,6 +285,15 @@ func (r *Resolver) Resolve(user *auth.User, plist *spiff.Playlist) (err error) {
 		matches = radioRegexp.FindStringSubmatch(pathRef)
 		if matches != nil {
 			entries, err = r.resolveRadioRef(matches[1], entries, user)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		matches = moviesRegexp.FindStringSubmatch(pathRef)
+		if matches != nil {
+			entries, err = r.resolveMovieRef(matches[1], entries)
 			if err != nil {
 				return err
 			}
