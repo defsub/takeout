@@ -554,7 +554,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 				if res == "playlist" {
 					movie, _ := vid.LookupMovie(id)
 					handler.apiRefPlaylist(w, r, m, vid,
-						"",
+						"Movie", // TODO
 						movie.Title,
 						vid.MoviePoster(*movie),
 						fmt.Sprintf("/movies/%d", id))
