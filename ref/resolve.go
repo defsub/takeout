@@ -70,7 +70,7 @@ func (r *Resolver) addTrackEntries(tracks []music.Track, entries []spiff.Entry) 
 func (r *Resolver) addMovieEntries(movies []video.Movie, entries []spiff.Entry) []spiff.Entry {
 	for _, m := range movies {
 		e := spiff.Entry{
-			Creator:    "",
+			Creator:    "Movie", // TODO need better creator
 			Album:      m.Title,
 			Title:      m.Title,
 			Image:      r.video.MoviePoster(m),
