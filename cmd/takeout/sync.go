@@ -40,6 +40,7 @@ var syncAll bool
 var mediaMusic bool
 var mediaVideo bool
 var artist string
+var resolve bool
 
 func since(lastSync time.Time) time.Time {
 	var since time.Time
@@ -72,6 +73,9 @@ func syncMusic(cfg *config.Config) {
 	if len(artist) > 0 {
 		syncOptions.Artist = artist
 	}
+	if resolve {
+		syncOptions.Resolve = true
+	}
 	m.Sync(syncOptions)
 }
 
@@ -88,6 +92,7 @@ func init() {
 	syncCmd.Flags().BoolVarP(&syncAll, "all", "a", false, "Re(sync) all ignoring timestamps")
 	syncCmd.Flags().BoolVarP(&mediaMusic, "music", "m", true, "Sync music")
 	syncCmd.Flags().BoolVarP(&mediaVideo, "video", "v", true, "Sync video")
+	syncCmd.Flags().BoolVarP(&resolve, "resolve", "x", false, "Resolve")
 	syncCmd.Flags().StringVarP(&artist, "artist", "r", "", "Music artist")
 	rootCmd.AddCommand(syncCmd)
 }

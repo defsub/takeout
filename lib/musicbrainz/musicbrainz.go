@@ -448,7 +448,7 @@ func (m *MusicBrainz) SearchArtist(name string) *Artist /*(a *music.Artist, tags
 	limit, offset := 100, 0
 
 	// can also add "AND type:group" or "AND type:person"
-	query := fmt.Sprintf(`artist:"%s"`, name)
+	query := fmt.Sprintf(`artist:%s`, name)
 	result, _ := m.doArtistSearch(query, limit, offset)
 	for _, r := range result.Artists {
 		artists = append(artists, r)
