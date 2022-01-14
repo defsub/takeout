@@ -41,6 +41,7 @@ type SyncOptions struct {
 	Index    bool
 	Artwork  bool
 	Artist   string
+	Resolve  bool
 }
 
 func NewSyncOptions() SyncOptions {
@@ -96,6 +97,11 @@ func (m *Music) Sync(options SyncOptions) {
 			log.CheckError(m.syncIndex())
 		}
 	} else {
+		if options.Resolve {
+			log.Printf("resolving")
+			err := m.resolve()
+			log.CheckError(err)
+		}
 		if options.Tracks {
 			modified, err := m.syncBucketTracksSince(options.Since)
 			log.CheckError(err)
@@ -337,6 +343,9 @@ func fuzzyArtist(name string) string {
 func FuzzyName(name string) string {
 	// treat "№" the same as "No" for comparison - STP album №4
 	name = strings.Replace(name, "№", "No", -1)
+	// treat "p·u·l·s·e" as "pulse" for comparison - Pink Floyd album Pulse
+	name = strings.Replace(name, "p·u·l·s·e", "Pulse", -1)
+	// TODO need to configurize this stuff
 	re := regexp.MustCompile(`[^a-zA-Z0-9]`)
 	return re.ReplaceAllString(name, "")
 }
@@ -749,6 +758,27 @@ func (m *Music) syncArtworkFor(artists []Artist) error {
 		}
 	}
 	return nil
+}
+
+func (m *Music) resolve() error {
+	// try to resolve any missing artists
+	err := m.syncArtists()
+	if err != nil {
+		return err
+	}
+	// try to fix track releases
+	_, err = m.fixTrackReleases()
+	if err != nil {
+		return err
+	}
+	// try to assign any unassigned releases
+	_, err = m.assignTrackReleases()
+	if err != nil {
+		return err
+	}
+	// fix up titles
+	err = m.fixTrackReleaseTitles()
+	return err
 }
 
 // Get the artist names from tracks and try to find the correct artist
