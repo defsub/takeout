@@ -1,0 +1,17 @@
+<div>
+  <h1>{{ .Episode.Title }}</h1>
+</div>
+<div>
+  <img width="144" height="144" src="{{call $.EpisodeImage .Episode}}">
+</div>
+<div>
+  {{ .Episode.Date | ymd }}
+</div>
+<div>
+  {{ .Episode.Description | unescapeHTML }}
+</div>
+<div>
+  <audio controls="">
+    <source src="{{.Episode|url}}" type="{{ .Episode.ContentType }}">
+  </audio>
+</div>

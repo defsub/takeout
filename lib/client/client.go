@@ -22,13 +22,14 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
+	"time"
+
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/lib/log"
 	"github.com/gregjones/httpcache"
 	"github.com/gregjones/httpcache/diskcache"
-	"net/http"
-	"net/url"
-	"time"
 )
 
 const (
@@ -91,8 +92,9 @@ func (c *Client) doGet(headers map[string]string, urlStr string) (*http.Response
 
 	throttle := true
 	if c.useCache {
-		req.Header.Set(HeaderCacheControl, fmt.Sprintf("max-age=%d", c.maxAge))
-
+		if c.maxAge > 0 {
+			req.Header.Set(HeaderCacheControl, fmt.Sprintf("max-age=%d", c.maxAge))
+		}
 		// peek into the cache, is there's something there don't slow down
 		cachedResp, err := httpcache.CachedResponse(c.cache, req)
 		if err != nil {
@@ -142,8 +144,24 @@ func (c *Client) GetJsonWith(headers map[string]string, url string, result inter
 	return nil
 }
 
-func (c *Client) GetXML(url string, result interface{}) error {
-	resp, err := c.doGet(nil, url)
+func (c *Client) GetXML(urlString string, result interface{}) error {
+	// TODO use only for testing
+	// if strings.HasPrefix(urlString, "file:") {
+	// 	u, err := url.Parse(urlString)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	data, err := os.ReadFile(u.Path[1:])
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	reader := bytes.NewReader(data)
+	// 	decoder := xml.NewDecoder(reader)
+	// 	if err = decoder.Decode(result); err != nil {
+	// 		return err
+	// 	}
+	// } else {
+	resp, err := c.doGet(nil, urlString)
 	if err != nil {
 		return err
 	}

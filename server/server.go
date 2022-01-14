@@ -34,6 +34,7 @@ import (
 	"github.com/defsub/takeout/lib/encoding/xspf"
 	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/music"
+	"github.com/defsub/takeout/podcast"
 	"github.com/defsub/takeout/video"
 )
 
@@ -58,6 +59,12 @@ func (handler *UserHandler) NewVideo() (*video.Video, error) {
 	vid := video.NewVideo(handler.userConfig)
 	err := vid.Open()
 	return vid, err
+}
+
+func (handler *UserHandler) NewPodcast() (*podcast.Podcast, error) {
+	p := podcast.NewPodcast(handler.userConfig)
+	err := p.Open()
+	return p, err
 }
 
 func (handler *UserHandler) NewAuth() (*auth.Auth, error) {
@@ -97,6 +104,9 @@ func doFuncMap() template.FuncMap {
 	return template.FuncMap{
 		"join": strings.Join,
 		"ymd":  date.YMD,
+		"unescapeHTML": func(s string) template.HTML {
+			return template.HTML(s)
+		},
 		"link": func(o interface{}) string {
 			var link string
 			switch o.(type) {
@@ -110,6 +120,10 @@ func doFuncMap() template.FuncMap {
 				// m := o.(video.Movie)
 				// link = handler.LocateMovie(m)
 				link = fmt.Sprintf("/v?movie=%d", o.(video.Movie).ID)
+			case podcast.Series:
+				link = fmt.Sprintf("/v?series=%d", o.(podcast.Series).ID)
+			case podcast.Episode:
+				link = fmt.Sprintf("/v?episode=%d", o.(podcast.Episode).ID)
 			}
 			return link
 		},
@@ -120,6 +134,8 @@ func doFuncMap() template.FuncMap {
 				loc = locateTrack(o.(music.Track))
 			case video.Movie:
 				loc = locateMovie(o.(video.Movie))
+			case podcast.Episode:
+				loc = locateEpisode(o.(podcast.Episode))
 			}
 			return loc
 		},
@@ -301,7 +317,8 @@ func (handler *UserHandler) configure(w http.ResponseWriter) error {
 	return nil
 }
 
-func (handler *UserHandler) viewHandler(w http.ResponseWriter, r *http.Request, m *music.Music, vid *video.Video) {
+func (handler *UserHandler) viewHandler(w http.ResponseWriter, r *http.Request,
+	m *music.Music, vid *video.Video, p *podcast.Podcast) {
 	var view interface{}
 	var temp string
 
@@ -377,8 +394,24 @@ func (handler *UserHandler) viewHandler(w http.ResponseWriter, r *http.Request, 
 		movie, _ := vid.LookupMovie(id)
 		view = handler.watchView(vid, movie)
 		temp = "watch.html"
+	} else if v := r.URL.Query().Get("podcasts"); v != "" {
+		// /v?podcasts=x
+		view = handler.podcastsView(p)
+		temp = "podcasts.html"
+	} else if v := r.URL.Query().Get("series"); v != "" {
+		// /v?series={series-id}
+		id, _ := strconv.Atoi(v)
+		series, _ := p.LookupSeries(id)
+		view = handler.seriesView(p, series)
+		temp = "series.html"
+	} else if v := r.URL.Query().Get("episode"); v != "" {
+		// /v?episode={episode-id}
+		id, _ := strconv.Atoi(v)
+		episode, _ := p.LookupEpisode(id)
+		view = handler.episodeView(p, episode)
+		temp = "episode.html"
 	} else {
-		view = handler.indexView(m, vid)
+		view = handler.indexView(m, vid, p)
 		temp = "index.html"
 	}
 
@@ -415,7 +448,8 @@ func getTemplates(config *config.Config) *template.Template {
 	return template.Must(template.New("").Funcs(doFuncMap()).ParseFS(getTemplateFS(config),
 		"res/template/*.html",
 		"res/template/music/*.html",
-		"res/template/video/*.html"))
+		"res/template/video/*.html",
+		"res/template/podcast/*.html"))
 }
 
 func Serve(config *config.Config) {
@@ -465,7 +499,13 @@ func Serve(config *config.Config) {
 			return
 		}
 		defer v.Close()
-		handler.viewHandler(w, r, m, v)
+		p, err := handler.NewPodcast()
+		if err != nil {
+			serverErr(w, err)
+			return
+		}
+		defer p.Close()
+		handler.viewHandler(w, r, m, v, p)
 	}
 
 	apiLoginHandler := func(w http.ResponseWriter, r *http.Request) {
@@ -489,7 +529,13 @@ func Serve(config *config.Config) {
 			return
 		}
 		defer v.Close()
-		handler.apiHandler(w, r, m, v)
+		p, err := handler.NewPodcast()
+		if err != nil {
+			serverErr(w, err)
+			return
+		}
+		defer p.Close()
+		handler.apiHandler(w, r, m, v, p)
 	}
 
 	hookHandler := func(w http.ResponseWriter, r *http.Request) {

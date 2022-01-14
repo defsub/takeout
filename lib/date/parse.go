@@ -40,3 +40,29 @@ func ParseDate(date string) (t time.Time) {
 	}
 	return t
 }
+
+// Mon, 02 Jan 2006 15:04:05 MST
+// Tue, 07 Dec 2021 19:57:22 -0500
+func ParseRFC1123(date string) (t time.Time) {
+	if date == "" {
+		return t
+	}
+	var err error
+	t, err = time.Parse(time.RFC1123, date)
+	if err != nil {
+		t, err = time.Parse(time.RFC1123Z, date)
+		if err != nil {
+			t = time.Time{}
+		}
+	}
+	return t
+}
+
+const (
+	Simple12 = "Jan 02 03:04 PM"
+	Simple24 = "Jan 02 15:04"
+)
+
+func Format(t time.Time) string {
+	return t.Format(Simple12)
+}

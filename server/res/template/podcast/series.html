@@ -1,0 +1,24 @@
+<div>
+  <h1>{{ .Series.Title }}</h1>
+</div>
+<div>
+  <img width="144" height="144" src="{{call $.SeriesImage .Series}}">
+</div>
+<div>
+  {{ range .Episodes }}
+  <div class="parent">
+    <div class="left" style="cursor: pointer;">
+      <div class="parent2">
+	<div class="track-title">
+	  <a data-link="{{.|link}}">{{ .Title }}</a>
+	</div>
+	<div class="track-artist">
+	  {{ .Date | ymd }}
+	</div>
+      </div>
+    </div>
+    <div class="right">
+    </div>
+  </div>
+  {{ end }}
+</div>
