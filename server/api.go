@@ -31,6 +31,7 @@ import (
 	"github.com/defsub/takeout/lib/spiff"
 	"github.com/defsub/takeout/lib/str"
 	"github.com/defsub/takeout/music"
+	"github.com/defsub/takeout/podcast"
 	"github.com/defsub/takeout/ref"
 	"github.com/defsub/takeout/video"
 	"github.com/gorilla/websocket"
@@ -186,7 +187,8 @@ func (handler *UserHandler) apiLive(w http.ResponseWriter, r *http.Request, m *m
 // 204: success, no content
 // 404: not found
 // 500: error
-func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, m *music.Music, vid *video.Video, id int) {
+func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request,
+	m *music.Music, vid *video.Video, p *podcast.Podcast, id int) {
 	s, err := m.LookupStation(id)
 	if err != nil {
 		notFoundErr(w)
@@ -198,7 +200,7 @@ func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, m
 	}
 
 	if r.Method == "GET" {
-		resolver := ref.NewResolver(handler.config, m, vid, handler)
+		resolver := ref.NewResolver(handler.config, m, vid, p, handler)
 		resolver.RefreshStation(&s, handler.user)
 
 		w.WriteHeader(http.StatusOK)
@@ -227,7 +229,7 @@ func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, m
 		}
 		// unmarshal & resovle
 		plist, _ := spiff.Unmarshal(s.Playlist)
-		resolver := ref.NewResolver(handler.config, m, vid, handler)
+		resolver := ref.NewResolver(handler.config, m, vid, p, handler)
 		resolver.Resolve(handler.user, plist)
 		if plist.Entries == nil {
 			plist.Entries = []spiff.Entry{}
@@ -251,14 +253,14 @@ func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, m
 // GET /api/{res}/id/playlist > spiff.Playlist{}
 // 200: success
 func (handler *UserHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Request,
-	m *music.Music, vid *video.Video, creator, title, image, nref string) {
+	m *music.Music, vid *video.Video, p *podcast.Podcast, creator, title, image, nref string) {
 	plist := spiff.NewPlaylist()
 	plist.Spiff.Location = fmt.Sprintf("%s%s", handler.config.Server.URL, r.URL.Path)
 	plist.Spiff.Creator = creator
 	plist.Spiff.Title = title
 	plist.Spiff.Image = image
 	plist.Entries = []spiff.Entry{{Ref: nref}}
-	resolver := ref.NewResolver(handler.config, m, vid, handler)
+	resolver := ref.NewResolver(handler.config, m, vid, p, handler)
 	resolver.Resolve(handler.user, plist)
 	if plist.Entries == nil {
 		plist.Entries = []spiff.Entry{}
@@ -268,7 +270,7 @@ func (handler *UserHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Reques
 		w.WriteHeader(http.StatusOK)
 		encoder := xspf.NewXMLEncoder(w)
 		encoder.Header(title)
-		locationRegexp := regexp.MustCompile(`/api/(movies|tracks)/([0-9]+)/location`)
+		locationRegexp := regexp.MustCompile(`/api/(movies|tracks|episodes)/([0-9]+)/location`)
 		for i := range plist.Entries {
 			matches := locationRegexp.FindStringSubmatch(plist.Entries[i].Location[0])
 			if matches != nil {
@@ -312,7 +314,7 @@ func (handler *UserHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Reques
 // 204: no change to track entries
 // 500: error
 func (handler *UserHandler) apiPlaylist(w http.ResponseWriter, r *http.Request,
-	m *music.Music, vid *video.Video) {
+	m *music.Music, vid *video.Video, pd *podcast.Podcast) {
 	p := m.LookupPlaylist(handler.user)
 	if p == nil {
 		plist := spiff.NewPlaylist()
@@ -339,7 +341,7 @@ func (handler *UserHandler) apiPlaylist(w http.ResponseWriter, r *http.Request,
 			return
 		}
 		plist, _ = spiff.Unmarshal(p.Playlist)
-		resolver := ref.NewResolver(handler.config, m, vid, handler)
+		resolver := ref.NewResolver(handler.config, m, vid, pd, handler)
 		resolver.Resolve(handler.user, plist)
 		dirty = true
 	}
@@ -410,7 +412,8 @@ func (handler *UserHandler) apiSearch(w http.ResponseWriter, r *http.Request, m 
 //
 // 200: success
 // 500: error
-func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m *music.Music, vid *video.Video) {
+func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request,
+	m *music.Music, vid *video.Video, p *podcast.Podcast) {
 	w.Header().Set("Content-type", ApplicationJson)
 
 	// if r.URL.Path == "/api/live" {
@@ -434,7 +437,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 
 	switch r.URL.Path {
 	case "/api/playlist":
-		handler.apiPlaylist(w, r, m, vid)
+		handler.apiPlaylist(w, r, m, vid, p)
 	case "/api/radio":
 		handler.apiRadio(w, r, m)
 	case "/api/live":
@@ -447,9 +450,11 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 		handler.apiSearch(w, r, m, vid)
 	case "/api/movies":
 		handler.apiView(w, r, handler.moviesView(vid))
+	case "/api/podcasts":
+		handler.apiView(w, r, handler.podcastsView(p))
 	default:
-		// /api/(movies|tracks)/id/location
-		locationRegexp := regexp.MustCompile(`/api/(movies|tracks)/([0-9]+)/location`)
+		// /api/(movies|tracks|episodes)/id/location
+		locationRegexp := regexp.MustCompile(`/api/(movies|tracks|episodes)/([0-9]+)/location`)
 		matches := locationRegexp.FindStringSubmatch(r.URL.Path)
 		if matches != nil {
 			var url *url.URL
@@ -462,6 +467,10 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 				id := str.Atoi(matches[2])
 				movie, _ := vid.LookupMovie(id)
 				url = vid.MovieURL(movie)
+			} else if src == "episodes" {
+				id := str.Atoi(matches[2])
+				episode, _ := p.LookupEpisode(id)
+				url = p.EpisodeURL(episode)
 			}
 			// TODO use 307 instead?
 			//fmt.Printf("location is %s\n", url.String())
@@ -485,14 +494,14 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 			switch sub {
 			case "popular":
 				// /api/artists/id/popular/playlist
-				handler.apiRefPlaylist(w, r, m, vid,
+				handler.apiRefPlaylist(w, r, m, vid, p,
 					artist.Name,
 					fmt.Sprintf("%s \u2013 Popular", artist.Name),
 					image,
 					fmt.Sprintf("/music/artists/%d/popular", id))
 			case "singles":
 				// /api/artists/id/singles/playlist
-				handler.apiRefPlaylist(w, r, m, vid,
+				handler.apiRefPlaylist(w, r, m, vid, p,
 					artist.Name,
 					fmt.Sprintf("%s \u2013 Singles", artist.Name),
 					image,
@@ -503,7 +512,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 			return
 		}
 
-		// /api/(artists|releases|movies)/id/(playlist|popular|radio|singles)
+		// /api/(artists|releases|movies|series)/id/(playlist|popular|radio|singles)
 		playlistRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)/(playlist|popular|singles|radio)(\.xspf)?`)
 		matches = playlistRegexp.FindStringSubmatch(r.URL.Path)
 		if matches != nil {
@@ -516,14 +525,14 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 				image := m.ArtistImage(&artist)
 				if res == "playlist" {
 					// /api/artists/1/playlist
-					handler.apiRefPlaylist(w, r, m, vid,
+					handler.apiRefPlaylist(w, r, m, vid, p,
 						artist.Name,
 						fmt.Sprintf("%s \u2013 Shuffle", artist.Name),
 						image,
 						fmt.Sprintf("/music/artists/%d/shuffle", id))
 				} else if res == "radio" {
 					// /api/artists/1/radio
-					handler.apiRefPlaylist(w, r, m, vid,
+					handler.apiRefPlaylist(w, r, m, vid, p,
 						"Radio",
 						fmt.Sprintf("%s \u2013 Radio", artist.Name),
 						image,
@@ -541,7 +550,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 				// /api/releases/1/playlist
 				if res == "playlist" {
 					release, _ := m.LookupRelease(id)
-					handler.apiRefPlaylist(w, r, m, vid,
+					handler.apiRefPlaylist(w, r, m, vid, p,
 						release.Artist,
 						release.Name,
 						release.Cover("250"),
@@ -553,11 +562,23 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 				// /api/movies/1/playlist
 				if res == "playlist" {
 					movie, _ := vid.LookupMovie(id)
-					handler.apiRefPlaylist(w, r, m, vid,
+					handler.apiRefPlaylist(w, r, m, vid, p,
 						"Movie", // TODO
 						movie.Title,
 						vid.MoviePoster(*movie),
 						fmt.Sprintf("/movies/%d", id))
+				} else {
+					notFoundErr(w)
+				}
+			case "series":
+				// /api/series/1/playlist
+				if res == "playlist" {
+					series, _ := p.LookupSeries(id)
+					handler.apiRefPlaylist(w, r, m, vid, p,
+						"Podcast", // TODO
+						series.Title,
+						p.SeriesImage(*series),
+						fmt.Sprintf("/series/%d", id))
 				} else {
 					notFoundErr(w)
 				}
@@ -567,7 +588,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 			return
 		}
 
-		// /api/(artists|radio|releases|movies|profiles)/id
+		// /api/(artists|radio|releases|movies|profiles|series|episodes)/id
 		resourceRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)`)
 		matches = resourceRegexp.FindStringSubmatch(r.URL.Path)
 		if matches != nil {
@@ -576,23 +597,55 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request, m
 			switch v {
 			case "artists":
 				// /api/artists/1
-				artist, _ := m.LookupArtist(id)
-				handler.apiView(w, r, handler.artistView(m, artist))
+				artist, err := m.LookupArtist(id)
+				if err != nil {
+					notFoundErr(w)
+				} else {
+					handler.apiView(w, r, handler.artistView(m, artist))
+				}
 			case "releases":
 				// /api/releases/1
-				release, _ := m.LookupRelease(id)
-				handler.apiView(w, r, handler.releaseView(m, release))
+				release, err := m.LookupRelease(id)
+				if err != nil {
+					notFoundErr(w)
+				} else {
+					handler.apiView(w, r, handler.releaseView(m, release))
+				}
 			case "radio":
 				// /api/radio/1
-				handler.apiStation(w, r, m, vid, id)
+				handler.apiStation(w, r, m, vid, p, id)
 			case "movies":
 				// /api/movies/1
-				movie, _ := vid.LookupMovie(id)
-				handler.apiView(w, r, handler.movieView(vid, movie))
+				movie, err := vid.LookupMovie(id)
+				if err != nil {
+					notFoundErr(w)
+				} else {
+					handler.apiView(w, r, handler.movieView(vid, movie))
+				}
 			case "profiles":
 				// /api/profiles/1
-				person, _ := vid.LookupPerson(id)
-				handler.apiView(w, r, handler.profileView(vid, person))
+				person, err := vid.LookupPerson(id)
+				if err != nil {
+					notFoundErr(w)
+				} else {
+					handler.apiView(w, r, handler.profileView(vid, person))
+				}
+			case "series":
+				// /api/series/1
+				series, err := p.LookupSeries(id)
+				if err != nil {
+					notFoundErr(w)
+				} else {
+					handler.apiView(w, r, handler.seriesView(p, series))
+				}
+			case "episodes":
+				// /api/episodes/1
+				episode, err := p.LookupEpisode(id)
+				if err != nil {
+					notFoundErr(w)
+				} else {
+					handler.apiView(w, r, handler.episodeView(p, episode))
+				}
 			default:
 				notFoundErr(w)
 			}
@@ -631,10 +684,18 @@ func locateMovie(v video.Movie) string {
 	return fmt.Sprintf("/api/movies/%d/location", v.ID)
 }
 
+func locateEpisode(e podcast.Episode) string {
+	return fmt.Sprintf("/api/episodes/%d/location", e.ID)
+}
+
 func (UserHandler) LocateTrack(t music.Track) string {
 	return locateTrack(t)
 }
 
 func (UserHandler) LocateMovie(v video.Movie) string {
 	return locateMovie(v)
+}
+
+func (UserHandler) LocateEpisode(e podcast.Episode) string {
+	return locateEpisode(e)
 }

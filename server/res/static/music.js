@@ -26,6 +26,7 @@ Takeout.music = (function() {
     let playing = false;
     let userPlay = false;
     let current = {};
+    let audioCtx = null;
 
     const clearTracks = function() {
 	playlist = [];
@@ -125,12 +126,26 @@ Takeout.music = (function() {
     };
 
     const playNow = async function(track) {
+	console.log("playNow");
 	if (track['location'] != null) {
 	    audioSource().setAttribute("src", track['location']);
 	    updateTitle(track);
 	    current = track;
 	    audioTag().load();
-	    document.getElementById("playing").style.display = "block";
+
+	    console.log("audio ctx is " + audioCtx.state);
+	    if (audioCtx.state === "suspended") {
+		audioCtx.resume().then(function() {
+		    console.log("resuming try again");
+		    playNow(track);
+		});
+	    } else if (audioCtx.state === "interrupted") {
+		//pause();
+		playing = false;
+		updateControls();
+	    } else {
+		document.getElementById("playing").style.display = "block";
+	    }
 	} else {
 	    document.getElementById("playing").style.display = "none";
 	    document.getElementById("playlist").style.display = "none";
@@ -346,6 +361,25 @@ Takeout.music = (function() {
 	    }
 	    return true;
 	});
+
+	console.log("fooey");
+
+	try {
+	    window.AudioContext = window.AudioContext || window.webkitAudioContext;
+	    audioCtx = new AudioContext();
+	    window.addEventListener("focus", function(e) {
+		console.log("focus state " + audioCtx.state);
+		if (audioCtx.state === "interrupted") {
+		    console.log("focus resuming");
+		    audioCtx.resume().then(function() {
+			console.log("resume complete");
+			playResume();
+		    });
+		}
+	    });
+	} catch (e) {
+	    console.log(e);
+	}
     };
 
     const shuffle = function() {
@@ -457,6 +491,7 @@ Takeout.music = (function() {
 	if (userPlay == false) {
 	    userPlay = true;
 	    play();
+	    audioTag().load();
 	    pause();
 	}
     };

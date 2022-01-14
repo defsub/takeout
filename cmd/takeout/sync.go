@@ -22,6 +22,7 @@ import (
 
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/music"
+	"github.com/defsub/takeout/podcast"
 	"github.com/defsub/takeout/video"
 	"github.com/spf13/cobra"
 )
@@ -39,6 +40,7 @@ var syncBack time.Duration
 var syncAll bool
 var mediaMusic bool
 var mediaVideo bool
+var mediaPodcast bool
 var artist string
 var resolve bool
 
@@ -47,7 +49,7 @@ func since(lastSync time.Time) time.Time {
 	if syncAll {
 		since = time.Time{}
 	} else if syncBack > 0 {
-		since = time.Now().Add(-1*syncBack)
+		since = time.Now().Add(-1 * syncBack)
 	} else {
 		since = lastSync
 	}
@@ -61,6 +63,9 @@ func sync() {
 	}
 	if mediaVideo {
 		syncVideo(cfg)
+	}
+	if mediaPodcast {
+		syncPodcast(cfg)
 	}
 }
 
@@ -86,12 +91,20 @@ func syncVideo(cfg *config.Config) {
 	v.SyncSince(since(v.LastModified()))
 }
 
+func syncPodcast(cfg *config.Config) {
+	p := podcast.NewPodcast(cfg)
+	p.Open()
+	defer p.Close()
+	p.Sync()
+}
+
 func init() {
 	syncCmd.Flags().StringVarP(&configFile, "config", "c", "", "config file")
 	syncCmd.Flags().DurationVarP(&syncBack, "back", "b", 0, "Back duration")
 	syncCmd.Flags().BoolVarP(&syncAll, "all", "a", false, "Re(sync) all ignoring timestamps")
 	syncCmd.Flags().BoolVarP(&mediaMusic, "music", "m", true, "Sync music")
 	syncCmd.Flags().BoolVarP(&mediaVideo, "video", "v", true, "Sync video")
+	syncCmd.Flags().BoolVarP(&mediaPodcast, "podcast", "p", false, "Sync podcasts")
 	syncCmd.Flags().BoolVarP(&resolve, "resolve", "x", false, "Resolve")
 	syncCmd.Flags().StringVarP(&artist, "artist", "r", "", "Music artist")
 	rootCmd.AddCommand(syncCmd)

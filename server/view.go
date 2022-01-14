@@ -18,10 +18,12 @@
 package server
 
 import (
+	"time"
+
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/music"
+	"github.com/defsub/takeout/podcast"
 	"github.com/defsub/takeout/video"
-	"time"
 )
 
 type CoverFunc func(interface{}) string
@@ -29,11 +31,14 @@ type CoverFunc func(interface{}) string
 type PosterFunc func(video.Movie) string
 type BackdropFunc func(video.Movie) string
 type ProfileFunc func(video.Person) string
+type SeriesImageFunc func(podcast.Series) string
+type EpisodeImageFunc func(podcast.Episode) string
 
 type IndexView struct {
-	Time      int64
-	HasMusic  bool
-	HasMovies bool
+	Time        int64
+	HasMusic    bool
+	HasMovies   bool
+	HasPodcasts bool
 }
 
 type HomeView struct {
@@ -160,11 +165,29 @@ type WatchView struct {
 	Backdrop    BackdropFunc `json:"-"`
 }
 
-func (handler *UserHandler) indexView(m *music.Music, v *video.Video) *IndexView {
+type PodcastsView struct {
+	Series      []podcast.Series
+	SeriesImage SeriesImageFunc `json:"-"`
+}
+
+type SeriesView struct {
+	Series       podcast.Series
+	Episodes     []podcast.Episode
+	SeriesImage  SeriesImageFunc  `json:"-"`
+	EpisodeImage EpisodeImageFunc `json:"-"`
+}
+
+type EpisodeView struct {
+	Episode      podcast.Episode
+	EpisodeImage EpisodeImageFunc `json:"-"`
+}
+
+func (handler *UserHandler) indexView(m *music.Music, v *video.Video, p *podcast.Podcast) *IndexView {
 	view := &IndexView{}
 	view.Time = time.Now().Unix()
 	view.HasMusic = m.HasMusic()
 	view.HasMovies = v.HasMovies()
+	view.HasPodcasts = p.HasPodcasts()
 	return view
 }
 
@@ -355,5 +378,28 @@ func (handler *UserHandler) watchView(v *video.Video, m *video.Movie) *WatchView
 	view.Movie = *m
 	view.PosterSmall = v.MoviePosterSmall
 	view.Backdrop = v.MovieBackdrop
+	return view
+}
+
+func (handler *UserHandler) podcastsView(p *podcast.Podcast) *PodcastsView {
+	view := &PodcastsView{}
+	view.Series = p.Series()
+	view.SeriesImage = p.SeriesImage
+	return view
+}
+
+func (handler *UserHandler) seriesView(p *podcast.Podcast, s *podcast.Series) *SeriesView {
+	view := &SeriesView{}
+	view.Series = *s
+	view.Episodes = p.Episodes(s)
+	view.SeriesImage = p.SeriesImage
+	view.EpisodeImage = p.EpisodeImage
+	return view
+}
+
+func (handler *UserHandler) episodeView(p *podcast.Podcast, e *podcast.Episode) *EpisodeView {
+	view := &EpisodeView{}
+	view.Episode = *e
+	view.EpisodeImage = p.EpisodeImage
 	return view
 }

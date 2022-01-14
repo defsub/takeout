@@ -132,6 +132,12 @@ type VideoConfig struct {
 	Recommend        RecommendConfig
 }
 
+type PodcastConfig struct {
+	DB     DatabaseConfig
+	Series []string
+	Client ClientConfig
+}
+
 type RecommendConfig struct {
 	When []DateRecommend
 }
@@ -182,6 +188,17 @@ type ClientConfig struct {
 	UserAgent string
 }
 
+func (c *ClientConfig) Merge(o ClientConfig) {
+	if o.CacheDir != "" {
+		c.CacheDir = o.CacheDir
+	}
+	c.MaxAge = o.MaxAge
+	c.UseCache = o.UseCache
+	if o.UserAgent != "" {
+		c.UserAgent = o.UserAgent
+	}
+}
+
 type Config struct {
 	Auth      AuthConfig
 	Buckets   []BucketConfig
@@ -195,6 +212,7 @@ type Config struct {
 	Server    ServerConfig
 	Video     VideoConfig
 	Assistant AssistantConfig
+	Podcast   PodcastConfig
 }
 
 func (mc *MusicConfig) UserArtistID(name string) (string, bool) {
@@ -361,6 +379,18 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Assistant.SuggestionNew", "What's new")
 	v.SetDefault("Assistant.MediaObjectName.Text", "{{.Title}}")
 	v.SetDefault("Assistant.MediaObjectDesc.Text", "{{.Artist}} \u2022 {{.Release}}")
+
+	v.SetDefault("Podcast.Client.MaxAge", 60*60*12)
+	v.SetDefault("Podcast.Client.UseCache", true)
+	v.SetDefault("Podcast.DB.Driver", "sqlite3")
+	v.SetDefault("Podcast.DB.Source", "podcast.db")
+	v.SetDefault("Podcast.DB.LogMode", "true")
+	v.SetDefault("Podcast.Series", []string{
+		"https://feeds.twit.tv/twit.xml",
+		"https://feeds.twit.tv/sn.xml",
+		"https://www.pbs.org/newshour/feeds/rss/podcasts/show",
+		"http://feeds.feedburner.com/TEDTalks_audio",
+	})
 }
 
 func userAgent() string {
