@@ -25,6 +25,7 @@ import (
 	"github.com/defsub/takeout/lib/date"
 	"github.com/defsub/takeout/lib/tmdb"
 	"github.com/spf13/cobra"
+        "gopkg.in/alessio/shellescape.v1"
 )
 
 var searchCmd = &cobra.Command{
@@ -80,11 +81,15 @@ func doit() {
 				"Extension":  optExt,
 				"Ext":        optExt,
 			}
-
 			title := config.TMDB.FileTemplate.Execute(vars)
 
+			vars["Ext"] = ".jpg"
+			vars["Extension"] = ".jpg"
+			cover := config.TMDB.FileTemplate.Execute(vars)
+
 			fmt.Printf("%s\n", title)
-			fmt.Printf("%s\n", m.MovieOriginalPoster(v.PosterPath).String())
+			poster := m.MovieOriginalPoster(v.PosterPath).String()
+			fmt.Printf("%s\n", poster)
 			if len(v.GenreIDs) > 0 {
 				for i, id := range v.GenreIDs {
 					if i > 0 {
@@ -95,7 +100,10 @@ func doit() {
 				fmt.Println()
 			}
 			if optFile != "" {
-				fmt.Printf("mv '%s' '%s'\n", optFile, title)
+				fmt.Printf("mv %s %s\n", shellescape.Quote(optFile),
+					shellescape.Quote(title))
+				fmt.Printf("wget -O %s %s\n", shellescape.Quote(cover),
+					shellescape.Quote(poster))
 			}
 			fmt.Printf("\n")
 		}

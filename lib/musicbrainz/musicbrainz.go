@@ -277,6 +277,7 @@ type ReleaseGroup struct {
 	Title            string         `json:"title"`
 	Disambiguation   string         `json:"disambiguation"`
 	PrimaryType      string         `json:"primary-type"`
+	SecondaryTypes   []string       `json:"secondary-types"`
 	Rating           Rating         `json:"rating"`
 	FirstReleaseDate string         `json:"first-release-date"`
 	Tags             []Tag          `json:"tags"`
@@ -292,6 +293,50 @@ func (rg ReleaseGroup) FirstReleaseTime() time.Time {
 
 func (rg ReleaseGroup) SortedGenres() []Genre {
 	return doSort(rg.Genres)
+}
+
+const (
+	TypeCompilation   = "Compilation"
+	TypeSoundtrack    = "Soundtrack"
+	TypeSpokenword    = "Spokenword"
+	TypeInterview     = "Interview"
+	TypeAudiobook     = "Audiobook"
+	TypeAudioDrama    = "Audio drama"
+	TypeLive          = "Live"
+	TypeRemix         = "Remix"
+	TypeDJMix         = "DJ-mix"
+	TypeMixtapeStreet = "Mixtape/Street"
+	TypeNone          = ""
+)
+
+var preferredTypes = []string{
+	TypeSoundtrack,
+	TypeCompilation,
+	TypeRemix,
+	TypeLive,
+}
+
+func (rg ReleaseGroup) SecondaryType() string {
+	// none or one
+	switch len(rg.SecondaryTypes) {
+	case 0:
+		return TypeNone
+	case 1:
+		return rg.SecondaryTypes[0]
+	}
+	// preferred
+	types := make(map[string]bool)
+	for _, v := range rg.SecondaryTypes {
+		types[v] = true
+	}
+	for _, v := range preferredTypes {
+		_, ok := types[v]
+		if ok {
+			return v
+		}
+	}
+	// fallback to first
+	return rg.SecondaryTypes[0]
 }
 
 // func release(artist string, r Release) music.Release {

@@ -113,7 +113,6 @@ type MusicConfig struct {
 	Recent               time.Duration
 	RecentLimit          int
 	ReleaseCountries     []string
-	ReleaseFile          string
 	SearchLimit          int
 	SimilarArtistsLimit  int
 	SimilarReleases      time.Duration

@@ -1050,6 +1050,7 @@ func doRelease(artist string, r musicbrainz.Release) Release {
 		REID:           string(r.ID),
 		RGID:           string(r.ReleaseGroup.ID),
 		Type:           r.ReleaseGroup.PrimaryType,
+		SecondaryType:  r.ReleaseGroup.SecondaryType(),
 		Asin:           r.Asin,
 		Country:        r.Country,
 		TrackCount:     r.TotalTracks(),

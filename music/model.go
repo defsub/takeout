@@ -48,6 +48,7 @@ type Release struct {
 	Asin           string
 	Country        string
 	Type           string
+	SecondaryType  string
 	Date           time.Time // rg first release
 	ReleaseDate    time.Time // re release date
 	Status         string
