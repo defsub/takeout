@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	"github.com/defsub/takeout/config"
-	"github.com/defsub/takeout/search"
 )
 
 func TestSearchReleases(t *testing.T) {
