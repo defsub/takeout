@@ -72,6 +72,22 @@ func (p *Podcast) Episodes(series *Series) []Episode {
 	return episodes
 }
 
+func (p *Podcast) RecentEpisodes() []Episode {
+	var episodes []Episode
+	p.db.Order("date desc").
+		Limit(p.config.Podcast.RecentLimit).
+		Find(&episodes)
+	return episodes
+}
+
+func (p *Podcast) RecentSeries() []Series {
+	var series []Series
+	p.db.Order("date desc").
+		Limit(p.config.Podcast.RecentLimit).
+		Find(&series)
+	return series
+}
+
 func (p *Podcast) deleteSeries(sid string) {
 	var list []Series
 	p.db.Where("s_id = ?", sid).Find(&list)

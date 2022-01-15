@@ -26,6 +26,7 @@ import (
 	"github.com/defsub/takeout/lib/actions"
 	"github.com/defsub/takeout/lib/token"
 	"github.com/defsub/takeout/music"
+	"github.com/defsub/takeout/podcast"
 	"github.com/defsub/takeout/video"
 )
 
@@ -128,11 +129,18 @@ func (handler *UserHandler) fulfillIntent(resp http.ResponseWriter,
 	}
 	defer vid.Close()
 
+	p, err := handler.NewPodcast()
+	if err != nil {
+		serverErr(resp, err)
+		return
+	}
+	defer p.Close()
+
 	switch r.IntentName() {
 	case IntentPlay:
 		handler.fulfillPlay(r, w, mus, vid)
 	case IntentNew:
-		handler.fulfillNew(r, w, mus, vid)
+		handler.fulfillNew(r, w, mus, vid, p)
 	default:
 		handler.fulfillWelcome(r, w, mus, vid)
 	}
@@ -249,8 +257,8 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 }
 
 func (handler *UserHandler) fulfillNew(r *actions.WebhookRequest, w *actions.WebhookResponse,
-	m *music.Music, v *video.Video) {
-	home := handler.homeView(m, v)
+	m *music.Music, v *video.Video, p *podcast.Podcast) {
+	home := handler.homeView(m, v, p)
 
 	speech := handler.config.Assistant.Recent.Speech.Text
 	text := handler.config.Assistant.Recent.Text.Text

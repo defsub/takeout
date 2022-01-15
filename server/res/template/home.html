@@ -100,3 +100,44 @@
   {{ end }}
 </div>
 {{ end }}
+{{ if or .NewEpisodes .NewSeries }}
+<div>
+  <h1>Podcasts</h1>
+  {{ if .NewSeries }}
+  <div>
+    <h2>Recent Series</h2>
+    <div style="overflow-x: auto; overflow-y: hidden; white-space: nowrap;">
+      {{ range .NewSeries }}
+      <div style="padding: 10px; max-width: 154px; display: inline-block;">
+	<a data-link="{{.|link}}" style="text-decoration: none;">
+	  <img width="144" height="144" src="{{call $.SeriesImage .}}" style="border-radius: 10px;">
+	  <br/>
+	  <div class="series-small-title">{{ .Title }}</div>
+	  <br style="display: none"/>
+	  <div class="series-small-year">{{ .Date|ymd }}</div>
+	</a>
+      </div>
+      {{ end }}
+    </div>
+  </div>
+  {{ end }}
+  {{ if .NewEpisodes }}
+  <div>
+    <h2>Recently Episodes</h2>
+    <div style="overflow-x: auto; overflow-y: hidden; white-space: nowrap;">
+      {{ range .NewEpisodes }}
+      <div style="padding: 10px; max-width: 154px; display: inline-block;">
+	<a data-link="{{.|link}}" style="text-decoration: none;">
+	  <img width="144" height="144" src="{{call $.EpisodeImage .}}" style="border-radius: 10px;">
+	  <br/>
+	  <div class="series-small-title">{{ .Title }}</div>
+	  <br style="display: none"/>
+	  <div class="series-small-year">{{ .Date|ymd }}</div>
+	</a>
+      </div>
+      {{ end }}
+    </div>
+  </div>
+  {{ end }}
+</div>
+{{ end }}

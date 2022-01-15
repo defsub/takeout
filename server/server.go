@@ -352,7 +352,7 @@ func (handler *UserHandler) viewHandler(w http.ResponseWriter, r *http.Request,
 		temp = "singles.html"
 	} else if v := r.URL.Query().Get("home"); v != "" {
 		// /v?home=x
-		view = handler.homeView(m, vid)
+		view = handler.homeView(m, vid, p)
 		temp = "home.html"
 	} else if v := r.URL.Query().Get("q"); v != "" {
 		// /v?q={pattern}

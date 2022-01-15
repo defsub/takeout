@@ -133,9 +133,10 @@ type VideoConfig struct {
 }
 
 type PodcastConfig struct {
-	DB     DatabaseConfig
-	Series []string
-	Client ClientConfig
+	DB          DatabaseConfig
+	Series      []string
+	Client      ClientConfig
+	RecentLimit int
 }
 
 type RecommendConfig struct {
@@ -385,6 +386,7 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Podcast.DB.Driver", "sqlite3")
 	v.SetDefault("Podcast.DB.Source", "podcast.db")
 	v.SetDefault("Podcast.DB.LogMode", "true")
+	v.SetDefault("Podcast.RecentLimit", "25")
 	v.SetDefault("Podcast.Series", []string{
 		"https://feeds.twit.tv/twit.xml",
 		"https://feeds.twit.tv/sn.xml",

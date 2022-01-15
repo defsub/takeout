@@ -47,8 +47,12 @@ type HomeView struct {
 	AddedMovies     []video.Movie
 	NewMovies       []video.Movie
 	RecommendMovies []video.Recommend
-	CoverSmall      CoverFunc  `json:"-"`
-	PosterSmall     PosterFunc `json:"-"`
+	NewEpisodes     []podcast.Episode
+	NewSeries       []podcast.Series
+	CoverSmall      CoverFunc        `json:"-"`
+	PosterSmall     PosterFunc       `json:"-"`
+	SeriesImage     SeriesImageFunc  `json:"-"`
+	EpisodeImage    EpisodeImageFunc `json:"-"`
 }
 
 type ArtistsView struct {
@@ -191,15 +195,20 @@ func (handler *UserHandler) indexView(m *music.Music, v *video.Video, p *podcast
 	return view
 }
 
-func (handler *UserHandler) homeView(m *music.Music, v *video.Video) *HomeView {
+func (handler *UserHandler) homeView(m *music.Music, v *video.Video, p *podcast.Podcast) *HomeView {
 	view := &HomeView{}
 	view.AddedReleases = m.RecentlyAdded()
 	view.NewReleases = m.RecentlyReleased()
 	view.AddedMovies = v.RecentlyAdded()
 	view.NewMovies = v.RecentlyReleased()
 	view.RecommendMovies = v.Recommend()
+	view.NewEpisodes = p.RecentEpisodes()
+	view.NewSeries = p.RecentSeries()
+
 	view.CoverSmall = m.CoverSmall
 	view.PosterSmall = v.MoviePosterSmall
+	view.EpisodeImage = p.EpisodeImage
+	view.SeriesImage = p.SeriesImage
 	return view
 }
 
