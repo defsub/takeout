@@ -93,7 +93,7 @@ func (r *Resolver) addEpisodeEntries(series *podcast.Series, episodes []podcast.
 	entries []spiff.Entry) []spiff.Entry {
 	for _, e := range episodes {
 		e := spiff.Entry{
-			Creator:    "", // TODO need better creator
+			Creator:    "Podcast", // TODO need better creator
 			Album:      series.Title,
 			Title:      e.Title,
 			Image:      r.podcast.EpisodeImage(e),
