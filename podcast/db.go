@@ -19,6 +19,7 @@ package podcast
 
 import (
 	"errors"
+	"fmt"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -129,6 +130,15 @@ func (p *Podcast) findSeries(sid string) *Series {
 	return nil
 }
 
+func (p *Podcast) findEpisode(eid string) *Episode {
+	var list []Episode
+	p.db.Where("e_id = ?", eid).Find(&list)
+	if len(list) > 0 {
+		return &list[0]
+	}
+	return nil
+}
+
 func (p *Podcast) LookupSeries(id int) (*Series, error) {
 	var series Series
 	err := p.db.First(&series, id).Error
@@ -151,4 +161,15 @@ func (p *Podcast) SeriesCount() int64 {
 	var count int64
 	p.db.Model(&Series{}).Count(&count)
 	return count
+}
+
+func (p *Podcast) retainEpisodes(series *Series, eids []string) error {
+	sid := series.SID
+	var list []Episode
+	p.db.Where("s_id = ? and e_id not in (?)", sid, eids).Find(&list)
+	fmt.Printf("will delete %d epsidoes\n", len(list))
+	for _, e := range list {
+		fmt.Printf("deleting %s : %s\n", e.EID, e.Title)
+	}
+	return p.db.Unscoped().Delete(Episode{}, "s_id = ? and e_id not in (?)", sid, eids).Error
 }

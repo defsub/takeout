@@ -27,6 +27,7 @@ type Series struct {
 	SID         string `gorm:"uniqueIndex:idx_series"` // hash of link
 	Title       string
 	Description string
+	Author      string
 	Link        string
 	Image       string
 	Copyright   string
@@ -43,6 +44,7 @@ type Episode struct {
 	SID         string // series ID
 	EID         string `gorm:"uniqueIndex:idx_episode"` // hash of GUID
 	Title       string
+	Author      string
 	Link        string
 	Description string
 	ContentType string

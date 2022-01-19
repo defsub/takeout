@@ -38,6 +38,7 @@ func (p *Podcast) SyncSince(lastSync time.Time) error {
 			return err
 		}
 	}
+	// TODO cleanup old series and episodes
 	return nil
 }
 
@@ -52,38 +53,80 @@ func (p *Podcast) syncPodcast(url string) error {
 	}
 	sid := hash.MD5Hex(channel.Link())
 	fmt.Printf("syncing %s %s %s\n", sid, url, channel.Link())
-	p.deleteSeriesEpisodes(sid)
-	p.deleteSeries(sid)
-	series := Series{
-		SID:         sid,
-		Title:       channel.Title,
-		Description: channel.Description,
-		Link:        channel.Link(),
-		Image:       channel.Image.URL,
-		Copyright:   channel.Copyright,
-		Date:        channel.LastBuildTime(),
-		TTL:         channel.TTL,
-	}
-	err = p.createSeries(&series)
-	if err != nil {
-		return err
-	}
-	for _, i := range channel.Items {
-		episode := Episode{
+
+	series := p.findSeries(sid)
+	if series == nil {
+		series = &Series{
 			SID:         sid,
-			EID:         hash.MD5Hex(i.GUID),
-			Title:       i.ItemTitle(),
-			Link:        i.Link,
-			Description: i.Description,
-			ContentType: i.ContentType(),
-			Size:        i.Size(),
-			URL:         i.URL(),
-			Date:        i.PublishTime(),
+			Title:       channel.Title,
+			Author:      channel.Author,
+			Description: channel.Description,
+			Link:        channel.Link(),
+			Image:       channel.Image.URL,
+			Copyright:   channel.Copyright,
+			Date:        channel.LastBuildTime(),
+			TTL:         channel.TTL,
 		}
-		err = p.createEpisode(&episode)
+		err = p.createSeries(series)
+		if err != nil {
+			return err
+		}
+	} else {
+		// TODO update everything for now
+		series.Title = channel.Title
+		series.Author = channel.Author
+		series.Description = channel.Description
+		series.Link = channel.Link()
+		series.Image = channel.Image.URL
+		series.Copyright = channel.Copyright
+		series.Date = channel.LastBuildTime()
+		series.TTL = channel.TTL
+		err := p.db.Save(series).Error
 		if err != nil {
 			return err
 		}
 	}
+
+	var episodes []string
+	for _, i := range channel.Items {
+		eid := hash.MD5Hex(i.GUID)
+		episode := p.findEpisode(eid)
+		if episode == nil {
+			episode = &Episode{
+				SID:         sid,
+				EID:         eid,
+				Title:       i.ItemTitle(),
+				Author:      i.Author,
+				Link:        i.Link,
+				Description: i.Description,
+				ContentType: i.ContentType(),
+				Size:        i.Size(),
+				URL:         i.URL(),
+				Date:        i.PublishTime(),
+			}
+			fmt.Printf("adding %s\n", episode.Title)
+			err = p.createEpisode(episode)
+			if err != nil {
+				return err
+			}
+		} else {
+			// TODO update everything for now
+			fmt.Printf("updating %s\n", episode.Title)
+			episode.Title = i.ItemTitle()
+			episode.Author = i.Author
+			episode.Link = i.Link
+			episode.Description = i.Description
+			episode.ContentType = i.ContentType()
+			episode.Size = i.Size()
+			episode.URL = i.URL()
+			episode.Date = i.PublishTime()
+			err := p.db.Save(episode).Error
+			if err != nil {
+				return err
+			}
+		}
+		episodes = append(episodes, eid)
+	}
+	p.retainEpisodes(series, episodes)
 	return nil
 }

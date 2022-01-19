@@ -46,6 +46,7 @@ func (rss RSS) FetchPodcast(url string) (*Podcast, error) {
 	podcast := Podcast{
 		Title:         result.Title,
 		Description:   result.Description,
+		Author:        result.Author,
 		Link:          result.Link(),
 		Image:         result.Image.Link,
 		Copyright:     result.Copyright,
@@ -55,6 +56,7 @@ func (rss RSS) FetchPodcast(url string) (*Podcast, error) {
 	for _, i := range result.Items {
 		episode := Episode{
 			Title:       i.ItemTitle(),
+			Author:      i.Author,
 			Link:        i.Link,
 			Description: i.Description,
 			ContentType: i.ContentType(),
@@ -70,6 +72,7 @@ func (rss RSS) FetchPodcast(url string) (*Podcast, error) {
 type Podcast struct {
 	Title         string
 	Description   string
+	Author        string
 	Link          string
 	Image         string
 	Copyright     string
@@ -81,6 +84,7 @@ type Podcast struct {
 type Episode struct {
 	Title       string
 	Link        string
+	Author      string
 	Description string
 	ContentType string
 	Size        int64
@@ -163,6 +167,7 @@ type Channel struct {
 	Title         string   `xml:"title"`
 	Links         []string `xml:"link"` // want <link> not <atom:link>
 	Description   string   `xml:"description"`
+	Author        string   `xml:"author,itunes"`
 	Language      string   `xml:"language"`
 	Copyright     string   `xml:"copyright"`
 	LastBuildDate string   `xml:"lastBuildDate"`

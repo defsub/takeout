@@ -92,8 +92,12 @@ func (r *Resolver) addMovieEntries(movies []video.Movie, entries []spiff.Entry) 
 func (r *Resolver) addEpisodeEntries(series *podcast.Series, episodes []podcast.Episode,
 	entries []spiff.Entry) []spiff.Entry {
 	for _, e := range episodes {
+		author := e.Author
+		if author == "" {
+			author = series.Author
+		}
 		e := spiff.Entry{
-			Creator:    "Podcast", // TODO need better creator
+			Creator:    author,
 			Album:      series.Title,
 			Title:      e.Title,
 			Image:      r.podcast.EpisodeImage(e),
@@ -256,7 +260,7 @@ func (r *Resolver) resolveRadioRef(id string, entries []spiff.Entry, user *auth.
 }
 
 func (r *Resolver) RefreshStation(s *music.Station, user *auth.User) {
-	plist := spiff.NewPlaylist()
+	plist := spiff.NewPlaylist(spiff.TypeMusic)
 	// Image
 	plist.Spiff.Location = fmt.Sprintf("%s/api/radio/%d", r.config.Server.URL, s.ID)
 	plist.Spiff.Title = s.Name
