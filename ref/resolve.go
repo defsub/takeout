@@ -262,7 +262,8 @@ func (r *Resolver) resolveRadioRef(id string, entries []spiff.Entry, user *auth.
 func (r *Resolver) RefreshStation(s *music.Station, user *auth.User) {
 	plist := spiff.NewPlaylist(spiff.TypeMusic)
 	// Image
-	plist.Spiff.Location = fmt.Sprintf("%s/api/radio/%d", r.config.Server.URL, s.ID)
+	//plist.Spiff.Location = fmt.Sprintf("%s/api/radio/%d", r.config.Server.URL, s.ID)
+	plist.Spiff.Location = fmt.Sprintf("/api/radio/%d", s.ID)
 	plist.Spiff.Title = s.Name
 	plist.Spiff.Creator = "Radio"
 	plist.Entries = []spiff.Entry{{Ref: s.Ref}}

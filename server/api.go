@@ -256,7 +256,8 @@ func (handler *UserHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Reques
 	listType string, m *music.Music, vid *video.Video, p *podcast.Podcast,
 	creator, title, image, nref string) {
 	plist := spiff.NewPlaylist(listType)
-	plist.Spiff.Location = fmt.Sprintf("%s%s", handler.config.Server.URL, r.URL.Path)
+	//plist.Spiff.Location = fmt.Sprintf("%s%s", handler.config.Server.URL, r.URL.Path)
+	plist.Spiff.Location = r.URL.Path
 	plist.Spiff.Creator = creator
 	plist.Spiff.Title = title
 	plist.Spiff.Image = image
@@ -319,7 +320,8 @@ func (handler *UserHandler) apiPlaylist(w http.ResponseWriter, r *http.Request,
 	p := m.LookupPlaylist(handler.user)
 	if p == nil {
 		plist := spiff.NewPlaylist(spiff.TypeMusic) // TODO music may not be correct
-		plist.Spiff.Location = fmt.Sprintf("%s/api/playlist", handler.config.Server.URL)
+		//plist.Spiff.Location = fmt.Sprintf("%s/api/playlist", handler.config.Server.URL)
+		plist.Spiff.Location = "/api/playlist"
 		data, _ := plist.Marshal()
 		p = &music.Playlist{User: handler.user.Name, Playlist: data}
 		err := m.CreatePlaylist(p)
