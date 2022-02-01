@@ -18,7 +18,7 @@
 package video
 
 import (
-	"gorm.io/gorm"
+	"github.com/defsub/takeout/lib/gorm"
 	"time"
 )
 

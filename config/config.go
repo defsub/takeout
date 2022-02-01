@@ -139,6 +139,10 @@ type PodcastConfig struct {
 	RecentLimit int
 }
 
+type ProgressConfig struct {
+	DB          DatabaseConfig
+}
+
 type RecommendConfig struct {
 	When []DateRecommend
 }
@@ -214,6 +218,7 @@ type Config struct {
 	Video     VideoConfig
 	Assistant AssistantConfig
 	Podcast   PodcastConfig
+	Progress  ProgressConfig
 }
 
 func (mc *MusicConfig) UserArtistID(name string) (string, bool) {
@@ -393,6 +398,10 @@ func configDefaults(v *viper.Viper) {
 		"https://www.pbs.org/newshour/feeds/rss/podcasts/show",
 		"http://feeds.feedburner.com/TEDTalks_audio",
 	})
+
+	v.SetDefault("Progress.DB.Driver", "sqlite3")
+	v.SetDefault("Progress.DB.Source", "progress.db")
+	v.SetDefault("Progress.DB.LogMode", "true")
 }
 
 func userAgent() string {

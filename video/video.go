@@ -94,7 +94,7 @@ func (v *Video) Search(q string, limit ...int) []Movie {
 	return movies
 }
 
-func (v *Video) MovieURL(m *Movie) *url.URL {
+func (v *Video) MovieURL(m Movie) *url.URL {
 	// FIXME assume first bucket!!!
 	return v.buckets[0].Presign(m.Key)
 }

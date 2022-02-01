@@ -20,6 +20,8 @@ package server
 import (
 	"errors"
 	"net/http"
+
+	"github.com/defsub/takeout/lib/log"
 )
 
 var (
@@ -28,11 +30,19 @@ var (
 	ErrUnauthorized  = errors.New("unauthorized")
 	ErrInvalidCode   = errors.New("invalid code")
 	ErrNotFound      = errors.New("not found")
+	ErrInvalidOffset = errors.New("invalid offset")
 )
 
 func serverErr(w http.ResponseWriter, err error) {
 	if err != nil {
+		log.Printf("got err %s\n", err)
 		handleErr(w, "bummer", http.StatusInternalServerError)
+	}
+}
+
+func badRequest(w http.ResponseWriter, err error) {
+	if err != nil {
+		handleErr(w, err.Error(), http.StatusBadRequest)
 	}
 }
 

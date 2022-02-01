@@ -18,61 +18,23 @@
 package server
 
 import (
-	"embed"
-	_ "embed"
 	"fmt"
-	"html/template"
-	"io/fs"
+
 	"net/http"
-	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
-	"github.com/defsub/takeout/lib/date"
 	"github.com/defsub/takeout/lib/encoding/xspf"
 	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/music"
-	"github.com/defsub/takeout/podcast"
-	"github.com/defsub/takeout/video"
 )
 
 const (
 	ApplicationJson = "application/json"
 )
 
-type UserHandler struct {
-	config     *config.Config
-	template   *template.Template
-	user       *auth.User
-	userConfig *config.Config
-}
-
-func (handler *UserHandler) NewMusic() (*music.Music, error) {
-	m := music.NewMusic(handler.userConfig)
-	err := m.Open()
-	return m, err
-}
-
-func (handler *UserHandler) NewVideo() (*video.Video, error) {
-	vid := video.NewVideo(handler.userConfig)
-	err := vid.Open()
-	return vid, err
-}
-
-func (handler *UserHandler) NewPodcast() (*podcast.Podcast, error) {
-	p := podcast.NewPodcast(handler.userConfig)
-	err := p.Open()
-	return p, err
-}
-
-func (handler *UserHandler) NewAuth() (*auth.Auth, error) {
-	a := auth.NewAuth(handler.config)
-	err := a.Open()
-	return a, err
-}
-
+// remove?
 func (handler *UserHandler) tracksHandler(w http.ResponseWriter, r *http.Request, m *music.Music) {
 	var tracks []music.Track
 	if v := r.URL.Query().Get("q"); v != "" {
@@ -87,6 +49,7 @@ func (handler *UserHandler) tracksHandler(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// remove?
 func (handler *UserHandler) doSpiff(m *music.Music, title string, tracks []music.Track,
 	w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", xspf.XMLContentType)
@@ -100,126 +63,23 @@ func (handler *UserHandler) doSpiff(m *music.Music, title string, tracks []music
 	encoder.Footer()
 }
 
-func doFuncMap() template.FuncMap {
-	return template.FuncMap{
-		"join": strings.Join,
-		"ymd":  date.YMD,
-		"unescapeHTML": func(s string) template.HTML {
-			return template.HTML(s)
-		},
-		"link": func(o interface{}) string {
-			var link string
-			switch o.(type) {
-			case music.Release:
-				link = fmt.Sprintf("/v?release=%d", o.(music.Release).ID)
-			case music.Artist:
-				link = fmt.Sprintf("/v?artist=%d", o.(music.Artist).ID)
-			case music.Track:
-				link = locateTrack(o.(music.Track))
-			case video.Movie:
-				// m := o.(video.Movie)
-				// link = handler.LocateMovie(m)
-				link = fmt.Sprintf("/v?movie=%d", o.(video.Movie).ID)
-			case podcast.Series:
-				link = fmt.Sprintf("/v?series=%d", o.(podcast.Series).ID)
-			case podcast.Episode:
-				link = fmt.Sprintf("/v?episode=%d", o.(podcast.Episode).ID)
-			}
-			return link
-		},
-		"url": func(o interface{}) string {
-			var loc string
-			switch o.(type) {
-			case music.Track:
-				loc = locateTrack(o.(music.Track))
-			case video.Movie:
-				loc = locateMovie(o.(video.Movie))
-			case podcast.Episode:
-				loc = locateEpisode(o.(podcast.Episode))
-			}
-			return loc
-		},
-		"popular": func(o interface{}) string {
-			var link string
-			switch o.(type) {
-			case music.Artist:
-				link = fmt.Sprintf("/v?popular=%d", o.(music.Artist).ID)
-			}
-			return link
-		},
-		"singles": func(o interface{}) string {
-			var link string
-			switch o.(type) {
-			case music.Artist:
-				link = fmt.Sprintf("/v?singles=%d", o.(music.Artist).ID)
-			}
-			return link
-		},
-		"ref": func(o interface{}, args ...string) string {
-			var ref string
-			switch o.(type) {
-			case music.Release:
-				ref = fmt.Sprintf("/music/releases/%d/tracks", o.(music.Release).ID)
-			case music.Artist:
-				ref = fmt.Sprintf("/music/artists/%d/%s", o.(music.Artist).ID, args[0])
-			case music.Track:
-				ref = fmt.Sprintf("/music/tracks/%d", o.(music.Track).ID)
-			case string:
-				ref = fmt.Sprintf("/music/search?q=%s", url.QueryEscape(o.(string)))
-			case music.Station:
-				ref = fmt.Sprintf("/music/radio/%d", o.(music.Station).ID)
-			}
-			return ref
-		},
-		"home": func() string {
-			return "/v?home=1"
-		},
-		"runtime": func(m video.Movie) string {
-			hours := m.Runtime / 60
-			mins := m.Runtime % 60
-			return fmt.Sprintf("%dh %dm", hours, mins)
-		},
-		"letter": func(a music.Artist) string {
-			return a.SortName[0:1]
-		},
-	}
+func (handler *Handler) doLogin(user, pass string) (http.Cookie, error) {
+	return handler.auth.Login(user, pass)
 }
 
-func (handler *UserHandler) render(m *music.Music, vid *video.Video, temp string, view interface{},
-	w http.ResponseWriter, r *http.Request) {
-	err := handler.template.ExecuteTemplate(w, temp, view)
-	if err != nil {
-		serverErr(w, err)
-	}
-}
-
-func (handler *UserHandler) doLogin(user, pass string) (http.Cookie, error) {
-	a, err := handler.NewAuth()
-	if err != nil {
-		return http.Cookie{}, err
-	}
-	defer a.Close()
-	return a.Login(user, pass)
-}
-
-func (handler *UserHandler) doCodeAuth(user, pass, value string) error {
-	a, err := handler.NewAuth()
+func (handler *Handler) doCodeAuth(user, pass, value string) error {
+	cookie, err := handler.auth.Login(user, pass)
 	if err != nil {
 		return err
 	}
-	defer a.Close()
-	cookie, err := a.Login(user, pass)
-	if err != nil {
-		return err
-	}
-	err = a.AuthorizeCode(value, cookie.Value)
+	err = handler.auth.AuthorizeCode(value, cookie.Value)
 	if err != nil {
 		return ErrInvalidCode
 	}
 	return nil
 }
 
-func (handler *UserHandler) loginHandler(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) loginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseForm()
 		user := r.Form.Get("user")
@@ -235,7 +95,7 @@ func (handler *UserHandler) loginHandler(w http.ResponseWriter, r *http.Request)
 	authErr(w, ErrUnauthorized)
 }
 
-func (handler *UserHandler) linkHandler(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) linkHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseForm()
 		user := r.Form.Get("user")
@@ -251,215 +111,95 @@ func (handler *UserHandler) linkHandler(w http.ResponseWriter, r *http.Request) 
 	http.Redirect(w, r, "/static/link.html", http.StatusTemporaryRedirect)
 }
 
-func (handler *UserHandler) authorized(w http.ResponseWriter, r *http.Request) bool {
-	a, err := handler.NewAuth()
-	if err != nil {
-		serverErr(w, err)
-		return false
-	}
-	defer a.Close()
-
+func (handler *Handler) authorize(w http.ResponseWriter, r *http.Request) *auth.User {
 	cookie, err := r.Cookie(auth.CookieName)
 	if err != nil {
 		if cookie != nil {
-			a.Expire(cookie)
+			handler.auth.Expire(cookie)
 			http.SetCookie(w, cookie)
 		}
 		http.Redirect(w, r, "/static/login.html", http.StatusTemporaryRedirect)
-		return false
+		return nil
 	}
 
-	valid := a.Valid(*cookie)
+	valid := handler.auth.Valid(*cookie)
 	if !valid {
-		a.Logout(*cookie)
-		a.Expire(cookie)
+		handler.auth.Logout(*cookie)
+		handler.auth.Expire(cookie)
 		http.SetCookie(w, cookie)
 		authErr(w, ErrUnauthorized)
-		return false
+		return nil
 	}
 
-	handler.user, err = a.UserAuth(*cookie)
+	user, err := handler.auth.UserAuth(*cookie)
 	if err != nil {
-		a.Logout(*cookie)
+		handler.auth.Logout(*cookie)
 		authErr(w, ErrUnauthorized)
-		a.Expire(cookie)
+		handler.auth.Expire(cookie)
 		http.SetCookie(w, cookie)
-		return false
+		return nil
 	}
 
-	a.Refresh(cookie)
+	handler.auth.Refresh(cookie)
 	http.SetCookie(w, cookie)
 
-	err = handler.configure(w)
-	if err != nil {
-		serverErr(w, err)
-		return false
-	}
-
-	return true
+	return user
 }
 
 // after user authentication, configure available media
-func (handler *UserHandler) configure(w http.ResponseWriter) error {
+func (handler *Handler) configure(user *auth.User, w http.ResponseWriter) (*UserHandler, error) {
 	var err error
 	// only supports one media collection right now
-	media := handler.user.FirstMedia()
-	if media == "" {
-		return ErrNoMedia
+	mediaName := user.FirstMedia()
+	if mediaName == "" {
+		return nil, ErrNoMedia
 	}
-	path := fmt.Sprintf("%s/%s", handler.config.DataDir, media)
+	path := fmt.Sprintf("%s/%s", handler.config.DataDir, mediaName)
 	// load relative media configuration
-	handler.userConfig, err = config.LoadConfig(path)
+	userConfig, err := config.LoadConfig(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	handler.userConfig.Server.URL = handler.config.Server.URL // TODO FIXME
-	return nil
-}
+	userConfig.Server.URL = handler.config.Server.URL // TODO FIXME
 
-func (handler *UserHandler) viewHandler(w http.ResponseWriter, r *http.Request,
-	m *music.Music, vid *video.Video, p *podcast.Podcast) {
-	var view interface{}
-	var temp string
+	media := makeMedia(mediaName, userConfig)
 
-	if v := r.URL.Query().Get("release"); v != "" {
-		// /v?release={release-id}
-		id, _ := strconv.Atoi(v)
-		release, _ := m.LookupRelease(id)
-		view = handler.releaseView(m, release)
-		temp = "release.html"
-	} else if v := r.URL.Query().Get("artist"); v != "" {
-		// /v?artist={artist-id}
-		id, _ := strconv.Atoi(v)
-		artist, _ := m.LookupArtist(id)
-		view = handler.artistView(m, artist)
-		temp = "artist.html"
-	} else if v := r.URL.Query().Get("artists"); v != "" {
-		// /v?artists=x
-		view = handler.artistsView(m)
-		temp = "artists.html"
-	} else if v := r.URL.Query().Get("popular"); v != "" {
-		// /v?popular={artist-id}
-		id, _ := strconv.Atoi(v)
-		artist, _ := m.LookupArtist(id)
-		view = handler.popularView(m, artist)
-		temp = "popular.html"
-	} else if v := r.URL.Query().Get("singles"); v != "" {
-		// /v?singles={artist-id}
-		id, _ := strconv.Atoi(v)
-		artist, _ := m.LookupArtist(id)
-		view = handler.singlesView(m, artist)
-		temp = "singles.html"
-	} else if v := r.URL.Query().Get("home"); v != "" {
-		// /v?home=x
-		view = handler.homeView(m, vid, p)
-		temp = "home.html"
-	} else if v := r.URL.Query().Get("q"); v != "" {
-		// /v?q={pattern}
-		view = handler.searchView(m, vid, strings.TrimSpace(v))
-		temp = "search.html"
-	} else if v := r.URL.Query().Get("radio"); v != "" {
-		// /v?radio=x
-		view = handler.radioView(m, handler.user)
-		temp = "radio.html"
-	} else if v := r.URL.Query().Get("movies"); v != "" {
-		// /v?movies=x
-		view = handler.moviesView(vid)
-		temp = "movies.html"
-	} else if v := r.URL.Query().Get("movie"); v != "" {
-		// /v?movie={movie-id}
-		id, _ := strconv.Atoi(v)
-		movie, _ := vid.LookupMovie(id)
-		view = handler.movieView(vid, movie)
-		temp = "movie.html"
-	} else if v := r.URL.Query().Get("profile"); v != "" {
-		// /v?profile={person-id}
-		id, _ := strconv.Atoi(v)
-		person, _ := vid.LookupPerson(id)
-		view = handler.profileView(vid, person)
-		temp = "profile.html"
-	} else if v := r.URL.Query().Get("genre"); v != "" {
-		// /v?genre={genre-name}
-		name := strings.TrimSpace(v)
-		view = handler.genreView(vid, name)
-		temp = "genre.html"
-	} else if v := r.URL.Query().Get("keyword"); v != "" {
-		// /v?keyword={keyword-name}
-		name := strings.TrimSpace(v)
-		view = handler.keywordView(vid, name)
-		temp = "keyword.html"
-	} else if v := r.URL.Query().Get("watch"); v != "" {
-		// /v?watch={movie-id}
-		id, _ := strconv.Atoi(v)
-		movie, _ := vid.LookupMovie(id)
-		view = handler.watchView(vid, movie)
-		temp = "watch.html"
-	} else if v := r.URL.Query().Get("podcasts"); v != "" {
-		// /v?podcasts=x
-		view = handler.podcastsView(p)
-		temp = "podcasts.html"
-	} else if v := r.URL.Query().Get("series"); v != "" {
-		// /v?series={series-id}
-		id, _ := strconv.Atoi(v)
-		series, _ := p.LookupSeries(id)
-		view = handler.seriesView(p, series)
-		temp = "series.html"
-	} else if v := r.URL.Query().Get("episode"); v != "" {
-		// /v?episode={episode-id}
-		id, _ := strconv.Atoi(v)
-		episode, _ := p.LookupEpisode(id)
-		view = handler.episodeView(p, episode)
-		temp = "episode.html"
-	} else {
-		view = handler.indexView(m, vid, p)
-		temp = "index.html"
-	}
-
-	handler.render(m, vid, temp, view, w, r)
-}
-
-//go:embed res/static
-var resStatic embed.FS
-
-func getStaticFS(config *config.Config) http.FileSystem {
-	// dev := false
-	// if dev {
-	// 	return http.FS(os.DirFS(fmt.Sprintf("%s/static", config.Server.WebDir)))
-	// }
-	fsys, err := fs.Sub(resStatic, "res")
-	if err != nil {
-		panic(err)
-	}
-	return http.FS(fsys)
-}
-
-//go:embed res/template
-var resTemplates embed.FS
-
-func getTemplateFS(config *config.Config) fs.FS {
-	// dev := false
-	// if dev {
-	// 	return os.DirFS(fmt.Sprintf("%s/template", config.Server.WebDir))
-	// }
-	return resTemplates
-}
-
-func getTemplates(config *config.Config) *template.Template {
-	return template.Must(template.New("").Funcs(doFuncMap()).ParseFS(getTemplateFS(config),
-		"res/template/*.html",
-		"res/template/music/*.html",
-		"res/template/video/*.html",
-		"res/template/podcast/*.html"))
+	return &UserHandler{
+		user:     user,
+		media:    media,
+		config:   userConfig,
+		template: handler.template,
+	}, nil
 }
 
 func Serve(config *config.Config) {
 	template := getTemplates(config)
 
-	makeHandler := func() *UserHandler {
-		return &UserHandler{
+	auth, err := makeAuth(config)
+	if err != nil {
+		log.CheckError(err)
+	}
+
+	makeHandler := func() *Handler {
+		return &Handler{
+			auth:     auth,
 			config:   config,
 			template: template,
 		}
+	}
+
+	makeUserHandler := func(w http.ResponseWriter, r *http.Request) *UserHandler {
+		handler := makeHandler()
+		user := handler.authorize(w, r)
+		if user == nil {
+			return nil
+		}
+		userHandler, err := handler.configure(user, w)
+		if err != nil {
+			serverErr(w, err)
+			return nil
+		}
+		return userHandler
 	}
 
 	loginHandler := func(w http.ResponseWriter, r *http.Request) {
@@ -470,76 +210,39 @@ func Serve(config *config.Config) {
 		makeHandler().linkHandler(w, r)
 	}
 
-	tracksHandler := func(w http.ResponseWriter, r *http.Request) {
-		// TODO keep this? auth?
-		handler := makeHandler()
-		m, err := handler.NewMusic()
-		if err != nil {
-			serverErr(w, err)
-			return
-		}
-		defer m.Close()
-		handler.tracksHandler(w, r, m)
-	}
-
-	viewHandler := func(w http.ResponseWriter, r *http.Request) {
-		handler := makeHandler()
-		if !handler.authorized(w, r) {
-			return
-		}
-		m, err := handler.NewMusic()
-		if err != nil {
-			serverErr(w, err)
-			return
-		}
-		defer m.Close()
-		v, err := handler.NewVideo()
-		if err != nil {
-			serverErr(w, err)
-			return
-		}
-		defer v.Close()
-		p, err := handler.NewPodcast()
-		if err != nil {
-			serverErr(w, err)
-			return
-		}
-		defer p.Close()
-		handler.viewHandler(w, r, m, v, p)
-	}
-
 	apiLoginHandler := func(w http.ResponseWriter, r *http.Request) {
 		makeHandler().apiLogin(w, r)
 	}
 
-	apiHandler := func(w http.ResponseWriter, r *http.Request) {
-		handler := makeHandler()
-		if !handler.authorized(w, r) {
-			return
-		}
-		m, err := handler.NewMusic()
-		if err != nil {
-			serverErr(w, err)
-			return
-		}
-		defer m.Close()
-		v, err := handler.NewVideo()
-		if err != nil {
-			serverErr(w, err)
-			return
-		}
-		defer v.Close()
-		p, err := handler.NewPodcast()
-		if err != nil {
-			serverErr(w, err)
-			return
-		}
-		defer p.Close()
-		handler.apiHandler(w, r, m, v, p)
-	}
-
 	hookHandler := func(w http.ResponseWriter, r *http.Request) {
 		makeHandler().hookHandler(w, r)
+	}
+
+	tracksHandler := func(w http.ResponseWriter, r *http.Request) {
+		// TODO keep this? auth? user config?
+		// handler := makeHandler()
+		// m := music.NewMusic(config)
+		// err := m.Open()
+		// if err != nil {
+		// 	serverErr(w, err)
+		// 	return
+		// }
+		// defer m.Close()
+		// handler.tracksHandler(w, r, m)
+	}
+
+	viewHandler := func(w http.ResponseWriter, r *http.Request) {
+		userHandler := makeUserHandler(w, r)
+		if userHandler != nil {
+			userHandler.viewHandler(w, r)
+		}
+	}
+
+	apiHandler := func(w http.ResponseWriter, r *http.Request) {
+		userHandler := makeUserHandler(w, r)
+		if userHandler != nil {
+			userHandler.apiHandler(w, r)
+		}
 	}
 
 	http.Handle("/static/", http.FileServer(getStaticFS(config)))

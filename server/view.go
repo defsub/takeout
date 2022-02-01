@@ -23,6 +23,7 @@ import (
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/music"
 	"github.com/defsub/takeout/podcast"
+	"github.com/defsub/takeout/progress"
 	"github.com/defsub/takeout/video"
 )
 
@@ -186,17 +187,25 @@ type EpisodeView struct {
 	EpisodeImage EpisodeImageFunc `json:"-"`
 }
 
-func (handler *UserHandler) indexView(m *music.Music, v *video.Video, p *podcast.Podcast) *IndexView {
+type ProgressView struct {
+	Offsets []progress.Offset
+}
+
+func (handler *UserHandler) indexView() *IndexView {
 	view := &IndexView{}
 	view.Time = time.Now().Unix()
-	view.HasMusic = m.HasMusic()
-	view.HasMovies = v.HasMovies()
-	view.HasPodcasts = p.HasPodcasts()
+	view.HasMusic = handler.media.music.HasMusic()
+	view.HasMovies = handler.media.video.HasMovies()
+	view.HasPodcasts = handler.media.podcast.HasPodcasts()
 	return view
 }
 
-func (handler *UserHandler) homeView(m *music.Music, v *video.Video, p *podcast.Podcast) *HomeView {
+func (handler *UserHandler) homeView() *HomeView {
 	view := &HomeView{}
+	m := handler.media.music
+	v := handler.media.video
+	p := handler.media.podcast
+
 	view.AddedReleases = m.RecentlyAdded()
 	view.NewReleases = m.RecentlyReleased()
 	view.AddedMovies = v.RecentlyAdded()
@@ -212,14 +221,15 @@ func (handler *UserHandler) homeView(m *music.Music, v *video.Video, p *podcast.
 	return view
 }
 
-func (handler *UserHandler) artistsView(m *music.Music) *ArtistsView {
+func (handler *UserHandler) artistsView() *ArtistsView {
 	view := &ArtistsView{}
-	view.Artists = m.Artists()
-	view.CoverSmall = m.CoverSmall
+	view.Artists = handler.music().Artists()
+	view.CoverSmall = handler.music().CoverSmall
 	return view
 }
 
-func (handler *UserHandler) artistView(m *music.Music, artist music.Artist) *ArtistView {
+func (handler *UserHandler) artistView(artist music.Artist) *ArtistView {
+	m := handler.music()
 	view := &ArtistView{}
 	view.Artist = artist
 	view.Releases = m.ArtistReleases(&artist)
@@ -239,7 +249,8 @@ func (handler *UserHandler) artistView(m *music.Music, artist music.Artist) *Art
 	return view
 }
 
-func (handler *UserHandler) popularView(m *music.Music, artist music.Artist) *PopularView {
+func (handler *UserHandler) popularView(artist music.Artist) *PopularView {
+	m := handler.music()
 	view := &PopularView{}
 	view.Artist = artist
 	view.Popular = m.ArtistPopularTracks(artist)
@@ -251,7 +262,8 @@ func (handler *UserHandler) popularView(m *music.Music, artist music.Artist) *Po
 	return view
 }
 
-func (handler *UserHandler) singlesView(m *music.Music, artist music.Artist) *SinglesView {
+func (handler *UserHandler) singlesView(artist music.Artist) *SinglesView {
+	m := handler.music()
 	view := &SinglesView{}
 	view.Artist = artist
 	view.Singles = m.ArtistSingleTracks(artist)
@@ -263,7 +275,8 @@ func (handler *UserHandler) singlesView(m *music.Music, artist music.Artist) *Si
 	return view
 }
 
-func (handler *UserHandler) releaseView(m *music.Music, release music.Release) *ReleaseView {
+func (handler *UserHandler) releaseView(release music.Release) *ReleaseView {
+	m := handler.music()
 	view := &ReleaseView{}
 	view.Release = release
 	view.Artist = *m.Artist(release.Artist)
@@ -275,7 +288,9 @@ func (handler *UserHandler) releaseView(m *music.Music, release music.Release) *
 	return view
 }
 
-func (handler *UserHandler) searchView(m *music.Music, v *video.Video, query string) *SearchView {
+func (handler *UserHandler) searchView(query string) *SearchView {
+	m := handler.media.music
+	v := handler.media.video
 	view := &SearchView{}
 	artists, releases, _ := m.Query(query)
 	view.Artists = artists
@@ -289,9 +304,9 @@ func (handler *UserHandler) searchView(m *music.Music, v *video.Video, query str
 	return view
 }
 
-func (handler *UserHandler) radioView(m *music.Music, user *auth.User) *RadioView {
+func (handler *UserHandler) radioView(user *auth.User) *RadioView {
 	view := &RadioView{}
-	for _, s := range m.Stations(user) {
+	for _, s := range handler.music().Stations(user) {
 		switch s.Type {
 		case music.TypeArtist:
 			view.Artist = append(view.Artist, s)
@@ -310,7 +325,8 @@ func (handler *UserHandler) radioView(m *music.Music, user *auth.User) *RadioVie
 	return view
 }
 
-func (handler *UserHandler) moviesView(v *video.Video) *MoviesView {
+func (handler *UserHandler) moviesView() *MoviesView {
+	v := handler.video()
 	view := &MoviesView{}
 	view.Movies = v.Movies()
 	view.PosterSmall = v.MoviePosterSmall
@@ -318,9 +334,10 @@ func (handler *UserHandler) moviesView(v *video.Video) *MoviesView {
 	return view
 }
 
-func (handler *UserHandler) movieView(v *video.Video, m *video.Movie) *MovieView {
+func (handler *UserHandler) movieView(m video.Movie) *MovieView {
+	v := handler.video()
 	view := &MovieView{}
-	view.Movie = *m
+	view.Movie = m
 	collection := v.MovieCollection(m)
 	if collection != nil {
 		view.Collection = *collection
@@ -352,9 +369,10 @@ func (handler *UserHandler) movieView(v *video.Video, m *video.Movie) *MovieView
 	return view
 }
 
-func (handler *UserHandler) profileView(v *video.Video, p *video.Person) *ProfileView {
+func (handler *UserHandler) profileView(p video.Person) *ProfileView {
+	v := handler.video()
 	view := &ProfileView{}
-	view.Person = *p
+	view.Person = p
 	view.Starring = v.Starring(p)
 	view.Writing = v.Writing(p)
 	view.Directing = v.Directing(p)
@@ -364,7 +382,8 @@ func (handler *UserHandler) profileView(v *video.Video, p *video.Person) *Profil
 	return view
 }
 
-func (handler *UserHandler) genreView(v *video.Video, name string) *GenreView {
+func (handler *UserHandler) genreView(name string) *GenreView {
+	v := handler.video()
 	view := &GenreView{}
 	view.Name = name
 	view.Movies = v.Genre(name)
@@ -373,7 +392,8 @@ func (handler *UserHandler) genreView(v *video.Video, name string) *GenreView {
 	return view
 }
 
-func (handler *UserHandler) keywordView(v *video.Video, name string) *KeywordView {
+func (handler *UserHandler) keywordView(name string) *KeywordView {
+	v := handler.video()
 	view := &KeywordView{}
 	view.Name = name
 	view.Movies = v.Keyword(name)
@@ -382,33 +402,43 @@ func (handler *UserHandler) keywordView(v *video.Video, name string) *KeywordVie
 	return view
 }
 
-func (handler *UserHandler) watchView(v *video.Video, m *video.Movie) *WatchView {
+func (handler *UserHandler) watchView(m video.Movie) *WatchView {
+	v := handler.video()
 	view := &WatchView{}
-	view.Movie = *m
+	view.Movie = m
 	view.PosterSmall = v.MoviePosterSmall
 	view.Backdrop = v.MovieBackdrop
 	return view
 }
 
-func (handler *UserHandler) podcastsView(p *podcast.Podcast) *PodcastsView {
+func (handler *UserHandler) podcastsView() *PodcastsView {
+	p := handler.podcast()
 	view := &PodcastsView{}
 	view.Series = p.Series()
 	view.SeriesImage = p.SeriesImage
 	return view
 }
 
-func (handler *UserHandler) seriesView(p *podcast.Podcast, s *podcast.Series) *SeriesView {
+func (handler *UserHandler) seriesView(s podcast.Series) *SeriesView {
+	p := handler.podcast()
 	view := &SeriesView{}
-	view.Series = *s
+	view.Series = s
 	view.Episodes = p.Episodes(s)
 	view.SeriesImage = p.SeriesImage
 	view.EpisodeImage = p.EpisodeImage
 	return view
 }
 
-func (handler *UserHandler) episodeView(p *podcast.Podcast, e *podcast.Episode) *EpisodeView {
+func (handler *UserHandler) episodeView(e podcast.Episode) *EpisodeView {
+	p := handler.podcast()
 	view := &EpisodeView{}
-	view.Episode = *e
+	view.Episode = e
 	view.EpisodeImage = p.EpisodeImage
+	return view
+}
+
+func (handler *UserHandler) progressView() *ProgressView {
+	view := &ProgressView{}
+	view.Offsets = handler.progress().LookupProgress(handler.user)
 	return view
 }

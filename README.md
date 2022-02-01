@@ -14,6 +14,7 @@ to build custom interfaces.
 * Album covers from the [Cover Art Archive](https://coverartarchive.org/)
 * Artist artwork from [Fanart.tv](https://fanart.tv/)
 * Movie metadata and artwork from [The Movie Database (TMDb)](https://www.themoviedb.org/)
+* Podcasts with series and episode metadata using [RSS 2.0](https://www.rssboard.org/rss-specification)
 * Support for [Google Assistant](https://assistant.google.com/). See [actions.md](doc/actions.md) for more details.
 * Media streaming directly from S3 using pre-signed time-based URLs
 * Recently added and released

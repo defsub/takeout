@@ -26,8 +26,6 @@ import (
 	"github.com/defsub/takeout/lib/actions"
 	"github.com/defsub/takeout/lib/token"
 	"github.com/defsub/takeout/music"
-	"github.com/defsub/takeout/podcast"
-	"github.com/defsub/takeout/video"
 )
 
 const (
@@ -38,7 +36,7 @@ const (
 	UserParamCookie = "cookie"
 )
 
-func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) hookHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", ApplicationJson)
 
 	if r.Method != "POST" {
@@ -71,25 +69,21 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 	if !hookRequest.Verified() {
 		handler.verificationRequired(hookRequest, hookResponse)
 	} else {
-		a, err := handler.NewAuth()
-		if err != nil {
-			serverErr(w, err)
-			return
-		}
-		defer a.Close()
-
 		cookie := hookRequest.UserParam(UserParamCookie)
 		if cookie == "" {
 			if hookRequest.IntentName() == IntentAuth {
 				// try to authenticate
-				handler.authNext(hookRequest, hookResponse, a)
+				handler.authNext(hookRequest, hookResponse)
 			} else {
-				handler.authRequired(hookRequest, hookResponse, a)
+				handler.authRequired(hookRequest, hookResponse)
 			}
-		} else if !handler.authCheck(hookRequest, hookResponse, a, cookie) {
-			handler.authRequired(hookRequest, hookResponse, a)
 		} else {
-			handler.fulfillIntent(w, hookRequest, hookResponse)
+			user, _ := handler.authCheck(hookRequest, hookResponse, cookie)
+			if user == nil {
+				handler.authRequired(hookRequest, hookResponse)
+			} else {
+				handler.fulfillIntent(user, w, hookRequest, hookResponse)
+			}
 		}
 	}
 
@@ -107,42 +101,21 @@ func (handler *UserHandler) hookHandler(w http.ResponseWriter, r *http.Request) 
 	hookResponse.Send(w)
 }
 
-func (handler *UserHandler) fulfillIntent(resp http.ResponseWriter,
+func (handler *Handler) fulfillIntent(user *auth.User, resp http.ResponseWriter,
 	r *actions.WebhookRequest, w *actions.WebhookResponse) {
-	err := handler.configure(resp)
+	userHandler, err := handler.configure(user, resp)
 	if err != nil {
 		serverErr(resp, err)
 		return
 	}
-
-	mus, err := handler.NewMusic()
-	if err != nil {
-		serverErr(resp, err)
-		return
-	}
-	defer mus.Close()
-
-	vid, err := handler.NewVideo()
-	if err != nil {
-		serverErr(resp, err)
-		return
-	}
-	defer vid.Close()
-
-	p, err := handler.NewPodcast()
-	if err != nil {
-		serverErr(resp, err)
-		return
-	}
-	defer p.Close()
 
 	switch r.IntentName() {
 	case IntentPlay:
-		handler.fulfillPlay(r, w, mus, vid)
+		userHandler.fulfillPlay(r, w)
 	case IntentNew:
-		handler.fulfillNew(r, w, mus, vid, p)
+		userHandler.fulfillNew(r, w)
 	default:
-		handler.fulfillWelcome(r, w, mus, vid)
+		userHandler.fulfillWelcome(r, w)
 	}
 }
 
@@ -160,10 +133,10 @@ func (handler *UserHandler) releaseLike(m *music.Music, release string) []music.
 	return tracks
 }
 
-func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.WebhookResponse,
-	m *music.Music, v *video.Video) {
+func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.WebhookResponse) {
 	var tracks []music.Track
 
+	m := handler.music()
 	song := r.SongParam()
 	artist := r.ArtistParam()
 	release := r.ReleaseParam()
@@ -256,9 +229,8 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 	}
 }
 
-func (handler *UserHandler) fulfillNew(r *actions.WebhookRequest, w *actions.WebhookResponse,
-	m *music.Music, v *video.Video, p *podcast.Podcast) {
-	home := handler.homeView(m, v, p)
+func (handler *UserHandler) fulfillNew(r *actions.WebhookRequest, w *actions.WebhookResponse) {
+	home := handler.homeView()
 
 	speech := handler.config.Assistant.Recent.Speech.Text
 	text := handler.config.Assistant.Recent.Text.Text
@@ -276,8 +248,7 @@ func (handler *UserHandler) fulfillNew(r *actions.WebhookRequest, w *actions.Web
 	w.AddSimple(speech, text)
 }
 
-func (handler *UserHandler) fulfillWelcome(r *actions.WebhookRequest, w *actions.WebhookResponse,
-	m *music.Music, v *video.Video) {
+func (handler *UserHandler) fulfillWelcome(r *actions.WebhookRequest, w *actions.WebhookResponse) {
 	addSimple(w, handler.config.Assistant.Welcome)
 	w.AddSuggestions(handler.config.Assistant.SuggestionNew)
 }
@@ -290,27 +261,26 @@ func addSimpleTemplate(w *actions.WebhookResponse, m config.AssistantResponse, v
 	w.AddSimple(m.Speech.Execute(vars), m.Text.Execute(vars))
 }
 
-func (handler *UserHandler) authRequired(r *actions.WebhookRequest, w *actions.WebhookResponse, a *auth.Auth) {
-	code := a.GenerateCode()
+func (handler *Handler) authRequired(r *actions.WebhookRequest, w *actions.WebhookResponse) {
+	code := handler.auth.GenerateCode()
 	vars := map[string]string{"Code": code.Value}
 	addSimpleTemplate(w, handler.config.Assistant.Link, vars)
 	w.AddSuggestions(handler.config.Assistant.SuggestionAuth)
 	w.AddSessionParam("code", code.Value)
 }
 
-func (handler *UserHandler) authNext(r *actions.WebhookRequest, w *actions.WebhookResponse,
-	a *auth.Auth) {
+func (handler *Handler) authNext(r *actions.WebhookRequest, w *actions.WebhookResponse) {
 	ok := true
 	value := r.SessionParam("code")
 	if value == "" {
 		ok = false
 	}
-	code := a.LinkedCode(value)
+	code := handler.auth.LinkedCode(value)
 	if code == nil {
 		ok = false
 	}
 	if !ok {
-		handler.authRequired(r, w, a)
+		handler.authRequired(r, w)
 		return
 	}
 
@@ -319,13 +289,11 @@ func (handler *UserHandler) authNext(r *actions.WebhookRequest, w *actions.Webho
 	w.AddSuggestions("Talk to Takeout")
 }
 
-func (handler *UserHandler) authCheck(r *actions.WebhookRequest, w *actions.WebhookResponse,
-	a *auth.Auth, cookie string) bool {
-	var err error
-	handler.user, err = a.UserAuthValue(cookie)
-	return err == nil
+func (handler *Handler) authCheck(r *actions.WebhookRequest, w *actions.WebhookResponse,
+	cookie string) (*auth.User, error) {
+	return handler.auth.UserAuthValue(cookie)
 }
 
-func (handler *UserHandler) verificationRequired(r *actions.WebhookRequest, w *actions.WebhookResponse) {
+func (handler *Handler) verificationRequired(r *actions.WebhookRequest, w *actions.WebhookResponse) {
 	addSimple(w, handler.config.Assistant.Guest)
 }

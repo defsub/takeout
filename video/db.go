@@ -72,7 +72,7 @@ func (v *Video) Genre(name string) []Movie {
 	return movies
 }
 
-func (v *Video) Genres(m *Movie) []string {
+func (v *Video) Genres(m Movie) []string {
 	var genres []Genre
 	var list []string
 	v.db.Where("tm_id = ?", m.TMID).Order("name").Find(&genres)
@@ -89,7 +89,7 @@ func (v *Video) Keyword(name string) []Movie {
 	return movies
 }
 
-func (v *Video) Keywords(m *Movie) []string {
+func (v *Video) Keywords(m Movie) []string {
 	var keywords []Keyword
 	var list []string
 	v.db.Where("tm_id = ?", m.TMID).Order("name").Find(&keywords)
@@ -105,7 +105,7 @@ func (v *Video) Collections() []Collection {
 	return collections
 }
 
-func (v *Video) MovieCollection(m *Movie) *Collection {
+func (v *Video) MovieCollection(m Movie) *Collection {
 	var collections []Collection
 	v.db.Where("tm_id = ?", m.TMID).Find(&collections)
 	if len(collections) == 0 {
@@ -121,7 +121,7 @@ func (v *Video) CollectionMovies(c *Collection) []Movie {
 	return movies
 }
 
-func (v *Video) Cast(m *Movie) []Cast {
+func (v *Video) Cast(m Movie) []Cast {
 	var cast []Cast
 	var people []Person
 	v.db.Order("rank asc").
@@ -140,7 +140,7 @@ func (v *Video) Cast(m *Movie) []Cast {
 	return cast
 }
 
-func (v *Video) Crew(m *Movie) []Crew {
+func (v *Video) Crew(m Movie) []Crew {
 	var crew []Crew
 	var people []Person
 	v.db.Joins(`inner join movies on "crew".tm_id = movies.tm_id`).
@@ -238,32 +238,32 @@ func (v *Video) LookupCollectionName(name string) (*Collection, error) {
 	return &collection, err
 }
 
-func (v *Video) LookupMovie(id int) (*Movie, error) {
+func (v *Video) LookupMovie(id int) (Movie, error) {
 	var movie Movie
 	err := v.db.First(&movie, id).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, errors.New("movie not found")
+		return Movie{}, errors.New("movie not found")
 	}
-	return &movie, err
+	return movie, err
 }
 
-func (v *Video) LookupPerson(id int) (*Person, error) {
+func (v *Video) LookupPerson(id int) (Person, error) {
 	var person Person
 	err := v.db.First(&person, id).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, errors.New("person not found")
+		return Person{}, errors.New("person not found")
 	}
-	return &person, err
+	return person, err
 }
 
-func (v *Video) Starring(p *Person) []Movie {
+func (v *Video) Starring(p Person) []Movie {
 	var movies []Movie
 	v.db.Where(`movies.tm_id in (select tm_id from "cast" where pe_id = ?)`, p.PEID).
 		Order("movies.date").Find(&movies)
 	return movies
 }
 
-func (v *Video) department(dept string, p *Person) []Movie {
+func (v *Video) department(dept string, p Person) []Movie {
 	var movies []Movie
 	v.db.Where(`movies.tm_id in (select tm_id from "crew" where department = ? and pe_id = ?)`,
 		dept, p.PEID).
@@ -271,15 +271,15 @@ func (v *Video) department(dept string, p *Person) []Movie {
 	return movies
 }
 
-func (v *Video) Directing(p *Person) []Movie {
+func (v *Video) Directing(p Person) []Movie {
 	return v.department("Directing", p)
 }
 
-func (v *Video) Producing(p *Person) []Movie {
+func (v *Video) Producing(p Person) []Movie {
 	return v.department("Production", p)
 }
 
-func (v *Video) Writing(p *Person) []Movie {
+func (v *Video) Writing(p Person) []Movie {
 	return v.department("Writing", p)
 }
 

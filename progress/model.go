@@ -1,4 +1,4 @@
-// Copyright (C) 2021 The Takeout Authors.
+// Copyright (C) 2022 The Takeout Authors.
 //
 // This file is part of Takeout.
 //
@@ -15,40 +15,29 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
-package podcast
+package progress
 
 import (
 	"github.com/defsub/takeout/lib/gorm"
 	"time"
 )
 
-type Series struct {
+type Offset struct {
 	gorm.Model
-	SID         string `gorm:"uniqueIndex:idx_series"` // hash of link
-	Title       string
-	Description string
-	Author      string
-	Link        string
-	Image       string
-	Copyright   string
-	Date        time.Time // last build date
-	TTL         int
+	User     string    `gorm:"index:idx_offset_user;not null" json:"-"`
+	ETag     string    `gorm:"uniqueIndex:idx_offset_etag;uniqueIndex:idx_offset_date;not null"`
+	Offset   int       `gorm:"default:0"`
+	Duration int       `gorm:"default:0"`
+	Date     time.Time `gorm:"uniqueIndex:idx_offset_date"`
 }
 
-func (Series) TableName() string {
-	return "series" // series is zero plural
-}
-
-type Episode struct {
-	gorm.Model
-	SID         string // series ID
-	EID         string `gorm:"uniqueIndex:idx_episode"` // hash of GUID
-	Title       string
-	Author      string
-	Link        string
-	Description string
-	ContentType string
-	Size        int64
-	URL         string
-	Date        time.Time // publish time
+func (o Offset) Valid() bool {
+	if len(o.User) == 0 || len(o.ETag) == 0 || o.Offset < 0 || o.Date.IsZero() {
+		return false
+	}
+	// duration can be unknown
+	if o.Duration > 0 && o.Offset > o.Duration {
+		return false
+	}
+	return true
 }

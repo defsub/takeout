@@ -66,7 +66,7 @@ func (p *Podcast) Series() []Series {
 	return series
 }
 
-func (p *Podcast) Episodes(series *Series) []Episode {
+func (p *Podcast) Episodes(series Series) []Episode {
 	var episodes []Episode
 	p.db.Where(`episodes.s_id = ?`, series.SID).
 		Order("date desc").Find(&episodes)
@@ -139,22 +139,22 @@ func (p *Podcast) findEpisode(eid string) *Episode {
 	return nil
 }
 
-func (p *Podcast) LookupSeries(id int) (*Series, error) {
+func (p *Podcast) LookupSeries(id int) (Series, error) {
 	var series Series
 	err := p.db.First(&series, id).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, errors.New("series not found")
+		return Series{}, errors.New("series not found")
 	}
-	return &series, err
+	return series, err
 }
 
-func (p *Podcast) LookupEpisode(id int) (*Episode, error) {
+func (p *Podcast) LookupEpisode(id int) (Episode, error) {
 	var episode Episode
 	err := p.db.First(&episode, id).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, errors.New("episode not found")
+		return Episode{}, errors.New("episode not found")
 	}
-	return &episode, err
+	return episode, err
 }
 
 func (p *Podcast) SeriesCount() int64 {

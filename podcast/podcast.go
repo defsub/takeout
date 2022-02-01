@@ -70,7 +70,7 @@ func (p *Podcast) HasPodcasts() bool {
 	return p.SeriesCount() > 0
 }
 
-func (p *Podcast) EpisodeURL(e *Episode) *url.URL {
+func (p *Podcast) EpisodeURL(e Episode) *url.URL {
 	u, err := url.Parse(e.URL)
 	if err != nil {
 		// TODO

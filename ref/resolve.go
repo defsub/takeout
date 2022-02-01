@@ -34,27 +34,42 @@ import (
 )
 
 type Locator interface {
-	LocateTrack(t music.Track) string
-	LocateMovie(m video.Movie) string
-	LocateEpisode(e podcast.Episode) string
+	LocateTrack(music.Track) string
+	LocateMovie(video.Movie) string
+	LocateEpisode(podcast.Episode) string
+
+	TrackImage(music.Track) string
+	MovieImage(video.Movie) string
+	EpisodeImage(podcast.Episode) string
+
+	LookupArtist(int) (music.Artist, error)
+	LookupRelease(int) (music.Release, error)
+	LookupTrack(int) (music.Track, error)
+	LookupStation(int) (music.Station, error)
+	LookupMovie(int) (video.Movie, error)
+	LookupSeries(int) (podcast.Series, error)
+
+	ArtistSingleTracks(music.Artist) []music.Track
+	ArtistPopularTracks(music.Artist) []music.Track
+	ArtistTracks(music.Artist) []music.Track
+	ArtistShuffle(music.Artist) []music.Track
+	ArtistRadio(music.Artist) []music.Track
+	ArtistDeep(music.Artist) []music.Track
+
+	ReleaseTracks(music.Release) []music.Track
+	MusicSearch(string, int) []music.Track
+
+	SeriesEpisodes(podcast.Series) []podcast.Episode
 }
 
 type Resolver struct {
 	config  *config.Config
-	music   *music.Music
-	video   *video.Video
-	podcast *podcast.Podcast
 	loc     Locator
 }
 
-func NewResolver(c *config.Config,
-	m *music.Music, v *video.Video, p *podcast.Podcast,
-	l Locator) *Resolver {
+func NewResolver(c *config.Config, l Locator) *Resolver {
 	return &Resolver{
 		config:  c,
-		music:   m,
-		video:   v,
-		podcast: p,
 		loc:     l,
 	}
 }
@@ -65,7 +80,7 @@ func (r *Resolver) addTrackEntries(tracks []music.Track, entries []spiff.Entry) 
 			Creator:    t.Artist,
 			Album:      t.ReleaseTitle,
 			Title:      t.Title,
-			Image:      r.music.TrackImage(t).String(),
+			Image:      r.loc.TrackImage(t),
 			Location:   []string{r.loc.LocateTrack(t)},
 			Identifier: []string{t.ETag},
 			Size:       []int64{t.Size}}
@@ -80,7 +95,7 @@ func (r *Resolver) addMovieEntries(movies []video.Movie, entries []spiff.Entry) 
 			Creator:    "Movie", // TODO need better creator
 			Album:      m.Title,
 			Title:      m.Title,
-			Image:      r.video.MoviePoster(m),
+			Image:      r.loc.MovieImage(m),
 			Location:   []string{r.loc.LocateMovie(m)},
 			Identifier: []string{m.ETag},
 			Size:       []int64{m.Size}}
@@ -89,7 +104,7 @@ func (r *Resolver) addMovieEntries(movies []video.Movie, entries []spiff.Entry) 
 	return entries
 }
 
-func (r *Resolver) addEpisodeEntries(series *podcast.Series, episodes []podcast.Episode,
+func (r *Resolver) addEpisodeEntries(series podcast.Series, episodes []podcast.Episode,
 	entries []spiff.Entry) []spiff.Entry {
 	for _, e := range episodes {
 		author := e.Author
@@ -100,7 +115,7 @@ func (r *Resolver) addEpisodeEntries(series *podcast.Series, episodes []podcast.
 			Creator:    author,
 			Album:      series.Title,
 			Title:      e.Title,
-			Image:      r.podcast.EpisodeImage(e),
+			Image:      r.loc.EpisodeImage(e),
 			Location:   []string{r.loc.LocateEpisode(e)},
 			Identifier: []string{hash.MD5Hex(e.URL)}, // TODO hash of episode?
 			Size:       []int64{e.Size}}
@@ -121,24 +136,24 @@ func (r *Resolver) resolveArtistRef(id, res string, entries []spiff.Entry) ([]sp
 	if err != nil {
 		return entries, err
 	}
-	artist, err := r.music.LookupArtist(n)
+	artist, err := r.loc.LookupArtist(n)
 	if err != nil {
 		return entries, err
 	}
 	var tracks []music.Track
 	switch res {
 	case "singles":
-		tracks = r.music.ArtistSingleTracks(artist)
+		tracks = r.loc.ArtistSingleTracks(artist)
 	case "popular":
-		tracks = r.music.ArtistPopularTracks(artist)
+		tracks = r.loc.ArtistPopularTracks(artist)
 	case "tracks":
-		tracks = r.music.ArtistTracks(artist)
+		tracks = r.loc.ArtistTracks(artist)
 	case "shuffle":
-		tracks = r.music.ArtistShuffle(artist, r.config.Music.RadioLimit)
+		tracks = r.loc.ArtistShuffle(artist)
 	case "similar":
-		tracks = r.music.ArtistRadio(artist)
+		tracks = r.loc.ArtistRadio(artist)
 	case "deep":
-		tracks = r.music.ArtistDeep(artist, r.config.Music.RadioLimit)
+		tracks = r.loc.ArtistDeep(artist)
 	}
 	entries = r.addTrackEntries(tracks, entries)
 	return entries, nil
@@ -150,11 +165,11 @@ func (r *Resolver) resolveReleaseRef(id string, entries []spiff.Entry) ([]spiff.
 	if err != nil {
 		return entries, err
 	}
-	release, err := r.music.LookupRelease(n)
+	release, err := r.loc.LookupRelease(n)
 	if err != nil {
 		return entries, err
 	}
-	tracks := r.music.ReleaseTracks(release)
+	tracks := r.loc.ReleaseTracks(release)
 	entries = r.addTrackEntries(tracks, entries)
 	return entries, nil
 }
@@ -165,7 +180,7 @@ func (r *Resolver) resolveTrackRef(id string, entries []spiff.Entry) ([]spiff.En
 	if err != nil {
 		return entries, err
 	}
-	t, err := r.music.LookupTrack(n)
+	t, err := r.loc.LookupTrack(n)
 	if err != nil {
 		return entries, err
 	}
@@ -179,11 +194,11 @@ func (r *Resolver) resolveMovieRef(id string, entries []spiff.Entry) ([]spiff.En
 	if err != nil {
 		return entries, err
 	}
-	m, err := r.video.LookupMovie(n)
+	m, err := r.loc.LookupMovie(n)
 	if err != nil {
 		return entries, err
 	}
-	entries = r.addMovieEntries([]video.Movie{*m}, entries)
+	entries = r.addMovieEntries([]video.Movie{m}, entries)
 	return entries, nil
 }
 
@@ -193,11 +208,11 @@ func (r *Resolver) resolveSeriesRef(id string, entries []spiff.Entry) ([]spiff.E
 	if err != nil {
 		return entries, err
 	}
-	series, err := r.podcast.LookupSeries(n)
+	series, err := r.loc.LookupSeries(n)
 	if err != nil {
 		return entries, err
 	}
-	episodes := r.podcast.Episodes(series)
+	episodes := r.loc.SeriesEpisodes(series)
 	if err != nil {
 		return entries, err
 	}
@@ -222,7 +237,7 @@ func (r *Resolver) resolveSearchRef(uri string, entries []spiff.Entry) ([]spiff.
 		if radio != "" {
 			limit = r.config.Music.RadioSearchLimit
 		}
-		tracks = r.music.Search(q, limit)
+		tracks = r.loc.MusicSearch(q, limit)
 	}
 
 	if radio != "" {
@@ -242,7 +257,7 @@ func (r *Resolver) resolveRadioRef(id string, entries []spiff.Entry, user *auth.
 	if err != nil {
 		return entries, err
 	}
-	s, err := r.music.LookupStation(n)
+	s, err := r.loc.LookupStation(n)
 	if err != nil {
 		return entries, err
 	}
@@ -250,7 +265,7 @@ func (r *Resolver) resolveRadioRef(id string, entries []spiff.Entry, user *auth.
 		return entries, err
 	}
 
-	//r.music.StationRefresh(&s, user)
+	// rerun the station ref to get new tracks
 	r.RefreshStation(&s, user)
 
 	plist, _ := spiff.Unmarshal(s.Playlist)
@@ -262,7 +277,6 @@ func (r *Resolver) resolveRadioRef(id string, entries []spiff.Entry, user *auth.
 func (r *Resolver) RefreshStation(s *music.Station, user *auth.User) {
 	plist := spiff.NewPlaylist(spiff.TypeMusic)
 	// Image
-	//plist.Spiff.Location = fmt.Sprintf("%s/api/radio/%d", r.config.Server.URL, s.ID)
 	plist.Spiff.Location = fmt.Sprintf("/api/radio/%d", s.ID)
 	plist.Spiff.Title = s.Name
 	plist.Spiff.Creator = "Radio"
@@ -272,7 +286,9 @@ func (r *Resolver) RefreshStation(s *music.Station, user *auth.User) {
 		plist.Entries = []spiff.Entry{}
 	}
 	s.Playlist, _ = plist.Marshal()
-	r.music.UpdateStation(s)
+
+	// TODO not saved for now
+	//m.UpdateStation(s)
 }
 
 func (r *Resolver) Resolve(user *auth.User, plist *spiff.Playlist) (err error) {
