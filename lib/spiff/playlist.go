@@ -50,11 +50,12 @@ type Entry struct {
 	Location   []string `json:"location,omitempty" spiff:"location"`
 	Identifier []string `json:"identifier,omitempty" spiff:"identifier"`
 	Size       []int64  `json:"size,omitempty"`
+	Date       string   `json:"date,omitempty" spiff:"date"` // "2005-01-08T17:10:47-05:00",
 }
 
 const (
-	TypeMusic = "music"
-	TypeVideo = "video"
+	TypeMusic   = "music"
+	TypeVideo   = "video"
 	TypePodcast = "podcast"
 )
 

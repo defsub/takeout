@@ -25,7 +25,9 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
+	"github.com/defsub/takeout/lib/date"
 	"github.com/defsub/takeout/lib/encoding/xspf"
 	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/lib/spiff"
@@ -251,13 +253,14 @@ func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, i
 // GET /api/{res}/id/playlist > spiff.Playlist{}
 // 200: success
 func (handler *UserHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Request,
-	listType string, creator, title, image, nref string) {
+	listType string, creator, title, image string, spiffDate time.Time, nref string) {
 	plist := spiff.NewPlaylist(listType)
 	//plist.Spiff.Location = fmt.Sprintf("%s%s", handler.config.Server.URL, r.URL.Path)
 	plist.Spiff.Location = r.URL.Path
 	plist.Spiff.Creator = creator
 	plist.Spiff.Title = title
 	plist.Spiff.Image = image
+	plist.Spiff.Date = date.FormatJson(spiffDate)
 	plist.Entries = []spiff.Entry{{Ref: nref}}
 	resolver := ref.NewResolver(handler.config, handler)
 	resolver.Resolve(handler.user, plist)
@@ -549,6 +552,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 					artist.Name,
 					fmt.Sprintf("%s \u2013 Popular", artist.Name),
 					image,
+					time.Now(),
 					fmt.Sprintf("/music/artists/%d/popular", id))
 			case "singles":
 				// /api/artists/id/singles/playlist
@@ -556,6 +560,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 					artist.Name,
 					fmt.Sprintf("%s \u2013 Singles", artist.Name),
 					image,
+					time.Now(),
 					fmt.Sprintf("/music/artists/%d/singles", id))
 			default:
 				notFoundErr(w)
@@ -581,6 +586,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 						artist.Name,
 						fmt.Sprintf("%s \u2013 Shuffle", artist.Name),
 						image,
+						time.Now(),
 						fmt.Sprintf("/music/artists/%d/shuffle", id))
 				} else if res == "radio" {
 					// /api/artists/1/radio
@@ -588,6 +594,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 						"Radio",
 						fmt.Sprintf("%s \u2013 Radio", artist.Name),
 						image,
+						time.Now(),
 						fmt.Sprintf("/music/artists/%d/similar", id))
 				} else if res == "popular" {
 					// /api/artists/1/popular
@@ -606,6 +613,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 						release.Artist,
 						release.Name,
 						release.Cover("250"),
+						release.ReleaseDate,
 						fmt.Sprintf("/music/releases/%d/tracks", id))
 				} else {
 					notFoundErr(w)
@@ -618,6 +626,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 						"Movie", // TODO
 						movie.Title,
 						handler.video().MoviePoster(movie),
+						movie.Date,
 						fmt.Sprintf("/movies/%d", id))
 				} else {
 					notFoundErr(w)
@@ -630,6 +639,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 						series.Author,
 						series.Title,
 						handler.podcast().SeriesImage(series),
+						series.Date,
 						fmt.Sprintf("/series/%d", id))
 				} else {
 					notFoundErr(w)

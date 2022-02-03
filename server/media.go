@@ -18,6 +18,8 @@
 package server
 
 import (
+	"fmt"
+	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/music"
@@ -31,6 +33,26 @@ type Media struct {
 	video    *video.Video
 	podcast  *podcast.Podcast
 	progress *progress.Progress
+}
+
+func mediaConfigFor(root *config.Config, user *auth.User) (string, *config.Config, error) {
+	// only supports one media collection right now
+	mediaName := user.FirstMedia()
+	if mediaName == "" {
+		return "", nil, ErrNoMedia
+	}
+	return mediaConfig(root, mediaName)
+}
+
+func mediaConfig(root *config.Config, mediaName string) (string, *config.Config, error) {
+	path := fmt.Sprintf("%s/%s", root.DataDir, mediaName)
+	// load relative media configuration
+	userConfig, err := config.LoadConfig(path)
+	if err != nil {
+		return "", nil, err
+	}
+	userConfig.Server.URL = root.Server.URL // TODO FIXME
+	return mediaName, userConfig, nil
 }
 
 var mediaMap map[string]*Media = make(map[string]*Media)

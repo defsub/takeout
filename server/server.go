@@ -18,8 +18,6 @@
 package server
 
 import (
-	"fmt"
-
 	"net/http"
 	"strings"
 
@@ -148,22 +146,11 @@ func (handler *Handler) authorize(w http.ResponseWriter, r *http.Request) *auth.
 
 // after user authentication, configure available media
 func (handler *Handler) configure(user *auth.User, w http.ResponseWriter) (*UserHandler, error) {
-	var err error
-	// only supports one media collection right now
-	mediaName := user.FirstMedia()
-	if mediaName == "" {
-		return nil, ErrNoMedia
-	}
-	path := fmt.Sprintf("%s/%s", handler.config.DataDir, mediaName)
-	// load relative media configuration
-	userConfig, err := config.LoadConfig(path)
+	mediaName, userConfig, err := mediaConfigFor(handler.config, user)
 	if err != nil {
 		return nil, err
 	}
-	userConfig.Server.URL = handler.config.Server.URL // TODO FIXME
-
 	media := makeMedia(mediaName, userConfig)
-
 	return &UserHandler{
 		user:     user,
 		media:    media,
@@ -174,6 +161,8 @@ func (handler *Handler) configure(user *auth.User, w http.ResponseWriter) (*User
 
 func Serve(config *config.Config) {
 	template := getTemplates(config)
+
+	schedule(config)
 
 	auth, err := makeAuth(config)
 	if err != nil {

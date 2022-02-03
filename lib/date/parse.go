@@ -66,3 +66,7 @@ const (
 func Format(t time.Time) string {
 	return t.Format(Simple12)
 }
+
+func FormatJson(t time.Time) string {
+	return t.Format(time.RFC3339)
+}

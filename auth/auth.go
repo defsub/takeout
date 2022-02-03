@@ -64,15 +64,19 @@ type Code struct {
 	Cookie  string
 }
 
-func (u *User) MediaList() []string {
-	if len(u.Media) == 0 {
-		return make([]string, 0)
-	}
-	list := strings.Split(u.Media, ",")
+func mediaList(media string) []string {
+	list := strings.Split(media, ",")
 	for i := range list {
 		list[i] = strings.Trim(list[i], " ")
 	}
 	return list
+}
+
+func (u *User) MediaList() []string {
+	if len(u.Media) == 0 {
+		return make([]string, 0)
+	}
+	return mediaList(u.Media)
 }
 
 func (u *User) FirstMedia() string {
@@ -264,6 +268,28 @@ func (a *Auth) UserAuthValue(value string) (*User, error) {
 	}
 
 	return &u, nil
+}
+
+func (a *Auth) AssignedMedia() []string {
+	var list []string
+	rows, err := a.db.Table("users").
+		Select("distinct(media)").Rows()
+	if err != nil {
+		return list
+	}
+	uniqueMedia := make(map[string]bool)
+	for rows.Next() {
+		var v string
+		rows.Scan(&v)
+		for _, media := range mediaList(v) {
+			uniqueMedia[media] = true
+		}
+	}
+	rows.Close()
+	for k := range uniqueMedia {
+		list = append(list, k)
+	}
+	return list
 }
 
 func (a *Auth) Logout(cookie http.Cookie) {

@@ -22,9 +22,11 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
+	"time"
 
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
+	"github.com/defsub/takeout/lib/date"
 	"github.com/defsub/takeout/lib/hash"
 	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/lib/spiff"
@@ -83,7 +85,9 @@ func (r *Resolver) addTrackEntries(tracks []music.Track, entries []spiff.Entry) 
 			Image:      r.loc.TrackImage(t),
 			Location:   []string{r.loc.LocateTrack(t)},
 			Identifier: []string{t.ETag},
-			Size:       []int64{t.Size}}
+			Size:       []int64{t.Size},
+			Date:       date.FormatJson(t.ReleaseDate),
+		}
 		entries = append(entries, e)
 	}
 	return entries
@@ -98,7 +102,9 @@ func (r *Resolver) addMovieEntries(movies []video.Movie, entries []spiff.Entry) 
 			Image:      r.loc.MovieImage(m),
 			Location:   []string{r.loc.LocateMovie(m)},
 			Identifier: []string{m.ETag},
-			Size:       []int64{m.Size}}
+			Size:       []int64{m.Size},
+			Date:       date.FormatJson(m.Date),
+		}
 		entries = append(entries, e)
 	}
 	return entries
@@ -118,7 +124,9 @@ func (r *Resolver) addEpisodeEntries(series podcast.Series, episodes []podcast.E
 			Image:      r.loc.EpisodeImage(e),
 			Location:   []string{r.loc.LocateEpisode(e)},
 			Identifier: []string{hash.MD5Hex(e.URL)}, // TODO hash of episode?
-			Size:       []int64{e.Size}}
+			Size:       []int64{e.Size},
+			Date:       date.FormatJson(e.Date),
+		}
 		entries = append(entries, e)
 	}
 	return entries
@@ -280,6 +288,7 @@ func (r *Resolver) RefreshStation(s *music.Station, user *auth.User) {
 	plist.Spiff.Location = fmt.Sprintf("/api/radio/%d", s.ID)
 	plist.Spiff.Title = s.Name
 	plist.Spiff.Creator = "Radio"
+	plist.Spiff.Date = date.FormatJson(time.Now())
 	plist.Entries = []spiff.Entry{{Ref: s.Ref}}
 	r.Resolve(user, plist)
 	if plist.Entries == nil {
