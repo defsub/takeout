@@ -119,6 +119,7 @@ type MusicConfig struct {
 	SimilarReleasesLimit int
 	SinglesLimit         int
 	artistMap            map[string]string
+	SyncInterval         time.Duration
 }
 
 type VideoConfig struct {
@@ -130,17 +131,19 @@ type VideoConfig struct {
 	RecentLimit      int
 	SearchLimit      int
 	Recommend        RecommendConfig
+	SyncInterval     time.Duration
 }
 
 type PodcastConfig struct {
-	DB          DatabaseConfig
-	Series      []string
-	Client      ClientConfig
-	RecentLimit int
+	DB           DatabaseConfig
+	Series       []string
+	Client       ClientConfig
+	RecentLimit  int
+	SyncInterval time.Duration
 }
 
 type ProgressConfig struct {
-	DB          DatabaseConfig
+	DB DatabaseConfig
 }
 
 type RecommendConfig struct {
@@ -254,7 +257,7 @@ func configDefaults(v *viper.Viper) {
 	// v.SetDefault("Bucket.UseSSL", "true")
 
 	v.SetDefault("Client.CacheDir", ".httpcache")
-	v.SetDefault("Client.MaxAge", 86400*30) // 30 days in seconds
+	v.SetDefault("Client.MaxAge", "720h") // 30 days in hours
 	v.SetDefault("Client.UseCache", "false")
 	v.SetDefault("Client.UserAgent", userAgent())
 
@@ -278,6 +281,7 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Music.SimilarReleases", "8760h") // +/- 1 year
 	v.SetDefault("Music.SimilarReleasesLimit", "10")
 	v.SetDefault("Music.SinglesLimit", "50")
+	v.SetDefault("Music.SyncInterval", "1h")
 
 	// see https://wiki.musicbrainz.org/Release_Country
 	// v.SetDefault("Music.ReleaseCountries", []string{
@@ -318,6 +322,7 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Video.Recent", "8760h") // 1 year
 	v.SetDefault("Video.RecentLimit", "50")
 	v.SetDefault("Video.SearchLimit", "100")
+	v.SetDefault("Video.SyncInterval", "1h")
 	v.SetDefault("Video.Recommend.When", []DateRecommend{
 		// day of week + day of month
 		{Match: "Fri 13", Layout: "Mon 02", Name: "Friday 13th Movies", Query: `+character:voorhees`},
@@ -386,12 +391,13 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Assistant.MediaObjectName.Text", "{{.Title}}")
 	v.SetDefault("Assistant.MediaObjectDesc.Text", "{{.Artist}} \u2022 {{.Release}}")
 
-	v.SetDefault("Podcast.Client.MaxAge", 60*60*12)
+	v.SetDefault("Podcast.Client.MaxAge", "15m")
 	v.SetDefault("Podcast.Client.UseCache", true)
 	v.SetDefault("Podcast.DB.Driver", "sqlite3")
 	v.SetDefault("Podcast.DB.Source", "podcast.db")
 	v.SetDefault("Podcast.DB.LogMode", "true")
 	v.SetDefault("Podcast.RecentLimit", "25")
+	v.SetDefault("Podcast.SyncInterval", "1h")
 	v.SetDefault("Podcast.Series", []string{
 		"https://feeds.twit.tv/twit.xml",
 		"https://feeds.twit.tv/sn.xml",

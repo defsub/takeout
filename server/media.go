@@ -41,18 +41,19 @@ func mediaConfigFor(root *config.Config, user *auth.User) (string, *config.Confi
 	if mediaName == "" {
 		return "", nil, ErrNoMedia
 	}
-	return mediaConfig(root, mediaName)
+	config, err := mediaConfig(root, mediaName)
+	return mediaName, config, err
 }
 
-func mediaConfig(root *config.Config, mediaName string) (string, *config.Config, error) {
+func mediaConfig(root *config.Config, mediaName string) (*config.Config, error) {
 	path := fmt.Sprintf("%s/%s", root.DataDir, mediaName)
 	// load relative media configuration
 	userConfig, err := config.LoadConfig(path)
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 	userConfig.Server.URL = root.Server.URL // TODO FIXME
-	return mediaName, userConfig, nil
+	return userConfig, nil
 }
 
 var mediaMap map[string]*Media = make(map[string]*Media)

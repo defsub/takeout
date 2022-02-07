@@ -31,6 +31,7 @@ func (p *Podcast) Sync() error {
 }
 
 func (p *Podcast) SyncSince(lastSync time.Time) error {
+	// TODO lastSync isn't used yet
 	for _, url := range p.config.Podcast.Series {
 		err := p.syncPodcast(url)
 		if err != nil {

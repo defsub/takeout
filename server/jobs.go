@@ -23,45 +23,84 @@ import (
 	"time"
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
+	"github.com/defsub/takeout/music"
 	"github.com/defsub/takeout/podcast"
+	"github.com/defsub/takeout/video"
 	"github.com/defsub/takeout/lib/log"
 )
 
+type syncFunc func(config *config.Config) error
+
 func schedule(config *config.Config) {
 	scheduler := gocron.NewScheduler(time.UTC)
-	scheduler.Every("1h").WaitForSchedule().Do(func() {
-		a := auth.NewAuth(config)
-		err := a.Open()
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		defer a.Close()
-		list := a.AssignedMedia()
-		for _, mediaName := range list {
-			_, mediaConfig, err := mediaConfig(config, mediaName)
+
+	mediaSync := func(d time.Duration, doit syncFunc) {
+		scheduler.Every(d).WaitForSchedule().Do(func() {
+			list, err := assignedMedia(config)
 			if err != nil {
 				log.Println(err)
 				return
 			}
-			syncPodcasts(mediaConfig)
-		}
-	})
+			for _, mediaName := range list {
+				mediaConfig, err := mediaConfig(config, mediaName)
+				if err != nil {
+					log.Println(err)
+					return
+				}
+				doit(mediaConfig)
+			}
+		})
+	}
+
+	mediaSync(config.Music.SyncInterval, syncMusic)
+	mediaSync(config.Video.SyncInterval, syncVideo)
+	mediaSync(config.Podcast.SyncInterval, syncPodcasts)
+
 	scheduler.StartAsync()
 }
 
-func syncPodcasts(config *config.Config) {
+func assignedMedia(config *config.Config) ([]string, error) {
+	a := auth.NewAuth(config)
+	err := a.Open()
+	if err != nil {
+		return []string{}, err
+	}
+	defer a.Close()
+	return a.AssignedMedia(), nil
+}
+
+func syncMusic(config *config.Config) error {
+	log.Printf("sync music\n")
+	m := music.NewMusic(config)
+	err := m.Open()
+	if err != nil {
+		return err
+	}
+	defer m.Close()
+	syncOptions := music.NewSyncOptions()
+	syncOptions.Since = m.LastModified()
+	m.Sync(syncOptions)
+	return nil
+}
+
+func syncVideo(config *config.Config) error {
+	log.Printf("sync video\n")
+	v := video.NewVideo(config)
+	err := v.Open()
+	if err != nil {
+		return err
+	}
+	defer v.Close()
+	return v.SyncSince(v.LastModified())
+}
+
+func syncPodcasts(config *config.Config) error {
 	log.Printf("sync podcasts\n")
 	p := podcast.NewPodcast(config)
 	err := p.Open()
 	if err != nil {
-		log.Println(err)
-		return
+		return err
 	}
 	defer p.Close()
-	err = p.Sync()
-	if err != nil {
-		log.Println(err)
-		return
-	}
+	return p.Sync()
 }
