@@ -191,7 +191,7 @@ type ServerConfig struct {
 
 type ClientConfig struct {
 	CacheDir  string
-	MaxAge    int
+	MaxAge    time.Duration
 	UseCache  bool
 	UserAgent string
 }

@@ -42,7 +42,7 @@ type Client struct {
 	useCache  bool
 	userAgent string
 	cache     httpcache.Cache
-	maxAge    int
+	maxAge    time.Duration
 }
 
 func NewClient(config *config.Config) *Client {
@@ -92,8 +92,9 @@ func (c *Client) doGet(headers map[string]string, urlStr string) (*http.Response
 
 	throttle := true
 	if c.useCache {
-		if c.maxAge > 0 {
-			req.Header.Set(HeaderCacheControl, fmt.Sprintf("max-age=%d", c.maxAge))
+		maxAge := int(c.maxAge.Seconds())
+		if maxAge > 0 {
+			req.Header.Set(HeaderCacheControl, fmt.Sprintf("max-age=%d", maxAge))
 		}
 		// peek into the cache, is there's something there don't slow down
 		cachedResp, err := httpcache.CachedResponse(c.cache, req)
