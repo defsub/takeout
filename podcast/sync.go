@@ -53,7 +53,6 @@ func (p *Podcast) syncPodcast(url string) error {
 		return errors.New("empty channel link")
 	}
 	sid := hash.MD5Hex(channel.Link())
-	fmt.Printf("syncing %s %s %s\n", sid, url, channel.Link())
 
 	series := p.findSeries(sid)
 	if series == nil {
@@ -105,14 +104,12 @@ func (p *Podcast) syncPodcast(url string) error {
 				URL:         i.URL(),
 				Date:        i.PublishTime(),
 			}
-			fmt.Printf("adding %s\n", episode.Title)
 			err = p.createEpisode(episode)
 			if err != nil {
 				return err
 			}
 		} else {
 			// TODO update everything for now
-			fmt.Printf("updating %s\n", episode.Title)
 			episode.Title = i.ItemTitle()
 			episode.Author = i.Author
 			episode.Link = i.Link

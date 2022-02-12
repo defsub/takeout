@@ -112,3 +112,40 @@ type Recommend struct {
 	Name   string
 	Movies []Movie
 }
+
+type TVShow struct {
+	gorm.Model
+	TVID             int64 `gorm:"uniqueIndex:idx_tvshow_tvid"`
+	Name             string
+	SortName         string
+	Date             time.Time
+	EndDate          time.Time
+	Tagline          string
+	OriginalName     string
+	OriginalLanguage string
+	Overview         string
+	BackdropPath     string
+	PosterPath       string
+	SeasonCount      int
+	EpisodeCount     int
+	VoteAverage      float32
+	VoteCount        int
+}
+
+type Episode struct {
+	gorm.Model
+	EPID         int64 `gorm:"uniqueIndex:idx_episode_epid"`
+	TVID         int64
+	Name         string
+	Overview     string
+	Date         string
+	StillPath    string
+	Season       int
+	Episode      int
+	VoteAverage  float32
+	VoteCount    int
+	Key          string
+	Size         int64
+	ETag         string
+	LastModified time.Time
+}

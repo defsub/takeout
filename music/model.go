@@ -158,11 +158,13 @@ type Playlist struct {
 
 type Station struct {
 	gorm.Model
-	User     string `gorm:"uniqueIndex:idx_station"`
+	User     string `gorm:"uniqueIndex:idx_station" json:"-"`
 	Name     string `gorm:"uniqueIndex:idx_station"`
-	Ref      string
-	Shared   bool
+	Creator  string
+	Ref      string `json:"-"`
+	Shared   bool   `json:"-"`
 	Type     string
+	Image    string
 	Playlist []byte `json:"-"`
 }
 

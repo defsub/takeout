@@ -112,6 +112,7 @@ type RadioView struct {
 	Period     []music.Station
 	Series     []music.Station
 	Other      []music.Station
+	Stream     []music.Station
 	CoverSmall CoverFunc `json:"-"`
 }
 
@@ -182,7 +183,7 @@ type SeriesView struct {
 	EpisodeImage EpisodeImageFunc `json:"-"`
 }
 
-type EpisodeView struct {
+type SeriesEpisodeView struct {
 	Episode      podcast.Episode
 	EpisodeImage EpisodeImageFunc `json:"-"`
 }
@@ -318,6 +319,8 @@ func (handler *UserHandler) radioView(user *auth.User) *RadioView {
 			view.Period = append(view.Period, s)
 		case music.TypeSeries:
 			view.Series = append(view.Series, s)
+		case music.TypeStream:
+			view.Stream = append(view.Stream, s)
 		default:
 			view.Other = append(view.Other, s)
 		}
@@ -429,9 +432,9 @@ func (handler *UserHandler) seriesView(s podcast.Series) *SeriesView {
 	return view
 }
 
-func (handler *UserHandler) episodeView(e podcast.Episode) *EpisodeView {
+func (handler *UserHandler) seriesEpisodeView(e podcast.Episode) *SeriesEpisodeView {
 	p := handler.podcast()
-	view := &EpisodeView{}
+	view := &SeriesEpisodeView{}
 	view.Episode = e
 	view.EpisodeImage = p.EpisodeImage
 	return view

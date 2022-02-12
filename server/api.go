@@ -568,7 +568,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// /api/(artists|releases|movies|series)/id/(playlist|popular|radio|singles)
+		// /api/(artists|releases|movies|series|tv)/id/(playlist|popular|radio|singles)
 		playlistRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)/(playlist|popular|singles|radio)(\.xspf)?`)
 		matches = playlistRegexp.FindStringSubmatch(r.URL.Path)
 		if matches != nil {
@@ -644,13 +644,26 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 				} else {
 					notFoundErr(w)
 				}
+			case "tv":
+				// /api/tv/1/playlist
+				if res == "playlist" {
+					// tv, _ := handler.video().LookupTV(id)
+					// handler.apiRefPlaylist(w, r, spiff.TypeVideo,
+					// 	tv.,
+					// 	tv.Title,
+					// 	handler.video().TVImage(tv),
+					// 	tv.Date,
+					// 	fmt.Sprintf("/tv/%d", id))
+				} else {
+					notFoundErr(w)
+				}
 			default:
 				notFoundErr(w)
 			}
 			return
 		}
 
-		// /api/(artists|radio|releases|movies|profiles|series|episodes)/id
+		// /api/(artists|radio|releases|movies|profiles|series|tv)/id
 		resourceRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)`)
 		matches = resourceRegexp.FindStringSubmatch(r.URL.Path)
 		if matches != nil {
@@ -684,6 +697,9 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 				} else {
 					handler.apiView(w, r, handler.movieView(movie))
 				}
+			case "tv":
+				// /api/tv/1
+				// tv, err := handler.video().LookupTV(id)
 			case "profiles":
 				// /api/profiles/1
 				person, err := handler.video().LookupPerson(id)
@@ -700,16 +716,29 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 				} else {
 					handler.apiView(w, r, handler.seriesView(series))
 				}
-			case "episodes":
-				// /api/episodes/1
-				episode, err := handler.podcast().LookupEpisode(id)
+			default:
+				notFoundErr(w)
+			}
+			return
+		}
+
+		// /api/series/1/episodes/1
+		// /api/tv/1/episodes/1
+		episodesRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)/episodes/([0-9]+)`)
+		matches = episodesRegexp.FindStringSubmatch(r.URL.Path)
+		if matches != nil {
+			v := matches[1]
+			//id := str.Atoi(matches[2])
+			episode := str.Atoi(matches[3])
+			switch v {
+			case "series":
+				episode, err := handler.podcast().LookupEpisode(episode)
 				if err != nil {
 					notFoundErr(w)
 				} else {
-					handler.apiView(w, r, handler.episodeView(episode))
+					handler.apiView(w, r, handler.seriesEpisodeView(episode))
 				}
-			default:
-				notFoundErr(w)
+			case "tv":
 			}
 			return
 		}

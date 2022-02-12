@@ -22,6 +22,7 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/defsub/takeout/auth"
@@ -65,14 +66,14 @@ type Locator interface {
 }
 
 type Resolver struct {
-	config  *config.Config
-	loc     Locator
+	config *config.Config
+	loc    Locator
 }
 
 func NewResolver(c *config.Config, l Locator) *Resolver {
 	return &Resolver{
-		config:  c,
-		loc:     l,
+		config: c,
+		loc:    l,
 	}
 }
 
@@ -287,12 +288,29 @@ func (r *Resolver) RefreshStation(s *music.Station, user *auth.User) {
 	// Image
 	plist.Spiff.Location = fmt.Sprintf("/api/radio/%d", s.ID)
 	plist.Spiff.Title = s.Name
-	plist.Spiff.Creator = "Radio"
+	plist.Spiff.Image = s.Image
+	plist.Spiff.Creator = s.Creator
 	plist.Spiff.Date = date.FormatJson(time.Now())
-	plist.Entries = []spiff.Entry{{Ref: s.Ref}}
-	r.Resolve(user, plist)
-	if plist.Entries == nil {
-		plist.Entries = []spiff.Entry{}
+
+	if s.Type == music.TypeStream &&
+		(strings.HasPrefix(s.Ref, "http://") || strings.HasPrefix(s.Ref, "https://")) {
+		// internet radio stream
+		plist.Entries = []spiff.Entry{{
+			Creator:    plist.Spiff.Creator,
+			Album:      plist.Spiff.Title,
+			Title:      plist.Spiff.Title,
+			Image:      plist.Spiff.Image,
+			Location:   []string{s.Ref},
+			Identifier: []string{},
+			Size:       []int64{},
+			Date:       date.FormatJson(time.Now()),
+		}}
+	} else {
+		plist.Entries = []spiff.Entry{{Ref: s.Ref}}
+		r.Resolve(user, plist)
+		if plist.Entries == nil {
+			plist.Entries = []spiff.Entry{}
+		}
 	}
 	s.Playlist, _ = plist.Marshal()
 

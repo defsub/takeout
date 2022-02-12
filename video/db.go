@@ -166,6 +166,22 @@ func (v *Video) deleteMovie(tmid int) {
 	}
 }
 
+func (v *Video) deleteTVShow(tvid int) {
+	var list []TVShow
+	v.db.Where("tv_id = ?", tvid).Find(&list)
+	for _, o := range list {
+		v.db.Unscoped().Delete(o)
+	}
+}
+
+func (v *Video) deleteEpisode(epid int) {
+	var list []Episode
+	v.db.Where("ep_id = ?", epid).Find(&list)
+	for _, o := range list {
+		v.db.Unscoped().Delete(o)
+	}
+}
+
 func (v *Video) deleteCast(tmid int) {
 	var list []Cast
 	v.db.Where("tm_id = ?", tmid).Find(&list)
@@ -349,4 +365,12 @@ func (v *Video) createMovie(m *Movie) error {
 
 func (v *Video) createPerson(p *Person) error {
 	return v.db.Create(p).Error
+}
+
+func (v *Video) createTVShow(tv *TVShow) error {
+	return v.db.Create(tv).Error
+}
+
+func (v *Video) createEpisode(episode *Episode) error {
+	return v.db.Create(episode).Error
 }

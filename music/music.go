@@ -43,22 +43,22 @@ const (
 var coverCache map[string]string = make(map[string]string)
 
 type Music struct {
-	config     *config.Config
-	db         *gorm.DB
-	buckets    []bucket.Bucket
-	client     *client.Client
-	lastfm     *lastfm.Lastfm
-	fanart     *fanart.Fanart
-	mbz        *musicbrainz.MusicBrainz
+	config  *config.Config
+	db      *gorm.DB
+	buckets []bucket.Bucket
+	client  *client.Client
+	lastfm  *lastfm.Lastfm
+	fanart  *fanart.Fanart
+	mbz     *musicbrainz.MusicBrainz
 }
 
 func NewMusic(config *config.Config) *Music {
 	return &Music{
-		config:     config,
-		client:     client.NewClient(config),
-		fanart:     fanart.NewFanart(config),
-		lastfm:     lastfm.NewLastfm(config),
-		mbz:        musicbrainz.NewMusicBrainz(config),
+		config: config,
+		client: client.NewClient(config),
+		fanart: fanart.NewFanart(config),
+		lastfm: lastfm.NewLastfm(config),
+		mbz:    musicbrainz.NewMusicBrainz(config),
 	}
 }
 
@@ -190,6 +190,7 @@ const (
 	TypeSimilar = "similar" // Songs from similar artists
 	TypePeriod  = "period"  // Songs from one or more time periods
 	TypeSeries  = "series"  // Songs from one or more series (chart)
+	TypeStream  = "stream"  // Internet radio stream
 	TypeOther   = "other"
 )
 
@@ -215,6 +216,7 @@ func (m *Music) CreateStations() {
 			Shared: true,
 			Type:   TypeGenre,
 			Name:   strings.Title(g),
+			Creator: "Radio",
 			Ref: fmt.Sprintf(`/music/search?q=%s&radio=1`,
 				url.QueryEscape(fmt.Sprintf(`+genre:"%s" +type:single +popularity:<11 -artist:"Various Artists"`, g)))}
 		m.CreateStation(&station)
@@ -227,6 +229,7 @@ func (m *Music) CreateStations() {
 			Shared: true,
 			Type:   TypePeriod,
 			Name:   fmt.Sprintf("%ds Top Tracks", d),
+			Creator: "Radio",
 			Ref: fmt.Sprintf(`/music/search?q=%s&radio=1`,
 				url.QueryEscape(fmt.Sprintf(
 					`+first_date:>="%d-01-01" +first_date:<="%d-12-31" +type:single +popularity:<11`, d, d+9)))}
@@ -239,6 +242,7 @@ func (m *Music) CreateStations() {
 			Shared: true,
 			Type:   TypeSeries,
 			Name:   s,
+			Creator: "Radio",
 			Ref: fmt.Sprintf(`/music/search?q=%s&radio=1`,
 				url.QueryEscape(fmt.Sprintf(`+series:"%s"`, s)))}
 		m.CreateStation(&station)
@@ -250,8 +254,22 @@ func (m *Music) CreateStations() {
 			Shared: true,
 			Type:   TypeOther,
 			Name:   k,
+			Creator: "Radio",
 			Ref: fmt.Sprintf(`/music/search?q=%s&radio=1`,
 				url.QueryEscape(v))}
+		m.CreateStation(&station)
+	}
+
+	for _, v := range m.config.Music.RadioStreams {
+		station := Station{
+			User:     TakeoutUser,
+			Shared:   true,
+			Type:     TypeStream,
+			Name:     v.Title,
+			Creator:  v.Creator,
+			Ref:      v.Location,
+			Image:    v.Image,
+		}
 		m.CreateStation(&station)
 	}
 }

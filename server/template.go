@@ -255,7 +255,7 @@ func (handler *UserHandler) viewHandler(w http.ResponseWriter, r *http.Request) 
 		p := handler.podcast()
 		id, _ := strconv.Atoi(v)
 		episode, _ := p.LookupEpisode(id)
-		view = handler.episodeView(episode)
+		view = handler.seriesEpisodeView(episode)
 		temp = "episode.html"
 	} else {
 		view = handler.indexView()

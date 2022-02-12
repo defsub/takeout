@@ -45,25 +45,20 @@ func TestMovieSearch(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetConfig %s\n", err)
 	}
-
 	if config.TMDB.Key == "" {
 		t.Errorf("no key\n")
 	}
 	m := NewTMDB(config)
-	genres, err := m.MovieGenres()
-	if err != nil {
-		t.Errorf("%s\n", err)
-	}
 	results, err := m.MovieSearch("cowboys and aliens")
 	if err != nil {
 		t.Errorf("%s\n", err)
 	}
 	for _, r := range results {
 		d := date.ParseDate(r.ReleaseDate)
-		fmt.Printf("%s (%d)\n", r.Title, d.Year())
-		fmt.Printf("  %s\n", m.MovieOriginalPoster(&r))
+		fmt.Printf("%d %s (%d)\n", r.ID, r.Title, d.Year())
+		fmt.Printf("  %s\n", m.OriginalPoster(r.PosterPath))
 		for _, g := range r.GenreIDs {
-			fmt.Printf("  %s\n", genres[g])
+			fmt.Printf("  %s\n", m.MovieGenre(g))
 		}
 	}
 }
@@ -73,7 +68,6 @@ func TestMovieDetail(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetConfig %s\n", err)
 	}
-
 	if config.TMDB.Key == "" {
 		t.Errorf("no key\n")
 	}
@@ -91,7 +85,6 @@ func TestMovieCredits(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetConfig %s\n", err)
 	}
-
 	if config.TMDB.Key == "" {
 		t.Errorf("no key\n")
 	}
@@ -113,7 +106,6 @@ func TestMovieReleases(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetConfig %s\n", err)
 	}
-
 	if config.TMDB.Key == "" {
 		t.Errorf("no key\n")
 	}
@@ -160,4 +152,87 @@ func TestPerson(t *testing.T) {
 	}
 	fmt.Printf("%s - %s\n", p.Name, p.Birthday)
 	fmt.Printf("%s\n", p.Biography)
+}
+
+func TestTVSearch(t *testing.T) {
+	config, err := config.TestConfig()
+	if err != nil {
+		t.Errorf("GetConfig %s\n", err)
+	}
+
+	if config.TMDB.Key == "" {
+		t.Errorf("no key\n")
+	}
+	m := NewTMDB(config)
+	results, err := m.TVSearch("the shining")
+	if err != nil {
+		t.Errorf("%s\n", err)
+	}
+	for _, r := range results {
+		d := date.ParseDate(r.FirstAirDate)
+		fmt.Printf("%d %s (%d)\n", r.ID, r.Name, d.Year())
+		fmt.Printf("  %s\n", m.OriginalPoster(r.PosterPath))
+		for _, g := range r.GenreIDs {
+			fmt.Printf("  %s\n", m.TVGenre(g))
+		}
+	}
+}
+
+func TestTVDetail(t *testing.T) {
+	config, err := config.TestConfig()
+	if err != nil {
+		t.Errorf("GetConfig %s\n", err)
+	}
+
+	if config.TMDB.Key == "" {
+		t.Errorf("no key\n")
+	}
+	m := NewTMDB(config)
+	tv, err := m.TVDetail(1867) // game of thrones
+	if err != nil {
+		t.Errorf("%s\n", err)
+	}
+	fmt.Printf("%s (%s)\n", tv.Name, tv.FirstAirDate)
+	fmt.Printf("%+v\n", tv)
+}
+
+func TestEpisodeDetail(t *testing.T) {
+	config, err := config.TestConfig()
+	if err != nil {
+		t.Errorf("GetConfig %s\n", err)
+	}
+	if config.TMDB.Key == "" {
+		t.Errorf("no key\n")
+	}
+	m := NewTMDB(config)
+	episode, err := m.EpisodeDetail(1399, 1, 1) // game of thrones
+	if err != nil {
+		t.Errorf("%s\n", err)
+	}
+	fmt.Printf("%d %s (%s)\n", episode.ID, episode.Name, episode.AirDate)
+	fmt.Printf("%+v\n", episode)
+}
+
+func TestEpisodeCredits(t *testing.T) {
+	config, err := config.TestConfig()
+	if err != nil {
+		t.Errorf("GetConfig %s\n", err)
+	}
+	if config.TMDB.Key == "" {
+		t.Errorf("no key\n")
+	}
+	m := NewTMDB(config)
+	credits, err := m.EpisodeCredits(1399, 1, 1) // game of thrones
+	if err != nil {
+		t.Errorf("%s\n", err)
+	}
+	for _, c := range credits.Cast {
+		fmt.Printf("cast: %s - %s\n", c.Name, c.Character)
+	}
+	for _, c := range credits.Crew {
+		fmt.Printf("crew: %s - %s\n", c.Name, c.Job)
+	}
+	for _, c := range credits.Guests {
+		fmt.Printf("guest: %s - %s\n", c.Name, c.Character)
+	}
 }

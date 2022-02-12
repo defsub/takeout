@@ -70,7 +70,6 @@ func assignedMedia(config *config.Config) ([]string, error) {
 }
 
 func syncMusic(config *config.Config) error {
-	log.Printf("sync music\n")
 	m := music.NewMusic(config)
 	err := m.Open()
 	if err != nil {
@@ -84,7 +83,6 @@ func syncMusic(config *config.Config) error {
 }
 
 func syncVideo(config *config.Config) error {
-	log.Printf("sync video\n")
 	v := video.NewVideo(config)
 	err := v.Open()
 	if err != nil {
@@ -95,7 +93,6 @@ func syncVideo(config *config.Config) error {
 }
 
 func syncPodcasts(config *config.Config) error {
-	log.Printf("sync podcasts\n")
 	p := podcast.NewPodcast(config)
 	err := p.Open()
 	if err != nil {

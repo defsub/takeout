@@ -101,7 +101,7 @@ func (v *Video) MovieURL(m Movie) *url.URL {
 
 func (v *Video) MoviePoster(m Movie) string {
 	client := tmdb.NewTMDB(v.config)
-	url := client.MoviePoster(m.PosterPath, tmdb.Poster342)
+	url := client.Poster(m.PosterPath, tmdb.Poster342)
 	if url == nil {
 		return ""
 	}
@@ -110,7 +110,7 @@ func (v *Video) MoviePoster(m Movie) string {
 
 func (v *Video) MoviePosterSmall(m Movie) string {
 	client := tmdb.NewTMDB(v.config)
-	url := client.MoviePoster(m.PosterPath, tmdb.Poster154)
+	url := client.Poster(m.PosterPath, tmdb.Poster154)
 	if url == nil {
 		return ""
 	}
@@ -119,7 +119,7 @@ func (v *Video) MoviePosterSmall(m Movie) string {
 
 func (v *Video) MovieBackdrop(m Movie) string {
 	client := tmdb.NewTMDB(v.config)
-	url := client.MovieBackdrop(m.BackdropPath, tmdb.Backdrop1280)
+	url := client.Backdrop(m.BackdropPath, tmdb.Backdrop1280)
 	if url == nil {
 		return ""
 	}
