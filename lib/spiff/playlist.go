@@ -57,6 +57,7 @@ const (
 	TypeMusic   = "music"
 	TypeVideo   = "video"
 	TypePodcast = "podcast"
+	TypeStream  = "stream"
 )
 
 func NewPlaylist(listType string) *Playlist {

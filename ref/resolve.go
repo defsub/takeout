@@ -285,7 +285,6 @@ func (r *Resolver) resolveRadioRef(id string, entries []spiff.Entry, user *auth.
 
 func (r *Resolver) RefreshStation(s *music.Station, user *auth.User) {
 	plist := spiff.NewPlaylist(spiff.TypeMusic)
-	// Image
 	plist.Spiff.Location = fmt.Sprintf("/api/radio/%d", s.ID)
 	plist.Spiff.Title = s.Name
 	plist.Spiff.Image = s.Image
@@ -295,6 +294,7 @@ func (r *Resolver) RefreshStation(s *music.Station, user *auth.User) {
 	if s.Type == music.TypeStream &&
 		(strings.HasPrefix(s.Ref, "http://") || strings.HasPrefix(s.Ref, "https://")) {
 		// internet radio stream
+		plist.Type = spiff.TypeStream
 		plist.Entries = []spiff.Entry{{
 			Creator:    plist.Spiff.Creator,
 			Album:      plist.Spiff.Title,
