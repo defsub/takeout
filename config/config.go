@@ -287,13 +287,13 @@ func configDefaults(v *viper.Viper) {
 			Creator:  "Ted Leibowitz",
 			Title:     "BAGeL Radio",
 			Image:    "https://cdn-profiles.tunein.com/s187420/images/logod.jpg",
-			Location: "https://www.bagelradio.com/s/bagelradio.pls",
+			Location: "https://ais-sa3.cdnstream1.com/2606_128.aac",
 		},
 		{
 			Creator:  "SomaFM",
 			Title:     "Groove Salad",
 			Image:    "https://somafm.com/img3/groovesalad-400.jpg",
-			Location: "https://somafm.com/groovesalad130.pls",
+			Location: "https://ice2.somafm.com/groovesalad-128-aac",
 		},
 	})
 	v.SetDefault("Music.Recent", "8760h") // 1 year
