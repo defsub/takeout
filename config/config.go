@@ -285,15 +285,33 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Music.RadioStreams", []RadioStream{
 		{
 			Creator:  "Ted Leibowitz",
-			Title:     "BAGeL Radio",
+			Title:    "BAGeL Radio",
 			Image:    "https://cdn-profiles.tunein.com/s187420/images/logod.jpg",
 			Location: "https://www.bagelradio.com/s/bagelradio.pls",
 		},
 		{
 			Creator:  "SomaFM",
-			Title:     "Groove Salad",
+			Title:    "Groove Salad",
 			Image:    "https://somafm.com/img3/groovesalad-400.jpg",
 			Location: "https://somafm.com/groovesalad130.pls",
+		},
+		{
+			Creator:  "SomaFM",
+			Title:    "Drone Zone",
+			Image:    "https://somafm.com/img3/dronezone-400.jpg",
+			Location: "https://somafm.com/dronezone130.pls",
+		},
+		{
+			Creator:  "SomaFM",
+			Title:    "Indie Pop Rocks",
+			Image:    "https://somafm.com/img3/indiepop-400.jpg",
+			Location: "https://somafm.com/indiepop130.pls",
+		},
+		{
+			Creator:  "SomaFM",
+			Title:    "Underground 80s",
+			Image:    "https://somafm.com/img3/u80s-400.png",
+			Location: "https://somafm.com/u80s130.pls",
 		},
 	})
 	v.SetDefault("Music.Recent", "8760h") // 1 year
