@@ -27,6 +27,7 @@ import (
 
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
+	"github.com/defsub/takeout/lib/client"
 	"github.com/defsub/takeout/lib/date"
 	"github.com/defsub/takeout/lib/hash"
 	"github.com/defsub/takeout/lib/log"
@@ -283,6 +284,30 @@ func (r *Resolver) resolveRadioRef(id string, entries []spiff.Entry, user *auth.
 	return entries, nil
 }
 
+func (r *Resolver) resolvePlsRef(url, creator, image string, entries []spiff.Entry) ([]spiff.Entry, error) {
+	client := client.NewClient(r.config)
+	result, err := client.GetPLS(url)
+	if err != nil {
+		return entries, err
+	}
+
+	for _, v := range result.Entries {
+		entry := spiff.Entry{
+			Creator:    creator,
+			Album:      v.Title,
+			Title:      v.Title,
+			Image:      image,
+			Location:   []string{v.File},
+			Identifier: []string{},
+			Size:       []int64{int64(v.Length)},
+			Date:       date.FormatJson(time.Now()),
+		}
+		entries = append(entries, entry)
+	}
+
+	return entries, nil
+}
+
 func (r *Resolver) RefreshStation(s *music.Station, user *auth.User) {
 	plist := spiff.NewPlaylist(spiff.TypeMusic)
 	plist.Spiff.Location = fmt.Sprintf("/api/radio/%d", s.ID)
@@ -291,20 +316,21 @@ func (r *Resolver) RefreshStation(s *music.Station, user *auth.User) {
 	plist.Spiff.Creator = s.Creator
 	plist.Spiff.Date = date.FormatJson(time.Now())
 
-	if s.Type == music.TypeStream &&
-		(strings.HasPrefix(s.Ref, "http://") || strings.HasPrefix(s.Ref, "https://")) {
-		// internet radio stream
+	if s.Type == music.TypeStream {
+		// internet radio streams
 		plist.Type = spiff.TypeStream
-		plist.Entries = []spiff.Entry{{
-			Creator:    plist.Spiff.Creator,
-			Album:      plist.Spiff.Title,
-			Title:      plist.Spiff.Title,
-			Image:      plist.Spiff.Image,
-			Location:   []string{s.Ref},
-			Identifier: []string{},
-			Size:       []int64{},
-			Date:       date.FormatJson(time.Now()),
-		}}
+		if strings.HasSuffix(s.Ref, ".pls") {
+			var entries []spiff.Entry
+			entries, err := r.resolvePlsRef(s.Ref, s.Creator, s.Image, entries)
+			if err != nil {
+				log.Printf("pls error %s\n", err)
+				return
+			}
+			plist.Entries = entries
+		} else {
+			// TODO add m3u, others?
+			log.Printf("unsupported stream %s\n", s.Ref)
+		}
 	} else {
 		plist.Entries = []spiff.Entry{{Ref: s.Ref}}
 		r.Resolve(user, plist)
@@ -312,6 +338,7 @@ func (r *Resolver) RefreshStation(s *music.Station, user *auth.User) {
 			plist.Entries = []spiff.Entry{}
 		}
 	}
+
 	s.Playlist, _ = plist.Marshal()
 
 	// TODO not saved for now

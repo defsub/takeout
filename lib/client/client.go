@@ -28,6 +28,7 @@ import (
 
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/lib/log"
+	"github.com/defsub/takeout/lib/pls"
 	"github.com/gregjones/httpcache"
 	"github.com/gregjones/httpcache/diskcache"
 )
@@ -172,4 +173,13 @@ func (c *Client) GetXML(urlString string, result interface{}) error {
 		return err
 	}
 	return nil
+}
+
+func (c *Client) GetPLS(urlString string) (pls.Playlist, error) {
+	resp, err := c.doGet(nil, urlString)
+	if err != nil {
+		return pls.Playlist{}, err
+	}
+	defer resp.Body.Close()
+	return pls.Parse(resp.Body)
 }
