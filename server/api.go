@@ -440,6 +440,7 @@ func (handler *UserHandler) apiSearch(w http.ResponseWriter, r *http.Request) {
 // POST /api/radio
 // GET,PATH,DELETE /api/radio/1 >
 //
+// GET /api/index > IndexView{}
 // GET /api/home > HomeView{}
 // GET /api/search > SearchView{}
 //
@@ -492,6 +493,8 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 		handler.apiRadio(w, r)
 	case "/api/live":
 		handler.apiLive(w, r)
+	case "/api/index":
+		handler.apiView(w, r, handler.indexView())
 	case "/api/home":
 		handler.apiView(w, r, handler.homeView())
 	case "/api/artists":

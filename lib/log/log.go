@@ -54,6 +54,7 @@ func Panicf(format string, v ...interface{}) {
 func Panicln(v ...interface{}) {
 	logger.Panicln(v...)
 }
+
 func Fatalf(format string, v ...interface{}) {
 	logger.Fatalf(format, v...)
 }

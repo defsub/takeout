@@ -25,9 +25,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/defsub/takeout/lib/date"
 	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/lib/musicbrainz"
-	"github.com/defsub/takeout/lib/date"
 	"github.com/defsub/takeout/lib/search"
 	"github.com/defsub/takeout/lib/str"
 )
@@ -53,6 +53,20 @@ func NewSyncOptions() SyncOptions {
 		Similar:  true,
 		Artwork:  true,
 		Index:    true,
+	}
+}
+
+func NewSyncPopular() SyncOptions {
+	return SyncOptions{
+		Since:   time.Time{},
+		Popular: true,
+	}
+}
+
+func NewSyncSimilar() SyncOptions {
+	return SyncOptions{
+		Since:   time.Time{},
+		Similar: true,
 	}
 }
 
@@ -653,7 +667,7 @@ func (m *Music) fixTrackReleaseTitlesFor(artists []Artist) error {
 					if err != nil {
 						return err
 					}
-                                }
+				}
 			}
 		}
 	}
@@ -669,6 +683,11 @@ func (m *Music) syncPopularFor(artists []Artist) error {
 	for _, a := range artists {
 		log.Printf("popular for %s\n", a.Name)
 		tracks := m.lastfm.ArtistTopTracks(a.ARID)
+		if len(tracks) == 0 {
+			continue
+		}
+		// remove what we have now
+		m.deletePopularFor(a.Name)
 		for _, t := range tracks {
 			// TODO how to check for specific error?
 			// - UNIQUE constraint failed
@@ -692,6 +711,11 @@ func (m *Music) syncSimilarFor(artists []Artist) error {
 	for _, a := range artists {
 		log.Printf("similar for %s\n", a.Name)
 		rank := m.lastfm.SimilarArtists(a.ARID)
+		if len(rank) == 0 {
+			continue
+		}
+		// remove what we have now
+		m.deleteSimilarFor(a.Name)
 
 		mbids := make([]string, 0, len(rank))
 		for k := range rank {

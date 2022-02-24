@@ -20,13 +20,13 @@ package server
 import (
 	"github.com/go-co-op/gocron"
 
-	"time"
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
+	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/music"
 	"github.com/defsub/takeout/podcast"
 	"github.com/defsub/takeout/video"
-	"github.com/defsub/takeout/lib/log"
+	"time"
 )
 
 type syncFunc func(config *config.Config) error
@@ -52,9 +52,16 @@ func schedule(config *config.Config) {
 		})
 	}
 
+	// music
 	mediaSync(config.Music.SyncInterval, syncMusic)
-	mediaSync(config.Video.SyncInterval, syncVideo)
+	mediaSync(config.Music.PopularSyncInterval, syncMusicPopular)
+	mediaSync(config.Music.SimilarSyncInterval, syncMusicSimilar)
+
+	// podcasts
 	mediaSync(config.Podcast.SyncInterval, syncPodcasts)
+
+	// video
+	mediaSync(config.Video.SyncInterval, syncVideo)
 
 	scheduler.StartAsync()
 }
@@ -80,6 +87,25 @@ func syncMusic(config *config.Config) error {
 	syncOptions.Since = m.LastModified()
 	m.Sync(syncOptions)
 	return nil
+}
+
+func syncWithOptions(config *config.Config, syncOptions music.SyncOptions) error {
+	m := music.NewMusic(config)
+	err := m.Open()
+	if err != nil {
+		return err
+	}
+	defer m.Close()
+	m.Sync(syncOptions)
+	return nil
+}
+
+func syncMusicPopular(config *config.Config) error {
+	return syncWithOptions(config, music.NewSyncPopular())
+}
+
+func syncMusicSimilar(config *config.Config) error {
+	return syncWithOptions(config, music.NewSyncSimilar())
 }
 
 func syncVideo(config *config.Config) error {

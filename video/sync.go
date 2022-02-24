@@ -48,6 +48,11 @@ const (
 	FieldTitle      = "title"
 	FieldVote       = "vote"
 	FieldVoteCount  = "vote_count"
+
+	JobDirector   = "Director"
+	JobNovel      = "Novel"
+	JobScreenplay = "Screenplay"
+	JobStory      = "Story"
 )
 
 func (v *Video) Sync() error {
@@ -373,7 +378,6 @@ func (v *Video) processKeywords(tmid int64, keywords []string, fields search.Fie
 	}
 	return nil
 }
-
 
 func (v *Video) processCredits(tmid int64, client *tmdb.TMDB, credits *tmdb.Credits,
 	fields search.FieldMap) error {

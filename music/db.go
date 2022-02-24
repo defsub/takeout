@@ -844,6 +844,14 @@ func (m *Music) TrackCount() int64 {
 	return count
 }
 
+func (m *Music) deletePopularFor(artist string) error {
+	return m.db.Unscoped().Where("artist = ?", artist).Delete(Popular{}).Error
+}
+
+func (m *Music) deleteSimilarFor(artist string) error {
+	return m.db.Unscoped().Where("artist = ?", artist).Delete(Similar{}).Error
+}
+
 func (m *Music) updateArtist(a *Artist) error {
 	return m.db.Save(a).Error
 }

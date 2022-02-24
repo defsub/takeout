@@ -27,6 +27,7 @@
 
 * Refactor public/private usage
 * Refactor use of pointers
+* Consider Bluge vs Bleve
 
 ## Future
 

@@ -128,6 +128,8 @@ type MusicConfig struct {
 	SinglesLimit         int
 	artistMap            map[string]string
 	SyncInterval         time.Duration
+	PopularSyncInterval  time.Duration
+	SimilarSyncInterval  time.Duration
 }
 
 type VideoConfig struct {
@@ -322,6 +324,8 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Music.SimilarReleasesLimit", "10")
 	v.SetDefault("Music.SinglesLimit", "50")
 	v.SetDefault("Music.SyncInterval", "1h")
+	v.SetDefault("Music.PopularSyncInterval", "24h")
+	v.SetDefault("Music.SimilarSyncInterval", "24h")
 
 	// see https://wiki.musicbrainz.org/Release_Country
 	// v.SetDefault("Music.ReleaseCountries", []string{

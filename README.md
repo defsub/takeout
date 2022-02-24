@@ -22,6 +22,7 @@ to build custom interfaces.
 * Popular tracks
 * Artist singles
 * Radio stations based on genres, mixes, singles, and anything searchable
+* Internet radio stations
 * User-based access control using cookies and [scrypt](https://pkg.go.dev/golang.org/x/crypto/scrypt?tab=doc)
 * Server-based playlist (using [jsonpatch](http://jsonpatch.com/))
 * Web and json views

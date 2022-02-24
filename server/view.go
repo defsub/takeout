@@ -345,13 +345,18 @@ func (handler *UserHandler) movieView(m video.Movie) *MovieView {
 	if collection != nil {
 		view.Collection = *collection
 		view.Other = v.CollectionMovies(collection)
+		if len(view.Other) == 1 && view.Other[0].ID == m.ID {
+			// collection is just this movie so remove
+			view.Other = view.Other[1:]
+		}
 	}
 	view.Cast = v.Cast(m)
 	view.Crew = v.Crew(m)
 	for _, c := range view.Crew {
-		if c.Job == "Director" {
+		switch c.Job {
+		case video.JobDirector:
 			view.Directing = append(view.Directing, c.Person)
-		} else if c.Job == "Novel" || c.Job == "Screenplay" || c.Job == "Story" {
+		case video.JobNovel, video.JobScreenplay, video.JobStory:
 			view.Writing = append(view.Writing, c.Person)
 		}
 	}
