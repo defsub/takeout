@@ -386,26 +386,31 @@ func (handler *UserHandler) apiProgress(w http.ResponseWriter, r *http.Request) 
 		var offset progress.Offset
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
+			log.Printf("err1 %s\n", err)
 			badRequest(w, err)
 			return
 		}
 		err = json.Unmarshal(body, &offset)
 		if err != nil {
+			log.Printf("err2 %s\n", err)
 			badRequest(w, err)
 			return
 		}
 		if len(offset.User) != 0 {
 			// should not have a user
+			log.Printf("err3 %s\n", err)
 			badRequest(w, err)
 			return
 		}
 		offset.User = handler.user.Name
 		if !offset.Valid() {
+			log.Printf("err4 %s\n", ErrInvalidOffset)
 			badRequest(w, ErrInvalidOffset)
 			return
 		}
 		err = handler.progress().Update(handler.user, offset)
 		if err == progress.ErrOffsetTooOld {
+			log.Printf("err5 %s\n", err)
 			w.WriteHeader(http.StatusResetContent)
 			return
 		}

@@ -15,11 +15,25 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
-package music
+package setlist
 
 import (
 	"fmt"
+	"github.com/defsub/takeout/config"
+	"github.com/defsub/takeout/lib/client"
 )
+
+type Setlist struct {
+	config *config.Config
+	client *client.Client
+}
+
+func NewSetlist(config *config.Config, client *client.Client) *Setlist {
+	return &Setlist{
+		config: config,
+		client: client,
+	}
+}
 
 type setlistArtist struct {
 	Mbid           string `json:"mbid"`
@@ -56,15 +70,18 @@ type setlistTour struct {
 
 type setlistSong struct {
 	Name string `json:"name"`
-}
-
-type setlistSongs struct {
-	Encore int           `json:"encore"`
-	Song   []setlistSong `json:"song"`
+	Info string `json:"info"`
+	Tape bool   `json:"tape"`
 }
 
 type setlistSet struct {
-	Set []setlistSongs `json:"set"`
+	Encore int           `json:"encore"`
+	Name   string        `json:"name"`
+	Songs  []setlistSong `json:"song"`
+}
+
+type setlistSets struct {
+	Set []setlistSet `json:"set"`
 }
 
 type setlist struct {
@@ -75,7 +92,7 @@ type setlist struct {
 	Artist      setlistArtist `json:"artist"`
 	Venue       setlistVenue  `json:"venue"`
 	Tour        setlistTour   `json:"tour"`
-	Sets        setlistSet    `json:"sets"`
+	Sets        setlistSets   `json:"sets"`
 	Info        string        `json:"info"`
 	Url         string        `json:"url"`
 }
@@ -88,27 +105,38 @@ type setlistResponse struct {
 	Setlist      []setlist `json:"setlist"`
 }
 
-func (m *Music) Setlists(artist *Artist) {
-	result := m.setlistPage(artist, 1)
-	fmt.Printf("items %d, page %d, total %d (%d)\n",
-		result.ItemsPerPage, result.Page, result.Total,
-		result.Total / result.ItemsPerPage)
-	for _, sl := range result.Setlist {
-		fmt.Printf("%s %s @ %s, %s, %s\n", sl.Tour.Name, sl.EventDate,
-			sl.Venue.Name, sl.Venue.City.Name, sl.Venue.City.Country.Name)
-	}
+func (s *Setlist) ArtistYear(arid string, year int) []setlist {
+	format := fmt.Sprintf("https://api.setlist.fm/rest/1.0/search/setlists?artistMbid=%s&year=%d",
+		arid, year)
+	return setlistFetch(format + "&page=%d")
 }
 
-func (m *Music) setlistPage(artist *Artist, page int) *setlistResponse {
-	url := fmt.Sprintf("https://api.setlist.fm/rest/1.0/artist/%s/setlists?p=%d",
-		artist.ARID, page)
+func (s *Setlist) setlistFetch(format string) []setlist {
+	var list []setlist
+	total := 0
 
+	for page := 1; ; page++ {
+		url := fmt.Sprintf(format, page)
+		result := s.setlistPage(url)
+		fmt.Printf("page %d, items per page %d, total %d\n",
+			result.Page, result.ItemsPerPage, result.Total)
+		list = append(list, result.Setlist...)
+		total += len(result.Setlist)
+		if total >= result.Total {
+			break
+		}
+	}
+
+	return list
+}
+
+func (s *Setlist) setlistPage(url string) *setlistResponse {
+	fmt.Printf("url %s\n", url)
 	headers := map[string]string{
 		"Accept":    "application/json",
 		"x-api-key": "TGRHYagNV144XhA74sNfNPqoa443ClIjUabD",
 	}
-
 	var result setlistResponse
-	m.client.GetJsonWith(headers, url, &result)
+	s.client.GetJsonWith(headers, url, &result)
 	return &result
 }

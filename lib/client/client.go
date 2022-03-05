@@ -139,6 +139,10 @@ func (c *Client) GetJsonWith(headers map[string]string, url string, result inter
 		return err
 	}
 	defer resp.Body.Close()
+
+	// bytes, _ := io.ReadAll(resp.Body)
+	// fmt.Println(string(bytes))
+
 	decoder := json.NewDecoder(resp.Body)
 	if err = decoder.Decode(result); err != nil {
 		return err

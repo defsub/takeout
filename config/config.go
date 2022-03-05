@@ -183,6 +183,10 @@ type TMDBAPIConfig struct {
 	FileTemplate Template
 }
 
+type SetlistAPIConfig struct {
+	ApiKey string
+}
+
 type AuthConfig struct {
 	DB            DatabaseConfig
 	MaxAge        time.Duration
