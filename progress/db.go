@@ -58,14 +58,25 @@ func (p *Progress) closeDB() {
 	conn.Close()
 }
 
-func (p *Progress) UserOffsets(user string) []Offset {
+func (p *Progress) userOffsets(user string) []Offset {
 	var offsets []Offset
 	p.db.Where("user = ?", user).
 		Order("date desc").Find(&offsets)
 	return offsets
 }
 
-func (p *Progress) LookupUserOffset(user, etag string) *Offset {
+func (p *Progress) lookupUserOffset(user string, id int) *Offset {
+	offset, err := p.lookupOffset(id)
+	if err != nil {
+		return nil
+	}
+	if offset.User != user {
+		return nil
+	}
+	return offset
+}
+
+func (p *Progress) lookupUserOffsetEtag(user, etag string) *Offset {
 	var list []Offset
 	p.db.Where("user = ? and e_tag = ?", user, etag).
 		Order("date desc").Find(&list)
@@ -75,7 +86,7 @@ func (p *Progress) LookupUserOffset(user, etag string) *Offset {
 	return nil
 }
 
-func (p *Progress) LookupOffset(id int) (*Offset, error) {
+func (p *Progress) lookupOffset(id int) (*Offset, error) {
 	var offset Offset
 	err := p.db.First(&offset, id).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {

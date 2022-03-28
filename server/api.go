@@ -121,11 +121,12 @@ func (handler *UserHandler) recvStation(w http.ResponseWriter, r *http.Request,
 // 400: bad request
 // 500: error
 func (handler *UserHandler) apiRadio(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
+	switch r.Method {
+	case "GET":
 		view := handler.radioView(handler.user)
 		enc := json.NewEncoder(w)
 		enc.Encode(view)
-	} else if r.Method == "POST" {
+	case "POST":
 		var s music.Station
 		err := handler.recvStation(w, r, &s)
 		if err != nil {
@@ -139,7 +140,7 @@ func (handler *UserHandler) apiRadio(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 		enc := json.NewEncoder(w)
 		enc.Encode(s)
-	} else {
+	default:
 		http.Error(w, "bummer", http.StatusBadRequest)
 	}
 }
@@ -199,13 +200,14 @@ func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, i
 		return
 	}
 
-	if r.Method == "GET" {
+	switch r.Method {
+	case "GET":
 		resolver := ref.NewResolver(handler.config, handler)
 		resolver.RefreshStation(&s, handler.user)
 
 		w.WriteHeader(http.StatusOK)
 		w.Write(s.Playlist)
-	} else if r.Method == "PUT" {
+	case "PUT":
 		var up music.Station
 		err := handler.recvStation(w, r, &up)
 		if err != nil {
@@ -220,7 +222,7 @@ func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, i
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
-	} else if r.Method == "PATCH" {
+	case "PATCH":
 		patch, _ := ioutil.ReadAll(r.Body)
 		s.Playlist, err = spiff.Patch(s.Playlist, patch)
 		if err != nil {
@@ -238,14 +240,14 @@ func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, i
 		s.Playlist, _ = plist.Marshal()
 		handler.music().UpdateStation(&s)
 		w.WriteHeader(http.StatusNoContent)
-	} else if r.Method == "DELETE" {
+	case "DELETE":
 		err = handler.music().DeleteStation(&s)
 		if err != nil {
 			serverErr(w, err)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
-	} else {
+	default:
 		http.Error(w, "bummer", http.StatusBadRequest)
 	}
 }
@@ -381,8 +383,14 @@ func (handler *UserHandler) apiPlaylist(w http.ResponseWriter, r *http.Request) 
 // 205: reset content, newer offset exists
 // 400: error
 // 500: error
+//
+// DELETE /api/progress/id (see elsewhere)
+// 204: accepted no response
+// 404: not found
+// 500: error
 func (handler *UserHandler) apiProgress(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
+	switch r.Method {
+	case "POST":
 		var offset progress.Offset
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
@@ -397,11 +405,12 @@ func (handler *UserHandler) apiProgress(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		if len(offset.User) != 0 {
-			// should not have a user
+			// post must not have a user
 			log.Printf("err3 %s\n", err)
 			badRequest(w, err)
 			return
 		}
+		// use authenticated user
 		offset.User = handler.user.Name
 		if !offset.Valid() {
 			log.Printf("err4 %s\n", ErrInvalidOffset)
@@ -415,9 +424,11 @@ func (handler *UserHandler) apiProgress(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
-	} else {
+	case "GET":
 		view := handler.progressView()
 		handler.apiView(w, r, view)
+	default:
+		badRequest(w, ErrInvalidMethod)
 	}
 }
 
@@ -588,7 +599,8 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 			case "artists":
 				artist, _ := m.LookupArtist(id)
 				image := m.ArtistImage(&artist)
-				if res == "playlist" {
+				switch res {
+				case "playlist":
 					// /api/artists/1/playlist
 					handler.apiRefPlaylist(w, r, spiff.TypeMusic,
 						artist.Name,
@@ -596,7 +608,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 						image,
 						time.Now(),
 						fmt.Sprintf("/music/artists/%d/shuffle", id))
-				} else if res == "radio" {
+				case "radio":
 					// /api/artists/1/radio
 					handler.apiRefPlaylist(w, r, spiff.TypeMusic,
 						"Radio",
@@ -604,13 +616,13 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 						image,
 						time.Now(),
 						fmt.Sprintf("/music/artists/%d/similar", id))
-				} else if res == "popular" {
+				case "popular":
 					// /api/artists/1/popular
 					handler.apiView(w, r, handler.popularView(artist))
-				} else if res == "singles" {
+				case "singles":
 					// /api/artists/1/singles
 					handler.apiView(w, r, handler.singlesView(artist))
-				} else {
+				default:
 					notFoundErr(w)
 				}
 			case "releases":
@@ -671,7 +683,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// /api/(artists|radio|releases|movies|profiles|series|tv)/id
+		// /api/(artists|radio|releases|movies|profiles|progress|series|tv)/id
 		resourceRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)`)
 		matches = resourceRegexp.FindStringSubmatch(r.URL.Path)
 		if matches != nil {
@@ -723,6 +735,28 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 					notFoundErr(w)
 				} else {
 					handler.apiView(w, r, handler.seriesView(series))
+				}
+			case "progress":
+				// /api/progress/1
+				offset := handler.progress().Offset(handler.user, id)
+				if offset == nil {
+					notFoundErr(w)
+				} else {
+					switch r.Method {
+					case "GET":
+						// GET /api/progress/1
+						handler.apiView(w, r, handler.offsetView(*offset))
+					case "DELETE":
+						// DELETE /api/progress/1
+						err := handler.progress().Delete(handler.user, *offset)
+						if err != nil {
+							serverErr(w, err)
+						} else {
+							w.WriteHeader(http.StatusNoContent)
+						}
+					default:
+						badRequest(w, ErrInvalidMethod)
+					}
 				}
 			default:
 				notFoundErr(w)

@@ -192,6 +192,10 @@ type ProgressView struct {
 	Offsets []progress.Offset
 }
 
+type OffsetView struct {
+	Offset progress.Offset
+}
+
 func (handler *UserHandler) indexView() *IndexView {
 	view := &IndexView{}
 	view.Time = time.Now().Unix()
@@ -447,6 +451,12 @@ func (handler *UserHandler) seriesEpisodeView(e podcast.Episode) *SeriesEpisodeV
 
 func (handler *UserHandler) progressView() *ProgressView {
 	view := &ProgressView{}
-	view.Offsets = handler.progress().LookupProgress(handler.user)
+	view.Offsets = handler.progress().Offsets(handler.user)
+	return view
+}
+
+func (handler *UserHandler) offsetView(offset progress.Offset) *OffsetView {
+	view := &OffsetView{}
+	view.Offset = offset
 	return view
 }

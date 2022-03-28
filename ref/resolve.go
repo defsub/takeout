@@ -29,7 +29,6 @@ import (
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/lib/client"
 	"github.com/defsub/takeout/lib/date"
-	"github.com/defsub/takeout/lib/hash"
 	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/lib/spiff"
 	"github.com/defsub/takeout/music"
@@ -125,7 +124,7 @@ func (r *Resolver) addEpisodeEntries(series podcast.Series, episodes []podcast.E
 			Title:      e.Title,
 			Image:      r.loc.EpisodeImage(e),
 			Location:   []string{r.loc.LocateEpisode(e)},
-			Identifier: []string{hash.MD5Hex(e.URL)}, // TODO hash of episode?
+			Identifier: []string{e.EID},
 			Size:       []int64{e.Size},
 			Date:       date.FormatJson(e.Date),
 		}

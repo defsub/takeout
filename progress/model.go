@@ -35,7 +35,8 @@ func (o Offset) Valid() bool {
 	if len(o.User) == 0 || len(o.ETag) == 0 || o.Offset < 0 || o.Date.IsZero() {
 		return false
 	}
-	// duration can be unknown
+	// duration can be unknown (0) but if known, offset must be within
+	// duration
 	if o.Duration > 0 && o.Offset > o.Duration {
 		return false
 	}

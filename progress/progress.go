@@ -15,6 +15,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
+// Package progress manages user progress data which contains media offset and
+// duration to allow incremental watch/listen progress to be saved and
+// retrieved to/from the server based on etag.
 package progress
 
 import (
@@ -26,6 +29,7 @@ import (
 
 var (
 	ErrOffsetTooOld = errors.New("offset is old")
+	ErrAccessDenied = errors.New("access denied")
 )
 
 type Progress struct {
@@ -48,13 +52,21 @@ func (p *Progress) Close() {
 	p.closeDB()
 }
 
-func (p *Progress) LookupProgress(user *auth.User) []Offset {
-	offsets := p.UserOffsets(user.Name)
+// Offsets gets all the offets for the user.
+func (p *Progress) Offsets(user *auth.User) []Offset {
+	offsets := p.userOffsets(user.Name)
 	return offsets
 }
 
+// Offset gets the user offset based on the internal id.
+func (p *Progress) Offset(user *auth.User, id int) *Offset {
+	return p.lookupUserOffset(user.Name, id)
+}
+
+// Update will create or update an offset for the provided user using the etag
+// as the primary key.
 func (p *Progress) Update(user *auth.User, newOffset Offset) error {
-	offset := p.LookupUserOffset(user.Name, newOffset.ETag)
+	offset := p.lookupUserOffsetEtag(user.Name, newOffset.ETag)
 	if offset != nil {
 		if newOffset.Date.Before(offset.Date) {
 			return ErrOffsetTooOld
@@ -75,4 +87,13 @@ func (p *Progress) Update(user *auth.User, newOffset Offset) error {
 		}
 	}
 	return nil
+}
+
+// Delete will delete the provided user & offset, ensuring the offset belongs
+// to the user.
+func (p *Progress) Delete(user *auth.User, offset Offset) error {
+	if user.Name != offset.User {
+		return ErrAccessDenied
+	}
+	return p.deleteOffset(&offset)
 }

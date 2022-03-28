@@ -31,6 +31,7 @@ var (
 	ErrInvalidCode   = errors.New("invalid code")
 	ErrNotFound      = errors.New("not found")
 	ErrInvalidOffset = errors.New("invalid offset")
+	ErrAccessDenied  = errors.New("access denied")
 )
 
 func serverErr(w http.ResponseWriter, err error) {
@@ -50,6 +51,10 @@ func authErr(w http.ResponseWriter, err error) {
 	if err != nil {
 		handleErr(w, err.Error(), http.StatusUnauthorized)
 	}
+}
+
+func accessDenied(w http.ResponseWriter) {
+	handleErr(w, ErrAccessDenied.Error(), http.StatusForbidden)
 }
 
 func notFoundErr(w http.ResponseWriter) {
