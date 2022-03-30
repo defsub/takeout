@@ -41,21 +41,29 @@ func ParseDate(date string) (t time.Time) {
 	return t
 }
 
+const (
+	RFC1123_1  = "Mon, _2 Jan 2006 15:04:05 MST"
+	RFC1123_2  = "Mon, 2 Jan 2006 15:04:05 MST"
+	RFC1123Z_1 = "Mon, _2 Jan 2006 15:04:05 -0700"
+	RFC1123Z_2 = "Mon, 2 Jan 2006 15:04:05 -0700"
+)
+
 // Mon, 02 Jan 2006 15:04:05 MST
 // Tue, 07 Dec 2021 19:57:22 -0500
+// Fri, 6 Nov 2020 19:32:35 +0000
 func ParseRFC1123(date string) (t time.Time) {
 	if date == "" {
 		return t
 	}
 	var err error
-	t, err = time.Parse(time.RFC1123, date)
-	if err != nil {
-		t, err = time.Parse(time.RFC1123Z, date)
-		if err != nil {
-			t = time.Time{}
+	layouts := []string{time.RFC1123, time.RFC1123Z, RFC1123_1, RFC1123_2, RFC1123Z_1, RFC1123Z_2}
+	for _, layout := range layouts {
+		t, err = time.Parse(layout, date)
+		if err == nil {
+			return t
 		}
 	}
-	return t
+	return time.Time{}
 }
 
 const (
