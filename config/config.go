@@ -452,6 +452,7 @@ func configDefaults(v *viper.Viper) {
 		"https://www.pbs.org/newshour/feeds/rss/podcasts/show",
 		"http://feeds.feedburner.com/TEDTalks_audio",
 		"https://feeds.eff.org/howtofixtheinternet",
+		"https://feeds.npr.org/510019/podcast.xml", // all songs considered
 	})
 
 	v.SetDefault("Progress.DB.Driver", "sqlite3")

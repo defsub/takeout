@@ -31,6 +31,10 @@ type Offset struct {
 	Date     time.Time `gorm:"uniqueIndex:idx_offset_date"`
 }
 
+type Offsets struct {
+	Offsets []Offset
+}
+
 func (o Offset) Valid() bool {
 	if len(o.User) == 0 || len(o.ETag) == 0 || o.Offset < 0 || o.Date.IsZero() {
 		return false

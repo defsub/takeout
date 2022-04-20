@@ -374,13 +374,12 @@ func (handler *UserHandler) apiPlaylist(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-// GET /api/progress > []Offset{}
+// GET /api/progress > Offsets
 // 200: success
 // 500: error
 //
-// POST /api/progress < Offset{} > no content
-// 201: created
-// 205: reset content, newer offset exists
+// POST /api/progress < Offsets > no content
+// 204: accepted no response
 // 400: error
 // 500: error
 //
@@ -391,37 +390,43 @@ func (handler *UserHandler) apiPlaylist(w http.ResponseWriter, r *http.Request) 
 func (handler *UserHandler) apiProgress(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
-		var offset progress.Offset
+		var offsets progress.Offsets
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			log.Printf("err1 %s\n", err)
 			badRequest(w, err)
 			return
 		}
-		err = json.Unmarshal(body, &offset)
+		err = json.Unmarshal(body, &offsets)
 		if err != nil {
 			log.Printf("err2 %s\n", err)
 			badRequest(w, err)
 			return
 		}
-		if len(offset.User) != 0 {
-			// post must not have a user
-			log.Printf("err3 %s\n", err)
-			badRequest(w, err)
-			return
+		for i := range offsets.Offsets {
+			// will update array inplace
+			o := offsets.Offsets[i]
+			if len(o.User) != 0 {
+				// post must not have a user
+				log.Printf("err3 %s\n", err)
+				badRequest(w, err)
+				return
+			}
+			// use authenticated user
+			o.User = handler.user.Name
+			if !o.Valid() {
+				log.Printf("err4 %s\n", ErrInvalidOffset)
+				badRequest(w, ErrInvalidOffset)
+				return
+			}
 		}
-		// use authenticated user
-		offset.User = handler.user.Name
-		if !offset.Valid() {
-			log.Printf("err4 %s\n", ErrInvalidOffset)
-			badRequest(w, ErrInvalidOffset)
-			return
-		}
-		err = handler.progress().Update(handler.user, offset)
-		if err == progress.ErrOffsetTooOld {
-			log.Printf("err5 %s\n", err)
-			w.WriteHeader(http.StatusResetContent)
-			return
+		for _, o := range offsets.Offsets {
+			// update each offset as needed
+			log.Printf("update progress %s %d/%d\n", o.ETag, o.Offset, o.Duration)
+			err = handler.progress().Update(handler.user, o)
+			if err == progress.ErrOffsetTooOld {
+				log.Printf("err5 %s\n", err)
+			}
 		}
 		w.WriteHeader(http.StatusNoContent)
 	case "GET":
