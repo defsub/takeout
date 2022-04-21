@@ -29,6 +29,7 @@ import (
 
 var (
 	ErrOffsetTooOld = errors.New("offset is old")
+	ErrOffsetSame   = errors.New("offset is the same")
 	ErrAccessDenied = errors.New("access denied")
 )
 
@@ -70,6 +71,8 @@ func (p *Progress) Update(user *auth.User, newOffset Offset) error {
 	if offset != nil {
 		if newOffset.Date.Before(offset.Date) {
 			return ErrOffsetTooOld
+		} else if newOffset.Date == offset.Date {
+			return ErrOffsetSame
 		}
 		offset.Offset = newOffset.Offset
 		offset.Date = newOffset.Date

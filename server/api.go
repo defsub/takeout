@@ -424,7 +424,7 @@ func (handler *UserHandler) apiProgress(w http.ResponseWriter, r *http.Request) 
 			// update each offset as needed
 			log.Printf("update progress %s %d/%d\n", o.ETag, o.Offset, o.Duration)
 			err = handler.progress().Update(handler.user, o)
-			if err == progress.ErrOffsetTooOld {
+			if err != nil {
 				log.Printf("err5 %s\n", err)
 			}
 		}
