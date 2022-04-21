@@ -405,7 +405,7 @@ func (handler *UserHandler) apiProgress(w http.ResponseWriter, r *http.Request) 
 		}
 		for i := range offsets.Offsets {
 			// will update array inplace
-			o := offsets.Offsets[i]
+			o := &offsets.Offsets[i]
 			if len(o.User) != 0 {
 				// post must not have a user
 				log.Printf("err3 %s\n", err)
