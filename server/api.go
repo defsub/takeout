@@ -393,13 +393,11 @@ func (handler *UserHandler) apiProgress(w http.ResponseWriter, r *http.Request) 
 		var offsets progress.Offsets
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			log.Printf("err1 %s\n", err)
 			badRequest(w, err)
 			return
 		}
 		err = json.Unmarshal(body, &offsets)
 		if err != nil {
-			log.Printf("err2 %s\n", err)
 			badRequest(w, err)
 			return
 		}
@@ -408,14 +406,12 @@ func (handler *UserHandler) apiProgress(w http.ResponseWriter, r *http.Request) 
 			o := &offsets.Offsets[i]
 			if len(o.User) != 0 {
 				// post must not have a user
-				log.Printf("err3 %s\n", err)
 				badRequest(w, err)
 				return
 			}
 			// use authenticated user
 			o.User = handler.user.Name
 			if !o.Valid() {
-				log.Printf("err4 %s\n", ErrInvalidOffset)
 				badRequest(w, ErrInvalidOffset)
 				return
 			}
@@ -424,9 +420,6 @@ func (handler *UserHandler) apiProgress(w http.ResponseWriter, r *http.Request) 
 			// update each offset as needed
 			log.Printf("update progress %s %d/%d\n", o.ETag, o.Offset, o.Duration)
 			err = handler.progress().Update(handler.user, o)
-			if err != nil {
-				log.Printf("err5 %s\n", err)
-			}
 		}
 		w.WriteHeader(http.StatusNoContent)
 	case "GET":
