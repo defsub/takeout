@@ -88,7 +88,7 @@ func doit() {
 			cover := config.TMDB.FileTemplate.Execute(vars)
 
 			fmt.Printf("%s\n", title)
-			poster := m.MovieOriginalPoster(v.PosterPath).String()
+			poster := m.OriginalPoster(v.PosterPath).String()
 			fmt.Printf("%s\n", poster)
 			if len(v.GenreIDs) > 0 {
 				for i, id := range v.GenreIDs {
