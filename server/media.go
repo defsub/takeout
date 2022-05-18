@@ -86,7 +86,6 @@ func (Media) makeMusic(config *config.Config) (*music.Music, error) {
 }
 
 func (Media) makeVideo(config *config.Config) (*video.Video, error) {
-	log.Println("OpenVideo")
 	v := video.NewVideo(config)
 	err := v.Open()
 	if err != nil {

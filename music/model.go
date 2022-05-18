@@ -47,7 +47,7 @@ type Release struct {
 	Disambiguation string
 	Asin           string
 	Country        string
-	Type           string
+	Type           string `gorm:"index:idx_release_type"`
 	SecondaryType  string
 	Date           time.Time // rg first release
 	ReleaseDate    time.Time // re release date
@@ -60,6 +60,7 @@ type Release struct {
 	OtherArtwork   string
 	GroupArtwork   bool
 	Media          []Media `gorm:"-"`
+	SingleName     string  `gorm:"index:idx_release_single_name"`
 }
 
 func (r Release) official() bool {
@@ -122,10 +123,10 @@ type Track struct {
 	gorm.Model
 	Artist       string `spiff:"creator" gorm:"index:idx_track_artist"`
 	Release      string `gorm:"index:idx_track_release"`
-	Date         string
+	Date         string `gorm:"index:idx_track_date"`
 	TrackNum     int `spiff:"tracknum"`
 	DiscNum      int
-	Title        string `spiff:"title"`
+	Title        string `spiff:"title" gorm:"index:idx_track_title"`
 	Key          string // TODO - unique constraint
 	Size         int64
 	ETag         string

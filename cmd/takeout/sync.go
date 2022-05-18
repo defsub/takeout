@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/defsub/takeout/config"
+	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/music"
 	"github.com/defsub/takeout/podcast"
 	"github.com/defsub/takeout/video"
@@ -71,7 +72,11 @@ func sync() {
 
 func syncMusic(cfg *config.Config) {
 	m := music.NewMusic(cfg)
-	m.Open()
+	err := m.Open()
+	if err != nil {
+		log.Println(err)
+		return
+	}
 	defer m.Close()
 	syncOptions := music.NewSyncOptions()
 	syncOptions.Since = since(m.LastModified())

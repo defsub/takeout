@@ -296,6 +296,12 @@ func (rg ReleaseGroup) SortedGenres() []Genre {
 }
 
 const (
+	PrimaryTypeAlbum     = "Album"
+	PrimaryTypeSingle    = "Single"
+	PrimaryTypeEP        = "EP"
+	PrimaryTypeBroadcast = "Broadcast"
+	PrimaryTypeOther     = "Other"
+
 	TypeCompilation   = "Compilation"
 	TypeSoundtrack    = "Soundtrack"
 	TypeSpokenword    = "Spokenword"
