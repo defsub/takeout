@@ -28,6 +28,7 @@ import (
 	"github.com/defsub/takeout/podcast"
 	"github.com/defsub/takeout/progress"
 	"github.com/defsub/takeout/video"
+	"github.com/defsub/takeout/lib/hub"
 )
 
 func makeAuth(config *config.Config) (*auth.Auth, error) {
@@ -36,10 +37,22 @@ func makeAuth(config *config.Config) (*auth.Auth, error) {
 	return a, err
 }
 
+func makeHub(config *config.Config) (*hub.Hub, error) {
+	h := hub.NewHub()
+	go h.Run()
+	return h, nil
+}
+
 type Handler struct {
 	config   *config.Config
 	auth     *auth.Auth
 	template *template.Template
+}
+
+type HubHandler struct {
+	config   *config.Config
+	auth     *auth.Auth
+	hub      *hub.Hub
 }
 
 type UserHandler struct {

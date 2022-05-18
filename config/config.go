@@ -453,6 +453,7 @@ func configDefaults(v *viper.Viper) {
 		"http://feeds.feedburner.com/TEDTalks_audio",
 		"https://feeds.eff.org/howtofixtheinternet",
 		"https://feeds.npr.org/510019/podcast.xml", // all songs considered
+		"https://rss.art19.com/rotten-tomatoes-is-wrong",
 	})
 
 	v.SetDefault("Progress.DB.Driver", "sqlite3")
@@ -472,7 +473,8 @@ func readConfig(v *viper.Viper) (*Config, error) {
 	for _, k := range v.AllKeys() {
 		if pathRegexp.MatchString(k) {
 			val := v.Get(k)
-			if strings.HasPrefix(val.(string), "/") == false {
+			if strings.HasPrefix(val.(string), "/") == false &&
+				strings.Contains(val.(string), "@") == false {
 				val = fmt.Sprintf("%s/%s", dir, val.(string))
 				v.Set(k, val)
 			}

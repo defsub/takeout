@@ -35,7 +35,6 @@ import (
 	"github.com/defsub/takeout/music"
 	"github.com/defsub/takeout/progress"
 	"github.com/defsub/takeout/ref"
-	"github.com/gorilla/websocket"
 )
 
 type login struct {
@@ -142,32 +141,6 @@ func (handler *UserHandler) apiRadio(w http.ResponseWriter, r *http.Request) {
 		enc.Encode(s)
 	default:
 		http.Error(w, "bummer", http.StatusBadRequest)
-	}
-}
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-}
-
-func (handler *UserHandler) apiLive(w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, "bummer", http.StatusBadRequest)
-		return
-	}
-	for {
-		messageType, p, err := conn.ReadMessage()
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		log.Printf("%v %s\n", messageType, p)
-		if err := conn.WriteMessage(messageType, p); err != nil {
-			log.Println(err)
-			return
-		}
 	}
 }
 
@@ -479,13 +452,6 @@ func (handler *UserHandler) apiSearch(w http.ResponseWriter, r *http.Request) {
 func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", ApplicationJson)
 
-	// if r.URL.Path == "/api/live" {
-	// 	m := &music.Music{}
-	// 	//defer music.Close()
-	// 	handler.apiLive(w, r, m)
-	// 	return
-	// }
-
 	// if r.URL.Path == "/api/watch" {
 	// 	v := video.NewVideo(handler.config)
 	// 	v.Open()
@@ -505,8 +471,6 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 		handler.apiProgress(w, r)
 	case "/api/radio":
 		handler.apiRadio(w, r)
-	case "/api/live":
-		handler.apiLive(w, r)
 	case "/api/index":
 		handler.apiView(w, r, handler.indexView())
 	case "/api/home":

@@ -77,7 +77,7 @@ func RateLimit(host string) {
 }
 
 func (c *Client) doGet(headers map[string]string, urlStr string) (*http.Response, error) {
-	//log.Printf("doGet %s\n", urlStr)
+	// log.Printf("doGet %s\n", urlStr)
 	url, _ := url.Parse(urlStr)
 	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
 	if err != nil {

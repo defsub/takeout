@@ -169,6 +169,8 @@ func Serve(config *config.Config) {
 		log.CheckError(err)
 	}
 
+	hub, err := makeHub(config)
+
 	makeHandler := func() *Handler {
 		return &Handler{
 			auth:     auth,
@@ -176,6 +178,19 @@ func Serve(config *config.Config) {
 			template: template,
 		}
 	}
+
+	// makeHubHandler := func(w http.ResponseWriter, r *http.Request) *HubHandler {
+	// 	handler := makeHandler()
+	// 	user := handler.authorize(w, r)
+	// 	if user == nil {
+	// 		return nil
+	// 	}
+	// 	return &HubHandler{
+	// 		auth:   auth,
+	// 		config: config,
+	// 		hub:    hub,
+	// 	}
+	// }
 
 	makeUserHandler := func(w http.ResponseWriter, r *http.Request) *UserHandler {
 		handler := makeHandler()
@@ -234,6 +249,13 @@ func Serve(config *config.Config) {
 		}
 	}
 
+	hubHandler := func(w http.ResponseWriter, r *http.Request) {
+		userHandler := makeUserHandler(w, r)
+		if userHandler != nil {
+			hub.Handle(w, r)
+		}
+	}
+
 	http.Handle("/static/", http.FileServer(getStaticFS(config)))
 	http.HandleFunc("/tracks", tracksHandler)
 	http.HandleFunc("/", viewHandler)
@@ -243,6 +265,7 @@ func Serve(config *config.Config) {
 	http.HandleFunc("/api/login", apiLoginHandler)
 	http.HandleFunc("/api/", apiHandler)
 	http.HandleFunc("/hook/", hookHandler)
+	http.HandleFunc("/share", hubHandler)
 	log.Printf("listening on %s\n", config.Server.Listen)
 	http.ListenAndServe(config.Server.Listen, nil)
 }

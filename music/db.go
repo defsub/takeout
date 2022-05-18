@@ -22,6 +22,8 @@ import (
 	"time"
 
 	"github.com/defsub/takeout/auth"
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -38,9 +40,15 @@ func (m *Music) openDB() (err error) {
 		Logger: glog,
 	}
 
-	if m.config.Music.DB.Driver == "sqlite3" {
+	switch m.config.Music.DB.Driver {
+	case "sqlite3":
 		m.db, err = gorm.Open(sqlite.Open(m.config.Music.DB.Source), cfg)
-	} else {
+	case "mysql":
+		m.db, err = gorm.Open(mysql.Open(m.config.Music.DB.Source), cfg)
+	case "postgres":
+		// postgres untested
+		m.db, err = gorm.Open(postgres.Open(m.config.Music.DB.Source), cfg)
+	default:
 		err = errors.New("driver not supported")
 	}
 
@@ -105,9 +113,9 @@ func (m *Music) ArtistLike(artist string) *Artist {
 // matches.
 func (m *Music) updateTrackCount() error {
 	rows, err := m.db.Table("tracks").
-		Select("artist, release, date, count(title), max(disc_num)").
-		Group("artist, release, date").
-		Order("artist, release").Rows()
+		Select("artist, `release`, date, count(title), max(disc_num)").
+		Group("artist, `release`, date").
+		Order("artist, `release`").Rows()
 	if err != nil {
 		return err
 	}
@@ -128,7 +136,7 @@ func (m *Music) updateTrackCount() error {
 
 	for _, v := range results {
 		err = m.db.Table("tracks").
-			Where("artist = ? and release = ? and date = ?", v["artist"], v["release"], v["date"]).
+			Where("artist = ? and `release` = ? and date = ?", v["artist"], v["release"], v["date"]).
 			Updates(Track{TrackCount: v["trackCount"].(int), DiscCount: v["discCount"].(int)}).Error
 		if err != nil {
 			return err
@@ -159,7 +167,7 @@ func (m *Music) updateTrackArtist(oldName, newName string) (err error) {
 func (m *Music) updateTrackRelease(artist, oldName, newName string,
 	trackCount, discCount int) (err error) {
 	var tracks []Track
-	m.db.Where("artist = ? and release = ? and track_count = ?",
+	m.db.Where("artist = ? and `release` = ? and track_count = ?",
 		artist, oldName, trackCount).Find(&tracks)
 	for _, t := range tracks {
 		err = m.db.Model(t).
@@ -415,30 +423,15 @@ func (m *Music) ArtistSingleTracks(a Artist, limit ...int) []Track {
 		l = limit[0]
 	}
 
-	// select title from tracks inner join releases on tracks.re_id =
-	// releases.re_id where tracks.artist = 'Rage Against the Machine' and
-	// title in (select name from releases where artist = 'Rage Against the
-	// Machine' and type = 'Single') group by tracks.title having
-	// releases.date = min(releases.date) order by releases.date;
-	//
-	// singles can also be named 'a-side / b-side'
-	// find the a-sides:
-	// select distinct substr(name, 0, instr(name, ' / ')) from releases where type = 'Single' and name like '% / %';
-	//
-	// Example:
-	//  Metronomic Underground / Percolations
-	//  Jumpsuit / Nico and the Niners
-	//  She's Lost Control / Atmosphere
-	m.db.Where("tracks.artist = ?"+
-		" and (tracks.title in (select distinct name from releases where artist = ? and type = 'Single')"+
-		" or tracks.title in (select distinct substr(name, 0, instr(name, ' / ')) from releases where artist = ? and type = 'Single' and name like '% / %'))",
-		a.Name, a.Name, a.Name).
-		Joins("inner join releases on tracks.re_id = releases.re_id").
+	m.db.Where("b.title is null and tracks.artist = ?"+
+		" and tracks.title in (select distinct single_name from releases where artist = ? and type = 'Single')"+
+		a.Name, a.Name).
+		Joins("left outer join tracks b on tracks.title = b.title and tracks.date > b.date").
 		Group("tracks.title").
-		Having("releases.date = min(releases.date)").
-		Order("releases.date").
+		Order("tracks.date").
 		Limit(l).
 		Find(&tracks)
+
 	return tracks
 }
 
@@ -449,17 +442,17 @@ func (m *Music) ArtistPopularTracks(a Artist, limit ...int) []Track {
 		l = limit[0]
 	}
 
-	// select tracks.title, tracks.release from tracks inner join releases
-	// on tracks.re_id = releases.re_id inner join popular on tracks.title
-	// = popular.title and tracks.artist = popular.artist where
-	// tracks.artist = 'Rage Against the Machine' group by tracks.title
-	// having releases.date = min(releases.date) order by popular.rank;
-	m.db.Where("tracks.artist = ?", a.Name).
-		Joins("inner join popular on tracks.artist = popular.artist" +
-			" and tracks.title = popular.title").
-		Joins("inner join releases on tracks.re_id = releases.re_id").
+	// select tracks.title, tracks.date from tracks
+	// left outer join tracks b on tracks.title = b.title and tracks.date > b.date
+	// inner join popular on tracks.artist = popular.artist and tracks.title = popular.title
+	// where b.title is null and tracks.artist = 'Gary Numan'
+	// group by tracks.title
+	// order by popular.rank;
+
+	m.db.Where("b.title is null and tracks.artist = ?", a.Name).
+		Joins("left outer join tracks b on tracks.title = b.title and tracks.date > b.date").
+		Joins("inner join popular on tracks.artist = popular.artist and tracks.title = popular.title").
 		Group("tracks.title").
-		Having("releases.date = min(releases.date)").
 		Order("popular.rank").
 		Limit(l).
 		Find(&tracks)
@@ -473,7 +466,7 @@ func (m *Music) artistDeepTracks(a Artist, limit ...int) []Track {
 		l = limit[0]
 	}
 	popularTracks := "select popular.title from popular where tracks.artist = popular.artist"
-	singleTracks := "select releases.name from releases where tracks.artist = releases.artist and releases.type = 'Single'"
+	singleTracks := "select releases.single_name from releases where tracks.artist = releases.artist and releases.type = 'Single'"
 	m.db.Where("tracks.artist = ?"+
 		" and tracks.title not in ("+popularTracks+")"+
 		" and tracks.title not in ("+singleTracks+")",
@@ -566,9 +559,15 @@ func (m *Music) ArtistReleases(a *Artist) []Release {
 // RecentLimit to tune the result count.
 func (m *Music) RecentlyAdded() []Release {
 	var releases []Release
-	m.db.Joins("inner join tracks on tracks.re_id = releases.re_id").
+
+	// select releases.name from releases inner join tracks on tracks.re_id
+	// = releases.re_id and tracks.last_modified > '2022-01-01' group by
+	// releases.artist, releases.name order by tracks.last_modified desc
+	// limit 100;
+
+	m.db.Joins("inner join tracks on tracks.re_id = releases.re_id"+
+		" and tracks.last_modified >= ?", time.Now().Add(m.config.Music.Recent*-1)).
 		Group("releases.artist, releases.name").
-		Having("tracks.last_modified >= ?", time.Now().Add(m.config.Music.Recent*-1)).
 		Order("tracks.last_modified desc").
 		Limit(m.config.Music.RecentLimit).
 		Find(&releases)
@@ -638,8 +637,8 @@ func (m *Music) releaseMedia(release Release) []Media {
 func (m *Music) ReleaseSingles(release Release) []Track {
 	var tracks []Track
 	m.db.Where("tracks.re_id = ? and"+
-		" exists (select releases.name from releases where tracks.artist = releases.artist"+
-		" and releases.type = 'Single' and releases.name = tracks.title)",
+		" exists (select releases.single_name from releases where tracks.artist = releases.artist"+
+		" and releases.type = 'Single' and releases.single_name = tracks.title)",
 		release.REID).
 		Order("tracks.disc_num, tracks.track_num").Find(&tracks)
 	return tracks

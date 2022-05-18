@@ -125,7 +125,16 @@ func (m *Music) Sync(options SyncOptions) {
 		}
 		var artists []Artist
 		if options.Artist != "" {
-			artists = []Artist{*m.Artist(options.Artist)}
+			a := m.Artist(options.Artist)
+			if a != nil {
+				artists = []Artist{*a}
+			} else {
+				a, err := m.syncArtist(options.Artist)
+				log.CheckError(err)
+				if a != nil {
+					artists = []Artist{*a}
+				}
+			}
 		} else {
 			artists = m.trackArtistsSince(options.Since)
 		}
@@ -257,6 +266,7 @@ func (m *Music) syncReleasesFor(artists []Artist) error {
 		}
 		for _, r := range releases {
 			r.Name = fixName(r.Name)
+			r.SingleName = fixName(r.SingleName)
 			for i := range r.Media {
 				r.Media[i].Name = fixName(r.Media[i].Name)
 			}
@@ -811,47 +821,55 @@ func (m *Music) resolve() error {
 func (m *Music) syncArtists() error {
 	artists := m.trackArtistNames()
 	for _, name := range artists {
-		var tags []ArtistTag
-		artist := m.Artist(name)
-		if artist == nil {
-			artist, tags = m.resolveArtist(name)
-			if artist != nil {
-				artist.Name = fixName(artist.Name)
-				log.Printf("creating %s\n", artist.Name)
-				m.createArtist(artist)
-				for _, t := range tags {
-					t.Artist = artist.Name
-					m.createArtistTag(&t)
-				}
-			}
-		}
-
-		if artist == nil {
-			err := errors.New(fmt.Sprintf("'%s' artist not found", name))
-			log.Printf("%s\n", err)
-			continue
-		}
-
-		if name != artist.Name {
-			// fix track artist name: AC_DC -> AC/DC
-			log.Printf("fixing name %s to %s\n", name, artist.Name)
-			m.updateTrackArtist(name, artist.Name)
-		}
-
-		detail, err := m.mbz.ArtistDetail(artist.ARID)
+		_, err := m.syncArtist(name)
 		if err != nil {
-			log.Printf("%s\n", err)
-			continue
+			return err
 		}
-		artist.Disambiguation = detail.Disambiguation
-		artist.Country = detail.Country
-		artist.Area = detail.Area.Name
-		artist.Date = date.ParseDate(detail.LifeSpan.Begin)
-		artist.EndDate = date.ParseDate(detail.LifeSpan.End)
-		artist.Genre = detail.PrimaryGenre()
-		m.updateArtist(artist)
 	}
 	return nil
+}
+
+func (m *Music) syncArtist(name string) (*Artist, error) {
+	var tags []ArtistTag
+	artist := m.Artist(name)
+	if artist == nil {
+		artist, tags = m.resolveArtist(name)
+		if artist != nil {
+			artist.Name = fixName(artist.Name)
+			log.Printf("creating %s\n", artist.Name)
+			m.createArtist(artist)
+			for _, t := range tags {
+				t.Artist = artist.Name
+				m.createArtistTag(&t)
+			}
+		}
+	}
+
+	if artist == nil {
+		err := errors.New(fmt.Sprintf("'%s' artist not found", name))
+		log.Printf("%s\n", err)
+		return artist, nil // TODO ignore error?
+	}
+
+	if name != artist.Name {
+		// fix track artist name: AC_DC -> AC/DC
+		log.Printf("fixing name %s to %s\n", name, artist.Name)
+		m.updateTrackArtist(name, artist.Name)
+	}
+
+	detail, err := m.mbz.ArtistDetail(artist.ARID)
+	if err != nil {
+		log.Printf("%s\n", err)
+		return artist, nil // TODO ignore error?
+	}
+	artist.Disambiguation = detail.Disambiguation
+	artist.Country = detail.Country
+	artist.Area = detail.Area.Name
+	artist.Date = date.ParseDate(detail.LifeSpan.Begin)
+	artist.EndDate = date.ParseDate(detail.LifeSpan.End)
+	artist.Genre = detail.PrimaryGenre()
+	m.updateArtist(artist)
+	return artist, nil
 }
 
 // Try MusicBrainz and Last.fm to find an artist. Fortunately Last.fm
@@ -1051,6 +1069,16 @@ func doArtist(artist *musicbrainz.Artist) (a *Artist, tags []ArtistTag) {
 	return
 }
 
+// MusicBrainz has release tiles that are primarily singles which are
+// multi-title, generally side-a / side-b. Some even have 4 or 5 titles,
+// separated by slash.
+//
+// title / title [ / title ... ]
+func singleNames(name string) []string {
+	names := strings.Split(name, " / ")
+	return names
+}
+
 func doRelease(artist string, r musicbrainz.Release) Release {
 	disambiguation := r.Disambiguation
 	if disambiguation == "" {
@@ -1065,6 +1093,17 @@ func doRelease(artist string, r musicbrainz.Release) Release {
 			Position:   m.Position,
 			Format:     m.Format,
 			TrackCount: m.TrackCount})
+	}
+
+	var singleName string
+	if r.ReleaseGroup.PrimaryType == musicbrainz.PrimaryTypeSingle {
+		singleName = r.Title
+		// try to get a primary single title name
+		// title a / title b will yield "title a"
+		names := singleNames(singleName)
+		if names[0] != singleName {
+			singleName = names[0]
+		}
 	}
 
 	return Release{
@@ -1086,5 +1125,6 @@ func doRelease(artist string, r musicbrainz.Release) Release {
 		Date:           r.ReleaseGroup.FirstReleaseTime(),
 		ReleaseDate:    date.ParseDate(r.Date),
 		Status:         r.Status,
+		SingleName:     singleName,
 	}
 }
