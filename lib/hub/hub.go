@@ -21,8 +21,11 @@ import (
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/defsub/takeout/lib/log"
-	"io"
+	"net"
 	"net/http"
+	"time"
+	"errors"
+	"os"
 )
 
 type Authenticator interface {
@@ -42,7 +45,7 @@ type Hub struct {
 	unregister chan *Client
 }
 
-type Conn io.ReadWriteCloser
+type Conn net.Conn
 
 type Client struct {
 	id   int64
@@ -129,6 +132,11 @@ func (h *Hub) Handle(auth Authenticator, w http.ResponseWriter, r *http.Request)
 	go c.writer()
 }
 
+func (c *Client) ping() error {
+	err := wsutil.WriteServerMessage(c.conn, ws.OpPing, []byte{})
+	return err
+}
+
 func (c *Client) reader() {
 	defer func() {
 		c.hub.unregister <- c
@@ -136,8 +144,16 @@ func (c *Client) reader() {
 	}()
 
 	for {
+		c.conn.SetReadDeadline(time.Now().Add(45 * time.Second))
 		msg, err := wsutil.ReadClientText(c.conn)
-		if err != nil {
+		if err != nil && errors.Is(err, os.ErrDeadlineExceeded) {
+			err = c.ping()
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			continue
+		} else if err != nil {
 			log.Println(err)
 			return
 		}
