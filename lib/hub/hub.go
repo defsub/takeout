@@ -25,6 +25,10 @@ import (
 	"net/http"
 )
 
+type Authenticator interface {
+	Authenticate(string) bool
+}
+
 type Message struct {
 	sender *Client
 	body   []byte
@@ -98,7 +102,7 @@ func (h *Hub) Run() {
 	}
 }
 
-func (h *Hub) Handle(w http.ResponseWriter, r *http.Request) {
+func (h *Hub) Handle(auth Authenticator, w http.ResponseWriter, r *http.Request) {
 	conn, _, _, err := ws.UpgradeHTTP(r, w)
 	if err != nil {
 		log.Println(err)
@@ -111,6 +115,17 @@ func (h *Hub) Handle(w http.ResponseWriter, r *http.Request) {
 		conn: conn,
 		send: make(chan Message, 3),
 	}
+
+	token, err := wsutil.ReadClientText(c.conn)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if auth.Authenticate(string(token)) == false {
+		log.Printf("bad token %s\n", string(token))
+		return
+	}
+	log.Printf("token is good\n")
 
 	c.hub.register <- c
 
