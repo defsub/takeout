@@ -270,6 +270,11 @@ func (a *Auth) UserAuthValue(value string) (*User, error) {
 	return &u, nil
 }
 
+func (a *Auth) Authenticate(value string) bool {
+	session := a.findSession(value)
+	return session != nil
+}
+
 func (a *Auth) AssignedMedia() []string {
 	var list []string
 	rows, err := a.db.Table("users").

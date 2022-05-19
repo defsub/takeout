@@ -250,10 +250,7 @@ func Serve(config *config.Config) {
 	}
 
 	hubHandler := func(w http.ResponseWriter, r *http.Request) {
-		userHandler := makeUserHandler(w, r)
-		if userHandler != nil {
-			hub.Handle(w, r)
-		}
+		hub.Handle(auth, w, r)
 	}
 
 	http.Handle("/static/", http.FileServer(getStaticFS(config)))
