@@ -44,10 +44,6 @@ type Hub struct {
 
 type Conn io.ReadWriteCloser
 
-// type Conn interface {
-// 	io.ReadWriteCloser
-// }
-
 type Client struct {
 	id   int64
 	hub  *Hub

@@ -249,7 +249,7 @@ func Serve(config *config.Config) {
 		}
 	}
 
-	hubHandler := func(w http.ResponseWriter, r *http.Request) {
+	liveHandler := func(w http.ResponseWriter, r *http.Request) {
 		hub.Handle(auth, w, r)
 	}
 
@@ -262,7 +262,7 @@ func Serve(config *config.Config) {
 	http.HandleFunc("/api/login", apiLoginHandler)
 	http.HandleFunc("/api/", apiHandler)
 	http.HandleFunc("/hook/", hookHandler)
-	http.HandleFunc("/share", hubHandler)
+	http.HandleFunc("/live", liveHandler)
 	log.Printf("listening on %s\n", config.Server.Listen)
 	http.ListenAndServe(config.Server.Listen, nil)
 }
