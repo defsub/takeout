@@ -198,7 +198,7 @@ type OffsetView struct {
 
 func (handler *UserHandler) indexView() *IndexView {
 	view := &IndexView{}
-	view.Time = time.Now().Unix()
+	view.Time = time.Now().UnixMilli()
 	view.HasMusic = handler.media.music.HasMusic()
 	view.HasMovies = handler.media.video.HasMovies()
 	view.HasPodcasts = handler.media.podcast.HasPodcasts()
