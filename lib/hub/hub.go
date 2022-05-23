@@ -18,6 +18,7 @@
 package hub
 
 import (
+	"fmt"
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/defsub/takeout/lib/log"
@@ -26,6 +27,7 @@ import (
 	"time"
 	"errors"
 	"os"
+	"strings"
 )
 
 type Authenticator interface {
@@ -115,20 +117,19 @@ func (h *Hub) Handle(auth Authenticator, w http.ResponseWriter, r *http.Request)
 		send: make(chan Message, 3),
 	}
 
-	token, err := wsutil.ReadClientText(c.conn)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	if auth.Authenticate(string(token)) == false {
-		log.Printf("bad token %s\n", string(token))
-		return
-	}
-	log.Printf("token is good\n")
+	// token, err := wsutil.ReadClientText(c.conn)
+	// if err != nil {
+	// 	log.Println(err)
+	// 	return
+	// }
+	// if auth.Authenticate(string(token)) == false {
+	// 	log.Printf("bad token %s\n", string(token))
+	// 	return
+	// }
+	// log.Printf("token is good\n")
+	// c.hub.register <- c
 
-	c.hub.register <- c
-
-	go c.reader()
+	go c.reader(auth)
 	go c.writer()
 }
 
@@ -137,16 +138,42 @@ func (c *Client) ping() error {
 	return err
 }
 
-func (c *Client) reader() {
+func (c *Client) reader(auth Authenticator) {
 	defer func() {
 		c.hub.unregister <- c
 		c.conn.Close()
 	}()
 
+	// auth is required first
+	c.conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	msg, err := wsutil.ReadClientText(c.conn)
+	if err != nil {
+		// timeout or error
+		log.Println(err)
+		return
+	}
+	log.Printf("got: %s\n", string(msg))
+	cmd := strings.Split(string(msg), " ")
+	if cmd[0] != "/auth" {
+		// only auth is allowed
+		log.Println("not /auth")
+		return
+	}
+	token := cmd[1]
+	if auth.Authenticate(string(token)) == false {
+		// auth failed
+		log.Printf("bad token %s\n", string(token))
+		return
+	}
+
+	// register authenticate client
+	c.hub.register <- c
+
 	for {
 		c.conn.SetReadDeadline(time.Now().Add(45 * time.Second))
 		msg, err := wsutil.ReadClientText(c.conn)
 		if err != nil && errors.Is(err, os.ErrDeadlineExceeded) {
+			// keep alive with pings
 			err = c.ping()
 			if err != nil {
 				log.Println(err)
@@ -158,7 +185,21 @@ func (c *Client) reader() {
 			return
 		}
 		log.Printf("got: %s\n", string(msg))
-		c.hub.broadcast <- Message{sender: c, body: msg}
+		if msg[0] == byte('/') {
+			cmd := strings.Split(string(msg[1:]), " ")
+			switch cmd[0] {
+			case "ping":
+				if len(cmd) == 2 {
+					// "/ping time"
+					pong := fmt.Sprintf("/pong %s", cmd[1])
+					c.send <- Message{body: []byte(pong)}
+				}
+			default:
+				log.Printf("ignore '%s'\n", cmd[0])
+			}
+		} else {
+			c.hub.broadcast <- Message{sender: c, body: msg}
+		}
 	}
 }
 
