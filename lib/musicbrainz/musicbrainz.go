@@ -543,7 +543,6 @@ func (m *MusicBrainz) doArtistSearch(query string, limit int, offset int) (*Arti
 	var result ArtistsPage
 	url := fmt.Sprintf(`https://musicbrainz.org/ws/2/artist?fmt=json&query=%s&limit=%d&offset=%d`,
 		url.QueryEscape(query), limit, offset)
-	fmt.Println(url)
 	err := m.client.GetJson(url, &result)
 	return &result, err
 }
