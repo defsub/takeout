@@ -499,7 +499,7 @@ func (m *MusicBrainz) SearchArtist(name string) *Artist /*(a *music.Artist, tags
 	limit, offset := 100, 0
 
 	// can also add "AND type:group" or "AND type:person"
-	query := fmt.Sprintf(`artist:%s`, name)
+	query := fmt.Sprintf(`artist:"%s"`, name)
 	result, _ := m.doArtistSearch(query, limit, offset)
 	for _, r := range result.Artists {
 		artists = append(artists, r)
@@ -531,6 +531,7 @@ func (m *MusicBrainz) SearchArtist(name string) *Artist /*(a *music.Artist, tags
 func scoreFilter(artists []Artist, score int) []Artist {
 	result := []Artist{}
 	for _, v := range artists {
+		//fmt.Printf("%d %s\n", v.Score, v.Name)
 		if v.Score >= score {
 			result = append(result, v)
 		}
@@ -542,6 +543,7 @@ func (m *MusicBrainz) doArtistSearch(query string, limit int, offset int) (*Arti
 	var result ArtistsPage
 	url := fmt.Sprintf(`https://musicbrainz.org/ws/2/artist?fmt=json&query=%s&limit=%d&offset=%d`,
 		url.QueryEscape(query), limit, offset)
+	fmt.Println(url)
 	err := m.client.GetJson(url, &result)
 	return &result, err
 }

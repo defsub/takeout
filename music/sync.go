@@ -596,7 +596,7 @@ func (m *Music) fixTrackReleases() (bool, error) {
 			matched := false
 			for _, r := range releases {
 				// try fuzzy match
-				if FuzzyName(t.Release) == FuzzyName(r.Name) &&
+				if strings.EqualFold(FuzzyName(t.Release), FuzzyName(r.Name)) &&
 					t.TrackCount == r.TrackCount {
 					fixReleases[t.Release] = true
 					fixTracks = append(fixTracks, map[string]interface{}{

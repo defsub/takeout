@@ -117,18 +117,6 @@ func (h *Hub) Handle(auth Authenticator, w http.ResponseWriter, r *http.Request)
 		send: make(chan Message, 3),
 	}
 
-	// token, err := wsutil.ReadClientText(c.conn)
-	// if err != nil {
-	// 	log.Println(err)
-	// 	return
-	// }
-	// if auth.Authenticate(string(token)) == false {
-	// 	log.Printf("bad token %s\n", string(token))
-	// 	return
-	// }
-	// log.Printf("token is good\n")
-	// c.hub.register <- c
-
 	go c.reader(auth)
 	go c.writer()
 }
@@ -172,15 +160,14 @@ func (c *Client) reader(auth Authenticator) {
 	for {
 		c.conn.SetReadDeadline(time.Now().Add(45 * time.Second))
 		msg, err := wsutil.ReadClientText(c.conn)
-		if err != nil && errors.Is(err, os.ErrDeadlineExceeded) {
-			// keep alive with pings
-			err = c.ping()
-			if err != nil {
-				log.Println(err)
-				return
+		if err != nil {
+			if errors.Is(err, os.ErrDeadlineExceeded) {
+				// timeout, send ping
+				err = c.ping()
+				if err == nil {
+					continue
+				}
 			}
-			continue
-		} else if err != nil {
 			log.Println(err)
 			return
 		}
