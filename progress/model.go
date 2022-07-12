@@ -18,14 +18,15 @@
 package progress
 
 import (
-	"github.com/defsub/takeout/lib/gorm"
 	"time"
+
+	"github.com/defsub/takeout/lib/gorm"
 )
 
 type Offset struct {
 	gorm.Model
-	User     string    `gorm:"index:idx_offset_user;not null" json:"-"`
-	ETag     string    `gorm:"uniqueIndex:idx_offset_etag;uniqueIndex:idx_offset_date;not null"`
+	User     string    `gorm:"index:idx_offset_user;type:varchar" json:"-"`
+	ETag     string    `gorm:"uniqueIndex:idx_offset_etag;uniqueIndex:idx_offset_date"`
 	Offset   int       `gorm:"default:0"`
 	Duration int       `gorm:"default:0"`
 	Date     time.Time `gorm:"uniqueIndex:idx_offset_date"`
