@@ -362,8 +362,6 @@ Takeout.music = (function() {
 	    return true;
 	});
 
-	console.log("fooey");
-
 	try {
 	    window.AudioContext = window.AudioContext || window.webkitAudioContext;
 	    audioCtx = new AudioContext();
