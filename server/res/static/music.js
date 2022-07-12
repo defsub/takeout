@@ -126,17 +126,13 @@ Takeout.music = (function() {
     };
 
     const playNow = async function(track) {
-	console.log("playNow");
 	if (track['location'] != null) {
 	    audioSource().setAttribute("src", track['location']);
 	    updateTitle(track);
 	    current = track;
 	    audioTag().load();
-
-	    console.log("audio ctx is " + audioCtx.state);
 	    if (audioCtx.state === "suspended") {
 		audioCtx.resume().then(function() {
-		    console.log("resuming try again");
 		    playNow(track);
 		});
 	    } else if (audioCtx.state === "interrupted") {
@@ -366,11 +362,8 @@ Takeout.music = (function() {
 	    window.AudioContext = window.AudioContext || window.webkitAudioContext;
 	    audioCtx = new AudioContext();
 	    window.addEventListener("focus", function(e) {
-		console.log("focus state " + audioCtx.state);
 		if (audioCtx.state === "interrupted") {
-		    console.log("focus resuming");
 		    audioCtx.resume().then(function() {
-			console.log("resume complete");
 			playResume();
 		    });
 		}
