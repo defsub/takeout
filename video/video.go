@@ -33,6 +33,7 @@ type Video struct {
 	config  *config.Config
 	db      *gorm.DB
 	client  *client.Client
+	tmdb    *tmdb.TMDB
 	buckets []bucket.Bucket
 }
 
@@ -40,6 +41,7 @@ func NewVideo(config *config.Config) *Video {
 	return &Video{
 		config: config,
 		client: client.NewClient(config),
+		tmdb:   tmdb.NewTMDB(config),
 	}
 }
 
@@ -100,8 +102,7 @@ func (v *Video) MovieURL(m Movie) *url.URL {
 }
 
 func (v *Video) MoviePoster(m Movie) string {
-	client := tmdb.NewTMDB(v.config)
-	url := client.Poster(m.PosterPath, tmdb.Poster342)
+	url := v.tmdb.Poster(m.PosterPath, tmdb.Poster342)
 	if url == nil {
 		return ""
 	}
@@ -109,8 +110,7 @@ func (v *Video) MoviePoster(m Movie) string {
 }
 
 func (v *Video) MoviePosterSmall(m Movie) string {
-	client := tmdb.NewTMDB(v.config)
-	url := client.Poster(m.PosterPath, tmdb.Poster154)
+	url := v.tmdb.Poster(m.PosterPath, tmdb.Poster154)
 	if url == nil {
 		return ""
 	}
@@ -118,8 +118,7 @@ func (v *Video) MoviePosterSmall(m Movie) string {
 }
 
 func (v *Video) MovieBackdrop(m Movie) string {
-	client := tmdb.NewTMDB(v.config)
-	url := client.Backdrop(m.BackdropPath, tmdb.Backdrop1280)
+	url := v.tmdb.Backdrop(m.BackdropPath, tmdb.Backdrop1280)
 	if url == nil {
 		return ""
 	}
@@ -127,8 +126,7 @@ func (v *Video) MovieBackdrop(m Movie) string {
 }
 
 func (v *Video) PersonProfile(p Person) string {
-	client := tmdb.NewTMDB(v.config)
-	url := client.PersonProfile(p.ProfilePath, tmdb.Profile185)
+	url := v.tmdb.PersonProfile(p.ProfilePath, tmdb.Profile185)
 	if url == nil {
 		return ""
 	}

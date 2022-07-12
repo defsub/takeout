@@ -49,6 +49,9 @@ func NewMusicBrainz(config *config.Config) *MusicBrainz {
 // * getting original release dates (release groups)
 // * getting releases within groups that have different titles
 
+// json api to search for series
+// https://musicbrainz.org/ws/2/series?query=series:%22rock%22+AND+type:%22Recording+series%22
+
 type ArtistsPage struct {
 	Artists []Artist `json:"artists"`
 	Offset  int      `json:"offset"`

@@ -31,7 +31,13 @@ import (
 	"time"
 
 	"github.com/defsub/takeout"
+	"github.com/defsub/takeout/lib/log"
 	"github.com/spf13/viper"
+)
+
+var (
+	ErrTestConfig   = errors.New("missing test config")
+	ErrInvalidCache = errors.New("invalid cache entry")
 )
 
 const (
@@ -466,9 +472,16 @@ func userAgent() string {
 }
 
 func readConfig(v *viper.Viper) (*Config, error) {
+	err := v.ReadInConfig()
+	if err != nil {
+		return nil, err
+	}
+	return postProcessConfig(v)
+}
+
+func postProcessConfig(v *viper.Viper) (*Config, error) {
 	var config Config
 	var pathRegexp = regexp.MustCompile(`(file|dir|source)$`)
-	err := v.ReadInConfig()
 	dir := filepath.Dir(v.ConfigFileUsed())
 	for _, k := range v.AllKeys() {
 		if pathRegexp.MatchString(k) {
@@ -480,17 +493,15 @@ func readConfig(v *viper.Viper) (*Config, error) {
 			}
 		}
 	}
-	if err == nil {
-		err = v.Unmarshal(&config)
-		config.Music.readMaps()
-	}
+	err := v.Unmarshal(&config)
+	config.Music.readMaps()
 	return &config, err
 }
 
 func TestConfig() (*Config, error) {
 	testDir := os.Getenv("TEST_CONFIG")
 	if testDir == "" {
-		return nil, errors.New("missing test config")
+		return nil, ErrTestConfig
 	}
 	v := viper.New()
 	configDefaults(v)
@@ -514,6 +525,7 @@ func SetConfigName(name string) {
 	configName = name
 }
 
+// GetConfig uses viper loads the default configuration.
 func GetConfig() (*Config, error) {
 	v := viper.New()
 	if configFile != "" {
@@ -529,9 +541,34 @@ func GetConfig() (*Config, error) {
 	return readConfig(v)
 }
 
+var dirConfigCache = make(map[string]interface{})
+
+// LoadConfig uses viper to load a config file in the provided directory.  The
+// result is returned as a Config and cached.
 func LoadConfig(dir string) (*Config, error) {
+	if val, ok := dirConfigCache[dir]; ok {
+		switch val.(type) {
+		case *Config:
+			return val.(*Config), nil
+		case error:
+			return nil, val.(error)
+		}
+		log.Panicln(ErrInvalidCache)
+	}
 	v := viper.New()
 	v.AddConfigPath(dir)
 	configDefaults(v)
-	return readConfig(v)
+	c, err := readConfig(v)
+	if err != nil {
+		// cache the error and don't try again
+		log.Println("LoadConfig failed: ", err)
+		dirConfigCache[dir] = err
+	} else {
+		// cache the loaded config and don't load again
+		dirConfigCache[dir] = c
+		// TODO revisit watching and rebuilding all services (music,
+		// video, podcast) would need to be reconstructed and not sure
+		// if that's desired.
+	}
+	return c, err
 }
