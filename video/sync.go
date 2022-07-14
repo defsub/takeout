@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/lib/bucket"
 	"github.com/defsub/takeout/lib/date"
 	"github.com/defsub/takeout/lib/search"
@@ -94,9 +95,11 @@ func (v *Video) syncBucket(bucket bucket.Bucket, lastSync time.Time) error {
 	defer s.Close()
 
 	for o := range objectCh {
-		matches := movieRegexp.FindStringSubmatch(o.Key)
+		// keep o.Key as-is, rewrite is just for matching
+		path := config.Rewrite(v.config.Video.RewriteRules, o.Key)
+		matches := movieRegexp.FindStringSubmatch(path)
 		if matches == nil {
-			//fmt.Printf("no match -- %s\n", o.Key)
+			//fmt.Printf("no match -- %s\n", path)
 			continue
 		}
 		title := matches[1]
