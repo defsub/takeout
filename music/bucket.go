@@ -23,7 +23,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/lib/bucket"
 )
 
@@ -38,15 +37,15 @@ func (m *Music) syncFromBucket(bucket bucket.Bucket, lastSync time.Time) (trackC
 			return
 		}
 		for o := range objectCh {
-			checkObject(m.config, o, trackCh)
+			checkObject(bucket, o, trackCh)
 		}
 	}()
 
 	return
 }
 
-func checkObject(cfg *config.Config, object *bucket.Object, trackCh chan *Track) {
-	matchPath(cfg, object.Key, trackCh, func(t *Track, trackCh chan *Track) {
+func checkObject(b bucket.Bucket, object *bucket.Object, trackCh chan *Track) {
+	matchPath(b, object.Path, trackCh, func(t *Track, trackCh chan *Track) {
 		t.Key = object.Key
 		t.ETag = object.ETag
 		t.Size = object.Size
@@ -63,9 +62,7 @@ var coverRegexp = regexp.MustCompile(`cover\.(png|jpg)$`)
 
 var pathRegexp = regexp.MustCompile(`([^\/]+)\/([^\/]+)\/([^\/]+)$`)
 
-func matchPath(cfg *config.Config, path string, trackCh chan *Track, doMatch func(t *Track, music chan *Track)) {
-	// keep o.Key as-is, rewrite is just for matching
-	path = config.Rewrite(cfg.Music.RewriteRules, path)
+func matchPath(b bucket.Bucket, path string, trackCh chan *Track, doMatch func(t *Track, music chan *Track)) {
 	matches := pathRegexp.FindStringSubmatch(path)
 	if matches != nil {
 		var t Track

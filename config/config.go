@@ -55,6 +55,7 @@ type BucketConfig struct {
 	UseSSL          bool
 	URLExpiration   time.Duration
 	Media           string
+	RewriteRules    []RewriteRule
 }
 
 type RewriteRule struct {
@@ -141,7 +142,6 @@ type MusicConfig struct {
 	SyncInterval         time.Duration
 	PopularSyncInterval  time.Duration
 	SimilarSyncInterval  time.Duration
-	RewriteRules         []RewriteRule
 }
 
 type VideoConfig struct {
@@ -154,7 +154,6 @@ type VideoConfig struct {
 	SearchLimit      int
 	Recommend        RecommendConfig
 	SyncInterval     time.Duration
-	RewriteRules     []RewriteRule
 }
 
 type PodcastConfig struct {
@@ -578,22 +577,4 @@ func LoadConfig(dir string) (*Config, error) {
 		// if that's desired.
 	}
 	return c, err
-}
-
-func Rewrite(rules []RewriteRule, text string) string {
-	result := text
-	for _, rule := range rules {
-		re := regexp.MustCompile(rule.Pattern)
-		matches := re.FindStringSubmatch(result)
-		if matches != nil {
-			result = rule.Replace
-			for i := range matches {
-				result = strings.ReplaceAll(result, fmt.Sprintf("$%d", i), matches[i])
-			}
-		}
-	}
-	if result != text {
-		fmt.Printf("rewrite %s -> %s\n", text, result)
-	}
-	return result
 }
