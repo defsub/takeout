@@ -6,8 +6,8 @@
 //
 // TOS is TBD
 //
-// Schemes: http
-// Host: localhost:3000
+// Schemes: https
+// Host: takeout.fm
 // BasePath: /api
 // Version: 0.0.1
 // License: AGPLv3 https://www.gnu.org/licenses/agpl-3.0.en.html
