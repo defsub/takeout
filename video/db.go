@@ -21,6 +21,8 @@ import (
 	"errors"
 	"time"
 
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -37,9 +39,15 @@ func (v *Video) openDB() (err error) {
 		Logger: glog,
 	}
 
-	if v.config.Video.DB.Driver == "sqlite3" {
+	switch v.config.Music.DB.Driver {
+	case "sqlite3":
 		v.db, err = gorm.Open(sqlite.Open(v.config.Video.DB.Source), cfg)
-	} else {
+	case "mysql":
+		v.db, err = gorm.Open(mysql.Open(v.config.Video.DB.Source), cfg)
+	case "postgres":
+		// postgres untested
+		v.db, err = gorm.Open(postgres.Open(v.config.Video.DB.Source), cfg)
+	default:
 		err = errors.New("driver not supported")
 	}
 

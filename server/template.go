@@ -36,21 +36,28 @@ import (
 	"github.com/defsub/takeout/video"
 )
 
-
 //go:embed res/static
 var resStatic embed.FS
 
-func getStaticFS(config *config.Config) http.FileSystem {
-	// dev := false
-	// if dev {
-	// 	return http.FS(os.DirFS(fmt.Sprintf("%s/static", config.Server.WebDir)))
-	// }
-	fsys, err := fs.Sub(resStatic, "res")
+func mountResFS(resFS embed.FS) http.FileSystem {
+	fsys, err := fs.Sub(resFS, "res")
 	if err != nil {
 		panic(err)
 	}
 	return http.FS(fsys)
 }
+
+// func getStaticFS(config *config.Config) http.FileSystem {
+// 	// dev := false
+// 	// if dev {
+// 	// 	return http.FS(os.DirFS(fmt.Sprintf("%s/static", config.Server.WebDir)))
+// 	// }
+// 	fsys, err := fs.Sub(resStatic, "res")
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	return http.FS(fsys)
+// }
 
 //go:embed res/template
 var resTemplates embed.FS

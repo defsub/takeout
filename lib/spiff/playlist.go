@@ -26,7 +26,7 @@ import (
 //  https://www.xspf.org/jspf/
 
 type Playlist struct {
-	Spiff    `json:"playlist"`
+	Spiff    Spiff   `json:"playlist"`
 	Index    int     `json:"index"`
 	Position float64 `json:"position"`
 	Type     string  `json:"type"`

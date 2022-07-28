@@ -94,9 +94,9 @@ func (v *Video) syncBucket(bucket bucket.Bucket, lastSync time.Time) error {
 	defer s.Close()
 
 	for o := range objectCh {
-		matches := movieRegexp.FindStringSubmatch(o.Key)
+		matches := movieRegexp.FindStringSubmatch(o.Path)
 		if matches == nil {
-			//fmt.Printf("no match -- %s\n", o.Key)
+			//fmt.Printf("no match -- %s\n", path)
 			continue
 		}
 		title := matches[1]

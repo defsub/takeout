@@ -33,7 +33,7 @@ func TestCast(t *testing.T) {
 	if err != nil {
 		t.Errorf("Open %s\n", err)
 	}
-	cast := v.Cast(&Movie{TMID: 11})
+	cast := v.Cast(Movie{TMID: 11})
 	for _, c := range cast {
 		fmt.Printf("%s %s\n", c.Person.Name, c.Character)
 	}
@@ -49,7 +49,7 @@ func TestCrew(t *testing.T) {
 	if err != nil {
 		t.Errorf("Open %s\n", err)
 	}
-	crew := v.Crew(&Movie{TMID: 11})
+	crew := v.Crew(Movie{TMID: 11})
 	for _, c := range crew {
 		fmt.Printf("%s %s\n", c.Person.Name, c.Job)
 	}

@@ -18,7 +18,10 @@
 package bucket
 
 import (
+	"fmt"
 	"net/url"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -35,6 +38,7 @@ type Bucket struct {
 
 type Object struct {
 	Key          string
+	Path         string // Key modified by rewrite rules
 	ETag         string
 	Size         int64
 	LastModified time.Time
@@ -114,6 +118,7 @@ func (b *Bucket) List(lastSync time.Time) (objectCh chan *Object, err error) {
 					obj.LastModified.After(lastSync) {
 					objectCh <- &Object{
 						Key:          *obj.Key,
+						Path:         b.Rewrite(*obj.Key),
 						ETag:         *obj.ETag,
 						Size:         *obj.Size,
 						LastModified: *obj.LastModified,
@@ -138,4 +143,23 @@ func (b *Bucket) Presign(key string) *url.URL {
 	urlStr, _ := req.Presign(b.config.URLExpiration)
 	url, _ := url.Parse(urlStr)
 	return url
+}
+
+
+func (b *Bucket) Rewrite(path string) string {
+	result := path
+	for _, rule := range b.config.RewriteRules {
+		re := regexp.MustCompile(rule.Pattern)
+		matches := re.FindStringSubmatch(result)
+		if matches != nil {
+			result = rule.Replace
+			for i := range matches {
+				result = strings.ReplaceAll(result, fmt.Sprintf("$%d", i), matches[i])
+			}
+		}
+	}
+	if result != path {
+		fmt.Printf("rewrite %s -> %s\n", path, result)
+	}
+	return result
 }

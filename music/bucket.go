@@ -37,15 +37,15 @@ func (m *Music) syncFromBucket(bucket bucket.Bucket, lastSync time.Time) (trackC
 			return
 		}
 		for o := range objectCh {
-			checkObject(o, trackCh)
+			checkObject(bucket, o, trackCh)
 		}
 	}()
 
 	return
 }
 
-func checkObject(object *bucket.Object, trackCh chan *Track) {
-	matchPath(object.Key, trackCh, func(t *Track, trackCh chan *Track) {
+func checkObject(b bucket.Bucket, object *bucket.Object, trackCh chan *Track) {
+	matchPath(b, object.Path, trackCh, func(t *Track, trackCh chan *Track) {
 		t.Key = object.Key
 		t.ETag = object.ETag
 		t.Size = object.Size
@@ -62,7 +62,7 @@ var coverRegexp = regexp.MustCompile(`cover\.(png|jpg)$`)
 
 var pathRegexp = regexp.MustCompile(`([^\/]+)\/([^\/]+)\/([^\/]+)$`)
 
-func matchPath(path string, trackCh chan *Track, doMatch func(t *Track, music chan *Track)) {
+func matchPath(b bucket.Bucket, path string, trackCh chan *Track, doMatch func(t *Track, music chan *Track)) {
 	matches := pathRegexp.FindStringSubmatch(path)
 	if matches != nil {
 		var t Track

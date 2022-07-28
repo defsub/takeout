@@ -542,6 +542,7 @@ func scoreFilter(artists []Artist, score int) []Artist {
 	return result
 }
 
+// query should be formatted correctly - arid:xyz or artist:"name"
 func (m *MusicBrainz) doArtistSearch(query string, limit int, offset int) (*ArtistsPage, error) {
 	var result ArtistsPage
 	url := fmt.Sprintf(`https://musicbrainz.org/ws/2/artist?fmt=json&query=%s&limit=%d&offset=%d`,
