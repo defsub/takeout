@@ -1,0 +1,2327 @@
+{
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "schemes": [
+    "https"
+  ],
+  "swagger": "2.0",
+  "info": {
+    "description": "This is the service API for the Takeout media server.",
+    "title": "Takeout API",
+    "termsOfService": "TOS is TBD",
+    "contact": {
+      "email": "defsub@defsub.com"
+    },
+    "license": {
+      "name": "AGPLv3",
+      "url": "https://www.gnu.org/licenses/agpl-3.0.en.html"
+    },
+    "version": "0.0.1"
+  },
+  "host": "takeout.fm",
+  "basePath": "/api",
+  "paths": {
+    "/artists": {
+      "get": {
+        "description": "List all artists",
+        "operationId": "ArtistsList",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ArtistsResponse"
+          }
+        }
+      }
+    },
+    "/artists/{id}": {
+      "get": {
+        "description": "Get artist details",
+        "operationId": "ArtistGet",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ArtistResponse"
+          },
+          "404": {
+            "description": " artist not found"
+          }
+        }
+      }
+    },
+    "/artists/{id}/playlist": {
+      "get": {
+        "operationId": "ArtistPlaylist",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/PlaylistResponse"
+          },
+          "404": {
+            "description": " artist not found"
+          }
+        }
+      }
+    },
+    "/artists/{id}/playlist.xspf": {
+      "get": {
+        "description": "Get",
+        "operationId": "ArtistPlaylistExport",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/PlaylistResponse"
+          },
+          "404": {
+            "description": " artist not found"
+          }
+        }
+      }
+    },
+    "/artists/{id}/popular": {
+      "get": {
+        "operationId": "ArtistPopular",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/PlaylistResponse"
+          },
+          "404": {
+            "description": " artist not found"
+          }
+        }
+      }
+    },
+    "/artists/{id}/popular.xspf": {
+      "get": {
+        "operationId": "ArtistPopularExport",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/PlaylistResponse"
+          },
+          "404": {
+            "description": " artist not found"
+          }
+        }
+      }
+    },
+    "/artists/{id}/radio": {
+      "get": {
+        "operationId": "ArtistRadio",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/PlaylistResponse"
+          },
+          "404": {
+            "description": " artist not found"
+          }
+        }
+      }
+    },
+    "/artists/{id}/radio.xspf": {
+      "get": {
+        "operationId": "ArtistRadioExport",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/PlaylistResponse"
+          },
+          "404": {
+            "description": " artist not found"
+          }
+        }
+      }
+    },
+    "/artists/{id}/singles": {
+      "get": {
+        "operationId": "ArtistSingles",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/PlaylistResponse"
+          },
+          "404": {
+            "description": " artist not found"
+          }
+        }
+      }
+    },
+    "/artists/{id}/singles.xspf": {
+      "get": {
+        "operationId": "ArtistSinglesExport",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/PlaylistResponse"
+          },
+          "404": {
+            "description": " artist not found"
+          }
+        }
+      }
+    },
+    "/episode/{id}/location": {
+      "get": {
+        "operationId": "EpisodeLocation",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "301": {
+            "description": " redirect with location"
+          }
+        }
+      }
+    },
+    "/home": {
+      "get": {
+        "operationId": "Home",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/HomeResponse"
+          }
+        }
+      }
+    },
+    "/index": {
+      "get": {
+        "operationId": "Index",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/IndexResponse"
+          }
+        }
+      }
+    },
+    "/login": {
+      "post": {
+        "operationId": "Login",
+        "parameters": [
+          {
+            "name": "Body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "Pass": {
+                  "type": "string"
+                },
+                "User": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/StatusResponse"
+          },
+          "401": {
+            "$ref": "#/responses/fail"
+          },
+          "500": {
+            "$ref": "#/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/movies": {
+      "get": {
+        "operationId": "MoviesList",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/MoviesResponse"
+          }
+        }
+      }
+    },
+    "/movies/{id}": {
+      "get": {
+        "operationId": "MovieGet",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/MovieResponse"
+          },
+          "404": {
+            "description": " movie not found"
+          }
+        }
+      }
+    },
+    "/movies/{id}/location": {
+      "get": {
+        "operationId": "MovieLocation",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/playlist": {
+      "get": {
+        "operationId": "PlaylistGet",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/PlaylistResponse"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "PlaylistPatch",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/PlaylistResponse"
+          },
+          "204": {
+            "description": " no change to track entries"
+          },
+          "500": {
+            "description": " server error"
+          }
+        }
+      }
+    },
+    "/podcasts": {
+      "get": {
+        "operationId": "PodcastsList",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/PodcastsResponse"
+          }
+        }
+      }
+    },
+    "/profiles/{id}": {
+      "get": {
+        "operationId": "ProfileGet",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ProfileResponse"
+          },
+          "404": {
+            "description": " profile not found"
+          }
+        }
+      }
+    },
+    "/progress": {
+      "get": {
+        "operationId": "ProgressList",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ProgressResponse"
+          }
+        }
+      },
+      "post": {
+        "operationId": "ProgressUpdate",
+        "parameters": [
+          {
+            "name": "Body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "Offsets": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Offset"
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": " accepted, no response"
+          },
+          "400": {
+            "description": " error"
+          },
+          "500": {
+            "description": " error"
+          }
+        }
+      }
+    },
+    "/progress/{id}": {
+      "get": {
+        "operationId": "ProgressGet",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ProgressResponse"
+          },
+          "404": {
+            "description": " progress not found"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "ProgressDelete",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": " deleted, no response"
+          },
+          "404": {
+            "description": " id not found"
+          },
+          "500": {
+            "description": " server error"
+          }
+        }
+      }
+    },
+    "/radio": {
+      "get": {
+        "operationId": "RadioList",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/RadioResponse"
+          }
+        }
+      },
+      "post": {
+        "operationId": "RadioUpdate",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/RadioResponse"
+          }
+        }
+      }
+    },
+    "/radio/{id}": {
+      "get": {
+        "operationId": "RadioGet",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/PlaylistResponse"
+          },
+          "404": {
+            "description": " not found"
+          }
+        }
+      }
+    },
+    "/releases/{id}": {
+      "get": {
+        "operationId": "ReleaseGet",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ReleaseResponse"
+          },
+          "404": {
+            "description": " release not found"
+          }
+        }
+      }
+    },
+    "/search": {
+      "get": {
+        "operationId": "Search",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "q",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/SearchResponse"
+          }
+        }
+      }
+    },
+    "/series/{id}": {
+      "get": {
+        "operationId": "SeriesGet",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/SeriesResponse"
+          },
+          "404": {
+            "description": " series not found"
+          }
+        }
+      }
+    },
+    "/series/{series_id}/episode/{episode_id}": {
+      "get": {
+        "operationId": "SeriesEpisodeGet",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "series_id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "integer",
+            "name": "episode_id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/SeriesEpisodeResponse"
+          },
+          "404": {
+            "description": " series or episode not found"
+          }
+        }
+      }
+    },
+    "/tracks/{id}/location": {
+      "get": {
+        "operationId": "TrackLocation",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "301": {
+            "description": " redirect with location"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Artist": {
+      "type": "object",
+      "title": "Artist info from MusicBrainz.",
+      "properties": {
+        "ARID": {
+          "type": "string"
+        },
+        "Area": {
+          "type": "string"
+        },
+        "Country": {
+          "type": "string"
+        },
+        "Date": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "Disambiguation": {
+          "type": "string"
+        },
+        "EndDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "Genre": {
+          "type": "string"
+        },
+        "ID": {
+          "type": "integer",
+          "format": "uint64"
+        },
+        "Name": {
+          "type": "string"
+        },
+        "SortName": {
+          "type": "string"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/music"
+    },
+    "ArtistView": {
+      "type": "object",
+      "properties": {
+        "Artist": {
+          "$ref": "#/definitions/Artist"
+        },
+        "Background": {
+          "type": "string"
+        },
+        "Image": {
+          "type": "string"
+        },
+        "Popular": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Track"
+          }
+        },
+        "Releases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Release"
+          }
+        },
+        "Similar": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Artist"
+          }
+        },
+        "Singles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Track"
+          }
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/server"
+    },
+    "ArtistsView": {
+      "type": "object",
+      "properties": {
+        "Artists": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Artist"
+          }
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/server"
+    },
+    "Cast": {
+      "type": "object",
+      "properties": {
+        "Character": {
+          "type": "string"
+        },
+        "ID": {
+          "type": "integer",
+          "format": "uint64"
+        },
+        "PEID": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "Person": {
+          "$ref": "#/definitions/Person"
+        },
+        "Rank": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "TMID": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/video"
+    },
+    "Collection": {
+      "type": "object",
+      "properties": {
+        "ID": {
+          "type": "integer",
+          "format": "uint64"
+        },
+        "Name": {
+          "type": "string"
+        },
+        "SortName": {
+          "type": "string"
+        },
+        "TMID": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/video"
+    },
+    "Crew": {
+      "type": "object",
+      "properties": {
+        "Department": {
+          "type": "string"
+        },
+        "ID": {
+          "type": "integer",
+          "format": "uint64"
+        },
+        "Job": {
+          "type": "string"
+        },
+        "PEID": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "Person": {
+          "$ref": "#/definitions/Person"
+        },
+        "TMID": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/video"
+    },
+    "Entry": {
+      "type": "object",
+      "properties": {
+        "$ref": {
+          "type": "string",
+          "x-go-name": "Ref"
+        },
+        "album": {
+          "type": "string",
+          "x-go-name": "Album"
+        },
+        "creator": {
+          "type": "string",
+          "x-go-name": "Creator"
+        },
+        "date": {
+          "type": "string",
+          "x-go-name": "Date"
+        },
+        "identifier": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "Identifier"
+        },
+        "image": {
+          "type": "string",
+          "x-go-name": "Image"
+        },
+        "location": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "Location"
+        },
+        "size": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "x-go-name": "Size"
+        },
+        "title": {
+          "type": "string",
+          "x-go-name": "Title"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/lib/spiff"
+    },
+    "Episode": {
+      "type": "object",
+      "properties": {
+        "Author": {
+          "type": "string"
+        },
+        "ContentType": {
+          "type": "string"
+        },
+        "Date": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "Description": {
+          "type": "string"
+        },
+        "EID": {
+          "type": "string"
+        },
+        "ID": {
+          "type": "integer",
+          "format": "uint64"
+        },
+        "Link": {
+          "type": "string"
+        },
+        "SID": {
+          "type": "string"
+        },
+        "Size": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "Title": {
+          "type": "string"
+        },
+        "URL": {
+          "type": "string"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/podcast"
+    },
+    "GenreView": {
+      "type": "object",
+      "properties": {
+        "Movies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Movie"
+          }
+        },
+        "Name": {
+          "type": "string"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/server"
+    },
+    "HomeView": {
+      "type": "object",
+      "properties": {
+        "AddedMovies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Movie"
+          }
+        },
+        "AddedReleases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Release"
+          }
+        },
+        "NewEpisodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Episode"
+          }
+        },
+        "NewMovies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Movie"
+          }
+        },
+        "NewReleases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Release"
+          }
+        },
+        "NewSeries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Series"
+          }
+        },
+        "RecommendMovies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Recommend"
+          }
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/server"
+    },
+    "KeywordView": {
+      "type": "object",
+      "properties": {
+        "Movies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Movie"
+          }
+        },
+        "Name": {
+          "type": "string"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/server"
+    },
+    "Media": {
+      "type": "object",
+      "title": "Release Media from MusicBrainz.",
+      "properties": {
+        "Format": {
+          "type": "string"
+        },
+        "ID": {
+          "type": "integer",
+          "format": "uint64"
+        },
+        "Name": {
+          "type": "string"
+        },
+        "Position": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "REID": {
+          "type": "string"
+        },
+        "TrackCount": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/music"
+    },
+    "Model": {
+      "description": "note that gorm uses reflection so fields can be added or removed as needed.",
+      "type": "object",
+      "title": "gorm model to exclude fields during json seralization",
+      "properties": {
+        "ID": {
+          "type": "integer",
+          "format": "uint64"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/lib/gorm"
+    },
+    "Movie": {
+      "type": "object",
+      "properties": {
+        "BackdropPath": {
+          "type": "string"
+        },
+        "Budget": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "Date": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "ETag": {
+          "type": "string"
+        },
+        "ID": {
+          "type": "integer",
+          "format": "uint64"
+        },
+        "IMID": {
+          "type": "string"
+        },
+        "Key": {
+          "type": "string"
+        },
+        "LastModified": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "OriginalLanguage": {
+          "type": "string"
+        },
+        "OriginalTitle": {
+          "type": "string"
+        },
+        "Overview": {
+          "type": "string"
+        },
+        "PosterPath": {
+          "type": "string"
+        },
+        "Rating": {
+          "type": "string"
+        },
+        "Revenue": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "Runtime": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "Size": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "SortTitle": {
+          "type": "string"
+        },
+        "TMID": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "Tagline": {
+          "type": "string"
+        },
+        "Title": {
+          "type": "string"
+        },
+        "VoteAverage": {
+          "type": "number",
+          "format": "float"
+        },
+        "VoteCount": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/video"
+    },
+    "MovieView": {
+      "type": "object",
+      "properties": {
+        "Cast": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Cast"
+          }
+        },
+        "Collection": {
+          "$ref": "#/definitions/Collection"
+        },
+        "Crew": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Crew"
+          }
+        },
+        "Directing": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Person"
+          }
+        },
+        "Genres": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Keywords": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Movie": {
+          "$ref": "#/definitions/Movie"
+        },
+        "Other": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Movie"
+          }
+        },
+        "Starring": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Person"
+          }
+        },
+        "Vote": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "VoteCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "Writing": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Person"
+          }
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/server"
+    },
+    "MoviesView": {
+      "type": "object",
+      "properties": {
+        "Movies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Movie"
+          }
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/server"
+    },
+    "Offset": {
+      "type": "object",
+      "properties": {
+        "Date": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "Duration": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "ETag": {
+          "type": "string"
+        },
+        "ID": {
+          "type": "integer",
+          "format": "uint64"
+        },
+        "Offset": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/progress"
+    },
+    "OffsetView": {
+      "type": "object",
+      "properties": {
+        "Offset": {
+          "$ref": "#/definitions/Offset"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/server"
+    },
+    "Person": {
+      "type": "object",
+      "properties": {
+        "Bio": {
+          "type": "string"
+        },
+        "Birthday": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "Birthplace": {
+          "type": "string"
+        },
+        "Deathday": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "ID": {
+          "type": "integer",
+          "format": "uint64"
+        },
+        "IMID": {
+          "type": "string"
+        },
+        "Name": {
+          "type": "string"
+        },
+        "PEID": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "ProfilePath": {
+          "type": "string"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/video"
+    },
+    "PodcastsView": {
+      "type": "object",
+      "properties": {
+        "Series": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Series"
+          }
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/server"
+    },
+    "PopularView": {
+      "type": "object",
+      "properties": {
+        "Artist": {
+          "$ref": "#/definitions/Artist"
+        },
+        "Popular": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Track"
+          }
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/server"
+    },
+    "ProfileView": {
+      "type": "object",
+      "properties": {
+        "Directing": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Movie"
+          }
+        },
+        "Person": {
+          "$ref": "#/definitions/Person"
+        },
+        "Starring": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Movie"
+          }
+        },
+        "Writing": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Movie"
+          }
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/server"
+    },
+    "ProgressView": {
+      "type": "object",
+      "properties": {
+        "Offsets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Offset"
+          }
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/server"
+    },
+    "RadioView": {
+      "type": "object",
+      "properties": {
+        "Artist": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Station"
+          }
+        },
+        "Genre": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Station"
+          }
+        },
+        "Other": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Station"
+          }
+        },
+        "Period": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Station"
+          }
+        },
+        "Series": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Station"
+          }
+        },
+        "Similar": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Station"
+          }
+        },
+        "Stream": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Station"
+          }
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/server"
+    },
+    "Recommend": {
+      "type": "object",
+      "properties": {
+        "Movies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Movie"
+          }
+        },
+        "Name": {
+          "type": "string"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/video"
+    },
+    "Release": {
+      "type": "object",
+      "title": "Release info from MusicBrainz.",
+      "properties": {
+        "Artist": {
+          "type": "string"
+        },
+        "Artwork": {
+          "type": "boolean"
+        },
+        "Asin": {
+          "type": "string"
+        },
+        "BackArtwork": {
+          "type": "boolean"
+        },
+        "Country": {
+          "type": "string"
+        },
+        "Date": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "Disambiguation": {
+          "type": "string"
+        },
+        "DiscCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "FrontArtwork": {
+          "type": "boolean"
+        },
+        "GroupArtwork": {
+          "type": "boolean"
+        },
+        "ID": {
+          "type": "integer",
+          "format": "uint64"
+        },
+        "Media": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Media"
+          }
+        },
+        "Name": {
+          "type": "string"
+        },
+        "OtherArtwork": {
+          "type": "string"
+        },
+        "REID": {
+          "type": "string"
+        },
+        "RGID": {
+          "type": "string"
+        },
+        "ReleaseDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "SecondaryType": {
+          "type": "string"
+        },
+        "SingleName": {
+          "type": "string"
+        },
+        "Status": {
+          "type": "string"
+        },
+        "TrackCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "Type": {
+          "type": "string"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/music"
+    },
+    "ReleaseView": {
+      "type": "object",
+      "properties": {
+        "Artist": {
+          "$ref": "#/definitions/Artist"
+        },
+        "Popular": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Track"
+          }
+        },
+        "Release": {
+          "$ref": "#/definitions/Release"
+        },
+        "Similar": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Release"
+          }
+        },
+        "Singles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Track"
+          }
+        },
+        "Tracks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Track"
+          }
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/server"
+    },
+    "SearchView": {
+      "type": "object",
+      "properties": {
+        "Artists": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Artist"
+          }
+        },
+        "Hits": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "Movies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Movie"
+          }
+        },
+        "Query": {
+          "type": "string"
+        },
+        "Releases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Release"
+          }
+        },
+        "Tracks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Track"
+          }
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/server"
+    },
+    "Series": {
+      "type": "object",
+      "properties": {
+        "Author": {
+          "type": "string"
+        },
+        "Copyright": {
+          "type": "string"
+        },
+        "Date": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "Description": {
+          "type": "string"
+        },
+        "ID": {
+          "type": "integer",
+          "format": "uint64"
+        },
+        "Image": {
+          "type": "string"
+        },
+        "Link": {
+          "type": "string"
+        },
+        "SID": {
+          "type": "string"
+        },
+        "TTL": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "Title": {
+          "type": "string"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/podcast"
+    },
+    "SeriesEpisodeView": {
+      "type": "object",
+      "properties": {
+        "Episode": {
+          "$ref": "#/definitions/Episode"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/server"
+    },
+    "SeriesView": {
+      "type": "object",
+      "properties": {
+        "Episodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Episode"
+          }
+        },
+        "Series": {
+          "$ref": "#/definitions/Series"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/server"
+    },
+    "SinglesView": {
+      "type": "object",
+      "properties": {
+        "Artist": {
+          "$ref": "#/definitions/Artist"
+        },
+        "Singles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Track"
+          }
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/server"
+    },
+    "Spiff": {
+      "type": "object",
+      "properties": {
+        "creator": {
+          "type": "string",
+          "x-go-name": "Creator"
+        },
+        "date": {
+          "type": "string",
+          "x-go-name": "Date"
+        },
+        "image": {
+          "type": "string",
+          "x-go-name": "Image"
+        },
+        "location": {
+          "type": "string",
+          "x-go-name": "Location"
+        },
+        "title": {
+          "type": "string",
+          "x-go-name": "Title"
+        },
+        "track": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Entry"
+          },
+          "x-go-name": "Entries"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/lib/spiff"
+    },
+    "Station": {
+      "type": "object",
+      "properties": {
+        "Creator": {
+          "type": "string"
+        },
+        "ID": {
+          "type": "integer",
+          "format": "uint64"
+        },
+        "Image": {
+          "type": "string"
+        },
+        "Name": {
+          "type": "string"
+        },
+        "Type": {
+          "type": "string"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/music"
+    },
+    "Track": {
+      "description": "Tracks from S3 bucket object names. Naming is adjusted based on\ndata from MusicBrainz.",
+      "type": "object",
+      "properties": {
+        "Artist": {
+          "type": "string"
+        },
+        "Artwork": {
+          "type": "boolean"
+        },
+        "BackArtwork": {
+          "type": "boolean"
+        },
+        "Date": {
+          "type": "string"
+        },
+        "DiscCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "DiscNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "ETag": {
+          "type": "string"
+        },
+        "FrontArtwork": {
+          "type": "boolean"
+        },
+        "GroupArtwork": {
+          "type": "boolean"
+        },
+        "ID": {
+          "type": "integer",
+          "format": "uint64"
+        },
+        "Key": {
+          "type": "string"
+        },
+        "LastModified": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "Location": {
+          "description": "TODO remove Location, only needed for old spiff",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "MediaTitle": {
+          "type": "string"
+        },
+        "OtherArtwork": {
+          "type": "string"
+        },
+        "REID": {
+          "type": "string"
+        },
+        "RGID": {
+          "type": "string"
+        },
+        "Release": {
+          "type": "string"
+        },
+        "ReleaseDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "ReleaseTitle": {
+          "type": "string"
+        },
+        "Size": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "Title": {
+          "type": "string"
+        },
+        "TrackCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "TrackNum": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/music"
+    },
+    "WatchView": {
+      "type": "object",
+      "properties": {
+        "Movie": {
+          "$ref": "#/definitions/Movie"
+        }
+      },
+      "x-go-package": "github.com/defsub/takeout/server"
+    }
+  },
+  "responses": {
+    "ArtistResponse": {
+      "description": "",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "Artist": {
+            "$ref": "#/definitions/Artist"
+          },
+          "Background": {
+            "type": "string"
+          },
+          "Image": {
+            "type": "string"
+          },
+          "Popular": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Track"
+            }
+          },
+          "Releases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Release"
+            }
+          },
+          "Similar": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Artist"
+            }
+          },
+          "Singles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Track"
+            }
+          }
+        }
+      }
+    },
+    "ArtistsResponse": {
+      "description": "",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "Artists": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Artist"
+            }
+          }
+        }
+      }
+    },
+    "GenreResponse": {
+      "description": "",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "Movies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Movie"
+            }
+          },
+          "Name": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "HomeResponse": {
+      "description": "",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "AddedMovies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Movie"
+            }
+          },
+          "AddedReleases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Release"
+            }
+          },
+          "NewEpisodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Episode"
+            }
+          },
+          "NewMovies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Movie"
+            }
+          },
+          "NewReleases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Release"
+            }
+          },
+          "NewSeries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Series"
+            }
+          },
+          "RecommendMovies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Recommend"
+            }
+          }
+        }
+      }
+    },
+    "IndexResponse": {
+      "description": "",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "HasMovies": {
+            "type": "boolean"
+          },
+          "HasMusic": {
+            "type": "boolean"
+          },
+          "HasPodcasts": {
+            "type": "boolean"
+          },
+          "Time": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      }
+    },
+    "KeywordResponse": {
+      "description": "",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "Movies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Movie"
+            }
+          },
+          "Name": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "MovieResponse": {
+      "description": "",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "Cast": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Cast"
+            }
+          },
+          "Collection": {
+            "$ref": "#/definitions/Collection"
+          },
+          "Crew": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Crew"
+            }
+          },
+          "Directing": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Person"
+            }
+          },
+          "Genres": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "Keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "Movie": {
+            "$ref": "#/definitions/Movie"
+          },
+          "Other": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Movie"
+            }
+          },
+          "Starring": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Person"
+            }
+          },
+          "Vote": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "VoteCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "Writing": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Person"
+            }
+          }
+        }
+      }
+    },
+    "MoviesResponse": {
+      "description": "",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "Movies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Movie"
+            }
+          }
+        }
+      }
+    },
+    "OffsetResponse": {
+      "description": "",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "Offset": {
+            "$ref": "#/definitions/Offset"
+          }
+        }
+      }
+    },
+    "PlaylistResponse": {
+      "description": "",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer",
+            "format": "int64",
+            "x-go-name": "Index"
+          },
+          "playlist": {
+            "$ref": "#/definitions/Spiff"
+          },
+          "position": {
+            "type": "number",
+            "format": "double",
+            "x-go-name": "Position"
+          },
+          "type": {
+            "type": "string",
+            "x-go-name": "Type"
+          }
+        }
+      }
+    },
+    "PodcastsResponse": {
+      "description": "",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "Series": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Series"
+            }
+          }
+        }
+      }
+    },
+    "PopularResponse": {
+      "description": "",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "Artist": {
+            "$ref": "#/definitions/Artist"
+          },
+          "Popular": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Track"
+            }
+          }
+        }
+      }
+    },
+    "ProfileResponse": {
+      "description": "",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "Directing": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Movie"
+            }
+          },
+          "Person": {
+            "$ref": "#/definitions/Person"
+          },
+          "Starring": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Movie"
+            }
+          },
+          "Writing": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Movie"
+            }
+          }
+        }
+      }
+    },
+    "ProgressResponse": {
+      "description": "",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "Offsets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Offset"
+            }
+          }
+        }
+      }
+    },
+    "RadioResponse": {
+      "description": "",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "Artist": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Station"
+            }
+          },
+          "Genre": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Station"
+            }
+          },
+          "Other": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Station"
+            }
+          },
+          "Period": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Station"
+            }
+          },
+          "Series": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Station"
+            }
+          },
+          "Similar": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Station"
+            }
+          },
+          "Stream": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Station"
+            }
+          }
+        }
+      }
+    },
+    "ReleaseResponse": {
+      "description": "",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "Artist": {
+            "$ref": "#/definitions/Artist"
+          },
+          "Popular": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Track"
+            }
+          },
+          "Release": {
+            "$ref": "#/definitions/Release"
+          },
+          "Similar": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Release"
+            }
+          },
+          "Singles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Track"
+            }
+          },
+          "Tracks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Track"
+            }
+          }
+        }
+      }
+    },
+    "SearchResponse": {
+      "description": "",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "Artists": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Artist"
+            }
+          },
+          "Hits": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "Movies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Movie"
+            }
+          },
+          "Query": {
+            "type": "string"
+          },
+          "Releases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Release"
+            }
+          },
+          "Tracks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Track"
+            }
+          }
+        }
+      }
+    },
+    "SeriesEpisodeResponse": {
+      "description": "",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "Episode": {
+            "$ref": "#/definitions/Episode"
+          }
+        }
+      }
+    },
+    "SeriesResponse": {
+      "description": "",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "Episodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Episode"
+            }
+          },
+          "Series": {
+            "$ref": "#/definitions/Series"
+          }
+        }
+      }
+    },
+    "SinglesResponse": {
+      "description": "",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "Artist": {
+            "$ref": "#/definitions/Artist"
+          },
+          "Singles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Track"
+            }
+          }
+        }
+      }
+    },
+    "StatusResponse": {
+      "description": "",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "Cookie": {
+            "type": "string"
+          },
+          "Message": {
+            "type": "string"
+          },
+          "Status": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      }
+    }
+  },
+  "securityDefinitions": {
+    "BearerAuth": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header"
+    },
+    "CookieAuth": {
+      "description": "send cookie named 'Takeout' with security token",
+      "type": "apiKey",
+      "name": "Cookie",
+      "in": "header"
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ]
+}
