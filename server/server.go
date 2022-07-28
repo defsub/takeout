@@ -109,7 +109,27 @@ func (handler *Handler) linkHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/static/link.html", http.StatusTemporaryRedirect)
 }
 
-func (handler *Handler) authorize(w http.ResponseWriter, r *http.Request) *auth.User {
+func (handler *Handler) authorizeBearer(w http.ResponseWriter, r *http.Request) *auth.User {
+	// Authorization: Bearer <token>
+	value := r.Header.Get("Authorization")
+	if value == "" {
+		return nil
+	}
+	result := strings.Split(value, " ")
+	if len(result) != 2 {
+		return nil
+	}
+	if !strings.EqualFold(result[0], "Bearer") {
+		return nil
+	}
+	user, err := handler.auth.TokenUser(result[1])
+	if err != nil {
+		return nil
+	}
+	return user
+}
+
+func (handler *Handler) authorizeCookie(w http.ResponseWriter, r *http.Request) *auth.User {
 	cookie, err := r.Cookie(auth.CookieName)
 	if err != nil {
 		if cookie != nil {
@@ -142,6 +162,17 @@ func (handler *Handler) authorize(w http.ResponseWriter, r *http.Request) *auth.
 	http.SetCookie(w, cookie)
 
 	return user
+}
+
+func (handler *Handler) authorize(w http.ResponseWriter, r *http.Request) *auth.User {
+	// TODO JWT
+	// check for bearer
+	user := handler.authorizeBearer(w, r)
+	if user != nil {
+		return user
+	}
+	// check for cookie
+	return handler.authorizeCookie(w, r)
 }
 
 // after user authentication, configure available media
@@ -253,7 +284,14 @@ func Serve(config *config.Config) {
 		hub.Handle(auth, w, r)
 	}
 
-	http.Handle("/static/", http.FileServer(getStaticFS(config)))
+	swaggerHandler := func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/static/swagger.json", 302)
+	}
+
+	resFileServer := http.FileServer(mountResFS(resStatic))
+
+	http.Handle("/static/", resFileServer)
+	http.HandleFunc("/swagger.json", swaggerHandler)
 	http.HandleFunc("/tracks", tracksHandler)
 	http.HandleFunc("/", viewHandler)
 	http.HandleFunc("/v", viewHandler)

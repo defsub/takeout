@@ -42,6 +42,7 @@ type IndexView struct {
 	HasPodcasts bool
 }
 
+// swagger:model
 type HomeView struct {
 	AddedReleases   []music.Release
 	NewReleases     []music.Release
@@ -56,11 +57,13 @@ type HomeView struct {
 	EpisodeImage    EpisodeImageFunc `json:"-"`
 }
 
+// swagger:model
 type ArtistsView struct {
 	Artists    []music.Artist
 	CoverSmall CoverFunc `json:"-"`
 }
 
+// swagger:model
 type ArtistView struct {
 	Artist     music.Artist
 	Image      string
@@ -72,18 +75,21 @@ type ArtistView struct {
 	CoverSmall CoverFunc `json:"-"`
 }
 
+// swagger:model
 type PopularView struct {
 	Artist     music.Artist
 	Popular    []music.Track
 	CoverSmall CoverFunc `json:"-"`
 }
 
+// swagger:model
 type SinglesView struct {
 	Artist     music.Artist
 	Singles    []music.Track
 	CoverSmall CoverFunc `json:"-"`
 }
 
+// swagger:model
 type ReleaseView struct {
 	Artist     music.Artist
 	Release    music.Release
@@ -94,6 +100,7 @@ type ReleaseView struct {
 	CoverSmall CoverFunc `json:"-"`
 }
 
+// swagger:model
 type SearchView struct {
 	Artists     []music.Artist
 	Releases    []music.Release
@@ -105,6 +112,7 @@ type SearchView struct {
 	PosterSmall PosterFunc `json:"-"`
 }
 
+// swagger:model
 type RadioView struct {
 	Artist     []music.Station
 	Genre      []music.Station
@@ -116,12 +124,14 @@ type RadioView struct {
 	CoverSmall CoverFunc `json:"-"`
 }
 
+// swagger:model
 type MoviesView struct {
 	Movies      []video.Movie
 	PosterSmall PosterFunc   `json:"-"`
 	Backdrop    BackdropFunc `json:"-"`
 }
 
+// swagger:model
 type MovieView struct {
 	Movie       video.Movie
 	Collection  video.Collection
@@ -141,6 +151,7 @@ type MovieView struct {
 	Profile     ProfileFunc  `json:"-"`
 }
 
+// swagger:model
 type ProfileView struct {
 	Person      video.Person
 	Starring    []video.Movie
@@ -151,6 +162,7 @@ type ProfileView struct {
 	Profile     ProfileFunc  `json:"-"`
 }
 
+// swagger:model
 type GenreView struct {
 	Name        string
 	Movies      []video.Movie
@@ -158,6 +170,7 @@ type GenreView struct {
 	Backdrop    BackdropFunc `json:"-"`
 }
 
+// swagger:model
 type KeywordView struct {
 	Name        string
 	Movies      []video.Movie
@@ -165,17 +178,20 @@ type KeywordView struct {
 	Backdrop    BackdropFunc `json:"-"`
 }
 
+// swagger:model
 type WatchView struct {
 	Movie       video.Movie
 	PosterSmall PosterFunc   `json:"-"`
 	Backdrop    BackdropFunc `json:"-"`
 }
 
+// swagger:model
 type PodcastsView struct {
 	Series      []podcast.Series
 	SeriesImage SeriesImageFunc `json:"-"`
 }
 
+// swagger:model
 type SeriesView struct {
 	Series       podcast.Series
 	Episodes     []podcast.Episode
@@ -183,15 +199,18 @@ type SeriesView struct {
 	EpisodeImage EpisodeImageFunc `json:"-"`
 }
 
+// swagger:model
 type SeriesEpisodeView struct {
 	Episode      podcast.Episode
 	EpisodeImage EpisodeImageFunc `json:"-"`
 }
 
+// swagger:model
 type ProgressView struct {
 	Offsets []progress.Offset
 }
 
+// swagger:model
 type OffsetView struct {
 	Offset progress.Offset
 }

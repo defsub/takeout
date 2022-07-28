@@ -52,7 +52,6 @@ func mediaConfig(root *config.Config, mediaName string) (*config.Config, error) 
 	if err != nil {
 		return nil, err
 	}
-	userConfig.Server.URL = root.Server.URL // TODO FIXME
 	return userConfig, nil
 }
 

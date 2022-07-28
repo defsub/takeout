@@ -48,10 +48,7 @@ type status struct {
 	Cookie  string
 }
 
-// POST /api/login < login{} > status{}
-// 200: success + cookie
-// 401: fail
-// 500: error
+// POST /api/login
 func (handler *Handler) apiLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", ApplicationJson)
 
@@ -112,13 +109,8 @@ func (handler *UserHandler) recvStation(w http.ResponseWriter, r *http.Request,
 	return nil
 }
 
-// GET /api/radio > []Station
-// 200: success
-//
-// POST /api/radio < Station{}
-// 201: created
-// 400: bad request
-// 500: error
+// GET /api/radio
+// POST /api/radio
 func (handler *UserHandler) apiRadio(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
@@ -144,10 +136,6 @@ func (handler *UserHandler) apiRadio(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GET /api/radio/1 > spiff.Playlist{}
-// 200: success
-// 404: not found
-//
 // PUT /api/radio/1 < Station{}
 // 204: no content
 // 404: not found
@@ -206,8 +194,8 @@ func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, i
 		plist, _ := spiff.Unmarshal(s.Playlist)
 		resolver := ref.NewResolver(handler.config, handler)
 		resolver.Resolve(handler.user, plist)
-		if plist.Entries == nil {
-			plist.Entries = []spiff.Entry{}
+		if plist.Spiff.Entries == nil {
+			plist.Spiff.Entries = []spiff.Entry{}
 		}
 		// marshal & persist
 		s.Playlist, _ = plist.Marshal()
@@ -225,8 +213,7 @@ func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, i
 	}
 }
 
-// GET /api/{res}/id/playlist > spiff.Playlist{}
-// 200: success
+// GET /api/(artists|releases|movies|series|tv)/id/(playlist|popular|radio|singles)
 func (handler *UserHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Request,
 	listType string, creator, title, image string, spiffDate time.Time, nref string) {
 	plist := spiff.NewPlaylist(listType)
@@ -236,11 +223,11 @@ func (handler *UserHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Reques
 	plist.Spiff.Title = title
 	plist.Spiff.Image = image
 	plist.Spiff.Date = date.FormatJson(spiffDate)
-	plist.Entries = []spiff.Entry{{Ref: nref}}
+	plist.Spiff.Entries = []spiff.Entry{{Ref: nref}}
 	resolver := ref.NewResolver(handler.config, handler)
 	resolver.Resolve(handler.user, plist)
-	if plist.Entries == nil {
-		plist.Entries = []spiff.Entry{}
+	if plist.Spiff.Entries == nil {
+		plist.Spiff.Entries = []spiff.Entry{}
 	}
 	if strings.HasSuffix(r.URL.Path, ".xspf") {
 		w.Header().Set("Content-type", xspf.XMLContentType)
@@ -248,8 +235,8 @@ func (handler *UserHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Reques
 		encoder := xspf.NewXMLEncoder(w)
 		encoder.Header(title)
 		locationRegexp := regexp.MustCompile(`/api/(movies|tracks|episodes)/([0-9]+)/location`)
-		for i := range plist.Entries {
-			matches := locationRegexp.FindStringSubmatch(plist.Entries[i].Location[0])
+		for i := range plist.Spiff.Entries {
+			matches := locationRegexp.FindStringSubmatch(plist.Spiff.Entries[i].Location[0])
 			if matches != nil {
 				var url *url.URL
 				src := matches[1]
@@ -261,7 +248,7 @@ func (handler *UserHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Reques
 						continue
 					}
 					url = m.TrackURL(&track)
-					plist.Entries[i].Location = []string{url.String()}
+					plist.Spiff.Entries[i].Location = []string{url.String()}
 					// } else if src == "movies" {
 					// 	// TODO not supported yet
 					// 	id := str.Atoi(matches[2])
@@ -273,7 +260,7 @@ func (handler *UserHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Reques
 					// 	plist.Entries[i].Location = []string{url.String()}
 				}
 			}
-			encoder.Encode(plist.Entries[i])
+			encoder.Encode(plist.Spiff.Entries[i])
 		}
 		encoder.Footer()
 	} else {
@@ -283,14 +270,7 @@ func (handler *UserHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-// GET /api/playlist > spiff.Playlist{}
-// 200: success
-// 500: error
-//
-// PATCH /api/playlist < json+patch > spiff.Playlist{}
-// 200: success
-// 204: no change to track entries
-// 500: error
+// GET /api/playlist
 func (handler *UserHandler) apiPlaylist(w http.ResponseWriter, r *http.Request) {
 	var err error
 
@@ -327,8 +307,8 @@ func (handler *UserHandler) apiPlaylist(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if dirty {
-		if plist.Entries == nil {
-			plist.Entries = []spiff.Entry{}
+		if plist.Spiff.Entries == nil {
+			plist.Spiff.Entries = []spiff.Entry{}
 		}
 		p.Playlist, _ = plist.Marshal()
 		m.UpdatePlaylist(p)
@@ -347,19 +327,8 @@ func (handler *UserHandler) apiPlaylist(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-// GET /api/progress > Offsets
-// 200: success
-// 500: error
-//
-// POST /api/progress < Offsets > no content
-// 204: accepted no response
-// 400: error
-// 500: error
-//
-// DELETE /api/progress/id (see elsewhere)
-// 204: accepted no response
-// 404: not found
-// 500: error
+// POST /api/progress
+// GET /api/progress
 func (handler *UserHandler) apiProgress(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
@@ -408,6 +377,7 @@ func (handler *UserHandler) apiView(w http.ResponseWriter, r *http.Request, view
 	enc.Encode(view)
 }
 
+// GET /api/search
 func (handler *UserHandler) apiSearch(w http.ResponseWriter, r *http.Request) {
 	if v := r.URL.Query().Get("q"); v != "" {
 		// /api/search?q={pattern}
@@ -709,7 +679,7 @@ func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 						// GET /api/progress/1
 						handler.apiView(w, r, handler.offsetView(*offset))
 					case "DELETE":
-						// DELETE /api/progress/1
+						// DELETE /api/progress/offsets/1
 						err := handler.progress().Delete(handler.user, *offset)
 						if err != nil {
 							serverErr(w, err)

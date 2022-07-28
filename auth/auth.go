@@ -44,6 +44,7 @@ var (
 	ErrUserNotFound    = errors.New("user not found")
 	ErrKeyMismatch     = errors.New("key mismatch")
 	ErrSessionNotFound = errors.New("session not found")
+	ErrSessionExpired  = errors.New("session expired")
 	ErrCodeNotFound    = errors.New("code not found")
 	ErrCodeExpired     = errors.New("code has expired")
 	ErrCodeAlreadyUsed = errors.New("code already authorized")
@@ -89,6 +90,11 @@ type Session struct {
 	User    string
 	Cookie  string
 	Expires time.Time
+}
+
+func (s *Session) expired() bool {
+	now := time.Now()
+	return now.After(s.Expires)
 }
 
 type Auth struct {
@@ -230,14 +236,27 @@ func (a *Auth) Valid(cookie http.Cookie) bool {
 		return false
 	}
 	session := a.findCookieSession(cookie)
-	if session == nil {
-		return false
-	}
-	now := time.Now()
-	if now.After(session.Expires) {
+	if session == nil || session.expired() {
 		return false
 	}
 	return true
+}
+
+func (a *Auth) TokenUser(token string) (*User, error) {
+	session := a.findSession(token)
+	if session == nil {
+		return nil, ErrSessionNotFound
+	}
+	if session.expired() {
+		return nil, ErrSessionExpired
+	}
+
+	var u User
+	err := a.db.Where("name = ?", session.User).First(&u).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrUserNotFound
+	}
+	return &u, nil
 }
 
 func (a *Auth) Refresh(cookie *http.Cookie) error {

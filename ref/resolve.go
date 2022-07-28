@@ -325,16 +325,16 @@ func (r *Resolver) RefreshStation(s *music.Station, user *auth.User) {
 				log.Printf("pls error %s\n", err)
 				return
 			}
-			plist.Entries = entries
+			plist.Spiff.Entries = entries
 		} else {
 			// TODO add m3u, others?
 			log.Printf("unsupported stream %s\n", s.Ref)
 		}
 	} else {
-		plist.Entries = []spiff.Entry{{Ref: s.Ref}}
+		plist.Spiff.Entries = []spiff.Entry{{Ref: s.Ref}}
 		r.Resolve(user, plist)
-		if plist.Entries == nil {
-			plist.Entries = []spiff.Entry{}
+		if plist.Spiff.Entries == nil {
+			plist.Spiff.Entries = []spiff.Entry{}
 		}
 	}
 

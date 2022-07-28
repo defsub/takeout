@@ -212,7 +212,6 @@ type SearchConfig struct {
 
 type ServerConfig struct {
 	Listen string
-	URL    string
 }
 
 type ClientConfig struct {
@@ -362,7 +361,6 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Search.BleveDir", ".")
 
 	v.SetDefault("Server.Listen", "127.0.0.1:3000")
-	v.SetDefault("Server.URL", "https://example.com") // w/o trailing slash
 
 	v.SetDefault("Video.DB.Driver", "sqlite3")
 	v.SetDefault("Video.DB.Source", "video.db")
