@@ -2307,7 +2307,7 @@
     }
   },
   "securityDefinitions": {
-    "BearerAuth": {
+    "Bearer": {
       "type": "apiKey",
       "name": "Authorization",
       "in": "header"
@@ -2321,7 +2321,7 @@
   },
   "security": [
     {
-      "BearerAuth": []
+      "Bearer": []
     }
   ]
 }
