@@ -13,18 +13,20 @@
 // License: AGPLv3 https://www.gnu.org/licenses/agpl-3.0.en.html
 // Contact: defsub@defsub.com
 // SecurityDefinitions:
-//  CookieAuth:
+//  Cookie:
 //   type: apiKey
 //   name: Cookie
-//   description: send cookie named 'Takeout' with security token
+//   description: send Cookie Takeout={token}
 //   in: header
-//  BearerAuth:
+//  Bearer:
 //   type: apiKey
 //   name: Authorization
+//   description: send Authorization Bearer {token}
 //   scheme: bearer
 //   in: header
 // Security:
-//  - BearerAuth:
+//  - Bearer:
+//  - Cookie:
 // Consumes:
 // - application/json
 // Produces:
