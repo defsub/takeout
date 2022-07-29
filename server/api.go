@@ -422,16 +422,6 @@ func (handler *UserHandler) apiSearch(w http.ResponseWriter, r *http.Request) {
 func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", ApplicationJson)
 
-	// CORS support
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, PUT, PATCH, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-	log.Printf("request %+v\n", r)
-
-	if r.Method == "OPTIONS" {
-		return
-	}
-
 	// if r.URL.Path == "/api/watch" {
 	// 	v := video.NewVideo(handler.config)
 	// 	v.Open()

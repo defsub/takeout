@@ -197,6 +197,14 @@ func (handler *Handler) configure(user *auth.User, w http.ResponseWriter) (*User
 	}, nil
 }
 
+func doCors(w http.ResponseWriter, r *http.Request) {
+	// CORS support
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, PUT, PATCH, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	log.Printf("request %+v\n", r)
+}
+
 func Serve(config *config.Config) {
 	template := getTemplates(config)
 
@@ -283,6 +291,10 @@ func Serve(config *config.Config) {
 	apiHandler := func(w http.ResponseWriter, r *http.Request) {
 		userHandler := makeUserHandler(w, r)
 		if userHandler != nil {
+			doCors(w, r)
+			if r.Method == "OPTIONS" {
+				return
+			}
 			userHandler.apiHandler(w, r)
 		}
 	}
@@ -292,12 +304,23 @@ func Serve(config *config.Config) {
 	}
 
 	swaggerHandler := func(w http.ResponseWriter, r *http.Request) {
+		doCors(w, r)
+		if r.Method == "OPTIONS" {
+			return
+		}
 		http.Redirect(w, r, "/static/swagger.json", 302)
 	}
 
 	resFileServer := http.FileServer(mountResFS(resStatic))
+	staticHandler  := func(w http.ResponseWriter, r *http.Request) {
+		doCors(w, r)
+		if r.Method == "OPTIONS" {
+			return
+		}
+		resFileServer.ServeHTTP(w, r)
+	}
 
-	http.Handle("/static/", resFileServer)
+	http.HandleFunc("/static/", staticHandler)
 	http.HandleFunc("/swagger.json", swaggerHandler)
 	http.HandleFunc("/tracks", tracksHandler)
 	http.HandleFunc("/", viewHandler)
