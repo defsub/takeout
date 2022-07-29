@@ -2308,12 +2308,13 @@
   },
   "securityDefinitions": {
     "Bearer": {
+      "description": "send Authorization Bearer {token}",
       "type": "apiKey",
       "name": "Authorization",
       "in": "header"
     },
-    "CookieAuth": {
-      "description": "send cookie named 'Takeout' with security token",
+    "Cookie": {
+      "description": "send Cookie Takeout={token}",
       "type": "apiKey",
       "name": "Cookie",
       "in": "header"
@@ -2322,6 +2323,9 @@
   "security": [
     {
       "Bearer": []
+    },
+    {
+      "Cookie": []
     }
   ]
 }
