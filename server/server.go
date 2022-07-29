@@ -110,19 +110,26 @@ func (handler *Handler) linkHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) authorizeBearer(w http.ResponseWriter, r *http.Request) *auth.User {
-	// Authorization: Bearer <token>
 	value := r.Header.Get("Authorization")
 	if value == "" {
 		return nil
 	}
 	result := strings.Split(value, " ")
-	if len(result) != 2 {
+	var token string
+	switch len(result) {
+	case 1:
+		// Authorization: <token>
+		token = result[0]
+	case 2:
+		// Authorization: Bearer <token>
+		if strings.EqualFold(result[0], "Bearer") {
+			token = result[1]
+		}
+	}
+	if len(token) == 0 {
 		return nil
 	}
-	if !strings.EqualFold(result[0], "Bearer") {
-		return nil
-	}
-	user, err := handler.auth.TokenUser(result[1])
+	user, err := handler.auth.TokenUser(token)
 	if err != nil {
 		return nil
 	}
