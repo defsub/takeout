@@ -15,27 +15,43 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
-package server
+package view
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/defsub/takeout/auth"
+	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/music"
 	"github.com/defsub/takeout/podcast"
 	"github.com/defsub/takeout/progress"
 	"github.com/defsub/takeout/video"
 )
 
-type CoverFunc func(interface{}) string
+type Context interface {
+	Config() *config.Config
+	Music() *music.Music
+	Podcast() *podcast.Podcast
+	Progress() *progress.Progress
+	User() *auth.User
+	Video() *video.Video
+}
 
+type CoverFunc func(interface{}) string
 type PosterFunc func(video.Movie) string
 type BackdropFunc func(video.Movie) string
 type ProfileFunc func(video.Person) string
 type SeriesImageFunc func(podcast.Series) string
 type EpisodeImageFunc func(podcast.Episode) string
+type TracksFunc func() []music.Track
 
-type IndexView struct {
+type TrackList struct {
+	Title  string
+	Tracks TracksFunc
+}
+
+type Index struct {
 	Time        int64
 	HasMusic    bool
 	HasMovies   bool
@@ -43,7 +59,7 @@ type IndexView struct {
 }
 
 // swagger:model
-type HomeView struct {
+type Home struct {
 	AddedReleases   []music.Release
 	NewReleases     []music.Release
 	AddedMovies     []video.Movie
@@ -58,41 +74,46 @@ type HomeView struct {
 }
 
 // swagger:model
-type ArtistsView struct {
+type Artists struct {
 	Artists    []music.Artist
 	CoverSmall CoverFunc `json:"-"`
 }
 
 // swagger:model
-type ArtistView struct {
+type Artist struct {
 	Artist     music.Artist
 	Image      string
 	Background string
 	Releases   []music.Release
-	Popular    []music.Track
-	Singles    []music.Track
 	Similar    []music.Artist
 	CoverSmall CoverFunc `json:"-"`
+	Deep       TrackList `json:"-"`
+	Popular    TrackList `json:"-"`
+	Radio      TrackList `json:"-"`
+	Shuffle    TrackList `json:"-"`
+	Singles    TrackList `json:"-"`
+	Tracks     TrackList `json:"-"`
 }
 
 // swagger:model
-type PopularView struct {
+type Popular struct {
 	Artist     music.Artist
 	Popular    []music.Track
 	CoverSmall CoverFunc `json:"-"`
 }
 
 // swagger:model
-type SinglesView struct {
+type Singles struct {
 	Artist     music.Artist
 	Singles    []music.Track
 	CoverSmall CoverFunc `json:"-"`
 }
 
 // swagger:model
-type ReleaseView struct {
+type Release struct {
 	Artist     music.Artist
 	Release    music.Release
+	Image      string
 	Tracks     []music.Track
 	Singles    []music.Track
 	Popular    []music.Track
@@ -101,7 +122,7 @@ type ReleaseView struct {
 }
 
 // swagger:model
-type SearchView struct {
+type Search struct {
 	Artists     []music.Artist
 	Releases    []music.Release
 	Tracks      []music.Track
@@ -113,7 +134,7 @@ type SearchView struct {
 }
 
 // swagger:model
-type RadioView struct {
+type Radio struct {
 	Artist     []music.Station
 	Genre      []music.Station
 	Similar    []music.Station
@@ -125,14 +146,14 @@ type RadioView struct {
 }
 
 // swagger:model
-type MoviesView struct {
+type Movies struct {
 	Movies      []video.Movie
 	PosterSmall PosterFunc   `json:"-"`
 	Backdrop    BackdropFunc `json:"-"`
 }
 
 // swagger:model
-type MovieView struct {
+type Movie struct {
 	Movie       video.Movie
 	Collection  video.Collection
 	Other       []video.Movie
@@ -152,7 +173,7 @@ type MovieView struct {
 }
 
 // swagger:model
-type ProfileView struct {
+type Profile struct {
 	Person      video.Person
 	Starring    []video.Movie
 	Directing   []video.Movie
@@ -163,7 +184,7 @@ type ProfileView struct {
 }
 
 // swagger:model
-type GenreView struct {
+type Genre struct {
 	Name        string
 	Movies      []video.Movie
 	PosterSmall PosterFunc   `json:"-"`
@@ -171,7 +192,7 @@ type GenreView struct {
 }
 
 // swagger:model
-type KeywordView struct {
+type Keyword struct {
 	Name        string
 	Movies      []video.Movie
 	PosterSmall PosterFunc   `json:"-"`
@@ -179,20 +200,20 @@ type KeywordView struct {
 }
 
 // swagger:model
-type WatchView struct {
+type Watch struct {
 	Movie       video.Movie
 	PosterSmall PosterFunc   `json:"-"`
 	Backdrop    BackdropFunc `json:"-"`
 }
 
 // swagger:model
-type PodcastsView struct {
+type Podcasts struct {
 	Series      []podcast.Series
 	SeriesImage SeriesImageFunc `json:"-"`
 }
 
 // swagger:model
-type SeriesView struct {
+type Series struct {
 	Series       podcast.Series
 	Episodes     []podcast.Episode
 	SeriesImage  SeriesImageFunc  `json:"-"`
@@ -200,35 +221,35 @@ type SeriesView struct {
 }
 
 // swagger:model
-type SeriesEpisodeView struct {
+type SeriesEpisode struct {
 	Episode      podcast.Episode
 	EpisodeImage EpisodeImageFunc `json:"-"`
 }
 
 // swagger:model
-type ProgressView struct {
+type Progress struct {
 	Offsets []progress.Offset
 }
 
 // swagger:model
-type OffsetView struct {
+type Offset struct {
 	Offset progress.Offset
 }
 
-func (handler *UserHandler) indexView() *IndexView {
-	view := &IndexView{}
+func IndexView(ctx Context) *Index {
+	view := &Index{}
 	view.Time = time.Now().UnixMilli()
-	view.HasMusic = handler.media.music.HasMusic()
-	view.HasMovies = handler.media.video.HasMovies()
-	view.HasPodcasts = handler.media.podcast.HasPodcasts()
+	view.HasMusic = ctx.Music().HasMusic()
+	view.HasMovies = ctx.Video().HasMovies()
+	view.HasPodcasts = ctx.Podcast().HasPodcasts()
 	return view
 }
 
-func (handler *UserHandler) homeView() *HomeView {
-	view := &HomeView{}
-	m := handler.media.music
-	v := handler.media.video
-	p := handler.media.podcast
+func HomeView(ctx Context) *Home {
+	view := &Home{}
+	m := ctx.Music()
+	v := ctx.Video()
+	p := ctx.Podcast()
 
 	view.AddedReleases = m.RecentlyAdded()
 	view.NewReleases = m.RecentlyReleased()
@@ -245,40 +266,77 @@ func (handler *UserHandler) homeView() *HomeView {
 	return view
 }
 
-func (handler *UserHandler) artistsView() *ArtistsView {
-	view := &ArtistsView{}
-	view.Artists = handler.music().Artists()
-	view.CoverSmall = handler.music().CoverSmall
+func ArtistsView(ctx Context) *Artists {
+	view := &Artists{}
+	view.Artists = ctx.Music().Artists()
+	view.CoverSmall = ctx.Music().CoverSmall
 	return view
 }
 
-func (handler *UserHandler) artistView(artist music.Artist) *ArtistView {
-	m := handler.music()
-	view := &ArtistView{}
+func ArtistView(ctx Context, artist music.Artist) *Artist {
+	m := ctx.Music()
+	view := &Artist{}
 	view.Artist = artist
 	view.Releases = m.ArtistReleases(&artist)
-	view.Popular = m.ArtistPopularTracks(artist)
-	n := 5
-	if len(view.Popular) > n {
-		view.Popular = view.Popular[:n]
-	}
-	view.Singles = m.ArtistSingleTracks(artist)
-	if len(view.Singles) > n {
-		view.Singles = view.Singles[:n]
-	}
 	view.Similar = m.SimilarArtists(&artist)
 	view.Image = m.ArtistImage(&artist)
 	view.Background = m.ArtistBackground(&artist)
 	view.CoverSmall = m.CoverSmall
+	view.Popular = TrackList{
+		Title: fmt.Sprintf("%s \u2013 Popular", artist.Name),
+		Tracks: func() []music.Track {
+			tracks := m.ArtistPopularTracks(artist)
+			n := 5
+			if len(tracks) > n {
+				tracks = tracks[:n]
+			}
+			return tracks
+		},
+	}
+	view.Singles = TrackList{
+		Title: fmt.Sprintf("%s \u2013 Singles", artist.Name),
+		Tracks: func() []music.Track {
+			tracks := m.ArtistSingleTracks(artist)
+			n := 5
+			if len(tracks) > n {
+				tracks = tracks[:n]
+			}
+			return tracks
+		},
+	}
+	view.Deep = TrackList{
+		Title: fmt.Sprintf("%s \u2013 Deep Tracks", artist.Name),
+		Tracks: func() []music.Track {
+			return m.ArtistDeep(artist, ctx.Config().Music.RadioLimit)
+		},
+	}
+	view.Radio = TrackList{
+		Title: fmt.Sprintf("%s \u2013 Radio", artist.Name),
+		Tracks: func() []music.Track {
+			return m.ArtistRadio(artist)
+		},
+	}
+	view.Shuffle = TrackList{
+		Title: fmt.Sprintf("%s \u2013 Shuffle", artist.Name),
+		Tracks: func() []music.Track {
+			return m.ArtistShuffle(artist, ctx.Config().Music.RadioLimit)
+		},
+	}
+	view.Tracks = TrackList{
+		Title: fmt.Sprintf("%s \u2013 Tracks", artist.Name),
+		Tracks: func() []music.Track {
+			return m.ArtistTracks(artist)
+		},
+	}
 	return view
 }
 
-func (handler *UserHandler) popularView(artist music.Artist) *PopularView {
-	m := handler.music()
-	view := &PopularView{}
+func PopularView(ctx Context, artist music.Artist) *Popular {
+	m := ctx.Music()
+	view := &Popular{}
 	view.Artist = artist
 	view.Popular = m.ArtistPopularTracks(artist)
-	limit := handler.config.Music.PopularLimit
+	limit := ctx.Config().Music.PopularLimit
 	if len(view.Popular) > limit {
 		view.Popular = view.Popular[:limit]
 	}
@@ -286,12 +344,12 @@ func (handler *UserHandler) popularView(artist music.Artist) *PopularView {
 	return view
 }
 
-func (handler *UserHandler) singlesView(artist music.Artist) *SinglesView {
-	m := handler.music()
-	view := &SinglesView{}
+func SinglesView(ctx Context, artist music.Artist) *Singles {
+	m := ctx.Music()
+	view := &Singles{}
 	view.Artist = artist
 	view.Singles = m.ArtistSingleTracks(artist)
-	limit := handler.config.Music.SinglesLimit
+	limit := ctx.Config().Music.SinglesLimit
 	if len(view.Singles) > limit {
 		view.Singles = view.Singles[:limit]
 	}
@@ -299,23 +357,24 @@ func (handler *UserHandler) singlesView(artist music.Artist) *SinglesView {
 	return view
 }
 
-func (handler *UserHandler) releaseView(release music.Release) *ReleaseView {
-	m := handler.music()
-	view := &ReleaseView{}
+func ReleaseView(ctx Context, release music.Release) *Release {
+	m := ctx.Music()
+	view := &Release{}
 	view.Release = release
 	view.Artist = *m.Artist(release.Artist)
 	view.Tracks = m.ReleaseTracks(release)
 	view.Singles = m.ReleaseSingles(release)
 	view.Popular = m.ReleasePopular(release)
 	view.Similar = m.SimilarReleases(&view.Artist, release)
+	view.Image = m.CoverSmall(release)
 	view.CoverSmall = m.CoverSmall
 	return view
 }
 
-func (handler *UserHandler) searchView(query string) *SearchView {
-	m := handler.media.music
-	v := handler.media.video
-	view := &SearchView{}
+func SearchView(ctx Context, query string) *Search {
+	m := ctx.Music()
+	v := ctx.Video()
+	view := &Search{}
 	artists, releases, _ := m.Query(query)
 	view.Artists = artists
 	view.Releases = releases
@@ -328,9 +387,10 @@ func (handler *UserHandler) searchView(query string) *SearchView {
 	return view
 }
 
-func (handler *UserHandler) radioView(user *auth.User) *RadioView {
-	view := &RadioView{}
-	for _, s := range handler.music().Stations(user) {
+func RadioView(ctx Context) *Radio {
+	m := ctx.Music()
+	view := &Radio{}
+	for _, s := range m.Stations(ctx.User()) {
 		switch s.Type {
 		case music.TypeArtist:
 			view.Artist = append(view.Artist, s)
@@ -351,18 +411,18 @@ func (handler *UserHandler) radioView(user *auth.User) *RadioView {
 	return view
 }
 
-func (handler *UserHandler) moviesView() *MoviesView {
-	v := handler.video()
-	view := &MoviesView{}
+func MoviesView(ctx Context) *Movies {
+	v := ctx.Video()
+	view := &Movies{}
 	view.Movies = v.Movies()
 	view.PosterSmall = v.MoviePosterSmall
 	view.Backdrop = v.MovieBackdrop
 	return view
 }
 
-func (handler *UserHandler) movieView(m video.Movie) *MovieView {
-	v := handler.video()
-	view := &MovieView{}
+func MovieView(ctx Context, m video.Movie) *Movie {
+	v := ctx.Video()
+	view := &Movie{}
 	view.Movie = m
 	collection := v.MovieCollection(m)
 	if collection != nil {
@@ -400,9 +460,9 @@ func (handler *UserHandler) movieView(m video.Movie) *MovieView {
 	return view
 }
 
-func (handler *UserHandler) profileView(p video.Person) *ProfileView {
-	v := handler.video()
-	view := &ProfileView{}
+func ProfileView(ctx Context, p video.Person) *Profile {
+	v := ctx.Video()
+	view := &Profile{}
 	view.Person = p
 	view.Starring = v.Starring(p)
 	view.Writing = v.Writing(p)
@@ -413,9 +473,9 @@ func (handler *UserHandler) profileView(p video.Person) *ProfileView {
 	return view
 }
 
-func (handler *UserHandler) genreView(name string) *GenreView {
-	v := handler.video()
-	view := &GenreView{}
+func GenreView(ctx Context, name string) *Genre {
+	v := ctx.Video()
+	view := &Genre{}
 	view.Name = name
 	view.Movies = v.Genre(name)
 	view.PosterSmall = v.MoviePosterSmall
@@ -423,9 +483,9 @@ func (handler *UserHandler) genreView(name string) *GenreView {
 	return view
 }
 
-func (handler *UserHandler) keywordView(name string) *KeywordView {
-	v := handler.video()
-	view := &KeywordView{}
+func KeywordView(ctx Context, name string) *Keyword {
+	v := ctx.Video()
+	view := &Keyword{}
 	view.Name = name
 	view.Movies = v.Keyword(name)
 	view.PosterSmall = v.MoviePosterSmall
@@ -433,26 +493,26 @@ func (handler *UserHandler) keywordView(name string) *KeywordView {
 	return view
 }
 
-func (handler *UserHandler) watchView(m video.Movie) *WatchView {
-	v := handler.video()
-	view := &WatchView{}
+func WatchView(ctx Context, m video.Movie) *Watch {
+	v := ctx.Video()
+	view := &Watch{}
 	view.Movie = m
 	view.PosterSmall = v.MoviePosterSmall
 	view.Backdrop = v.MovieBackdrop
 	return view
 }
 
-func (handler *UserHandler) podcastsView() *PodcastsView {
-	p := handler.podcast()
-	view := &PodcastsView{}
+func PodcastsView(ctx Context) *Podcasts {
+	p := ctx.Podcast()
+	view := &Podcasts{}
 	view.Series = p.Series()
 	view.SeriesImage = p.SeriesImage
 	return view
 }
 
-func (handler *UserHandler) seriesView(s podcast.Series) *SeriesView {
-	p := handler.podcast()
-	view := &SeriesView{}
+func SeriesView(ctx Context, s podcast.Series) *Series {
+	p := ctx.Podcast()
+	view := &Series{}
 	view.Series = s
 	view.Episodes = p.Episodes(s)
 	view.SeriesImage = p.SeriesImage
@@ -460,22 +520,21 @@ func (handler *UserHandler) seriesView(s podcast.Series) *SeriesView {
 	return view
 }
 
-func (handler *UserHandler) seriesEpisodeView(e podcast.Episode) *SeriesEpisodeView {
-	p := handler.podcast()
-	view := &SeriesEpisodeView{}
+func SeriesEpisodeView(ctx Context, e podcast.Episode) *SeriesEpisode {
+	view := &SeriesEpisode{}
 	view.Episode = e
-	view.EpisodeImage = p.EpisodeImage
+	view.EpisodeImage = ctx.Podcast().EpisodeImage
 	return view
 }
 
-func (handler *UserHandler) progressView() *ProgressView {
-	view := &ProgressView{}
-	view.Offsets = handler.progress().Offsets(handler.user)
+func ProgressView(ctx Context) *Progress {
+	view := &Progress{}
+	view.Offsets = ctx.Progress().Offsets(ctx.User())
 	return view
 }
 
-func (handler *UserHandler) offsetView(offset progress.Offset) *OffsetView {
-	view := &OffsetView{}
+func OffsetView(ctx Context, offset progress.Offset) *Offset {
+	view := &Offset{}
 	view.Offset = offset
 	return view
 }

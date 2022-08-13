@@ -271,6 +271,30 @@ func (v *Video) LookupMovie(id int) (Movie, error) {
 	return movie, err
 }
 
+func (v *Video) LookupTMID(tmid int) (Movie, error) {
+	var movie Movie
+	err := v.db.First(&movie, "tm_id = ?", tmid).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return Movie{}, errors.New("movie not found")
+	}
+	return movie, err
+}
+
+func (v *Video) LookupIMID(imid string) (Movie, error) {
+	var movie Movie
+	err := v.db.First(&movie, "im_id = ?", imid).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return Movie{}, errors.New("movie not found")
+	}
+	return movie, err
+}
+
+func (v *Video) lookupIMIDs(imids []string) []Movie {
+	var movies []Movie
+	v.db.Where("im_id in (?)", imids).Find(&movies)
+	return movies
+}
+
 func (v *Video) LookupPerson(id int) (Person, error) {
 	var person Person
 	err := v.db.First(&person, id).Error

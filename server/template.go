@@ -34,6 +34,7 @@ import (
 	"github.com/defsub/takeout/music"
 	"github.com/defsub/takeout/podcast"
 	"github.com/defsub/takeout/video"
+	"github.com/defsub/takeout/view"
 )
 
 //go:embed res/static
@@ -95,8 +96,6 @@ func doFuncMap() template.FuncMap {
 			case music.Track:
 				link = locateTrack(o.(music.Track))
 			case video.Movie:
-				// m := o.(video.Movie)
-				// link = handler.LocateMovie(m)
 				link = fmt.Sprintf("/v?movie=%d", o.(video.Movie).ID)
 			case podcast.Series:
 				link = fmt.Sprintf("/v?series=%d", o.(podcast.Series).ID)
@@ -163,118 +162,119 @@ func doFuncMap() template.FuncMap {
 	}
 }
 
-func (handler *UserHandler) viewHandler(w http.ResponseWriter, r *http.Request) {
-	var view interface{}
+func viewHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	var result interface{}
 	var temp string
 
 	if v := r.URL.Query().Get("release"); v != "" {
 		// /v?release={release-id}
-		m := handler.music()
+		m := ctx.Music()
 		id, _ := strconv.Atoi(v)
 		release, _ := m.LookupRelease(id)
-		view = handler.releaseView(release)
+		result = view.ReleaseView(ctx, release)
 		temp = "release.html"
 	} else if v := r.URL.Query().Get("artist"); v != "" {
 		// /v?artist={artist-id}
-		m := handler.music()
+		m := ctx.Music()
 		id, _ := strconv.Atoi(v)
 		artist, _ := m.LookupArtist(id)
-		view = handler.artistView(artist)
+		result = view.ArtistView(ctx, artist)
 		temp = "artist.html"
 	} else if v := r.URL.Query().Get("artists"); v != "" {
 		// /v?artists=x
-		view = handler.artistsView()
+		result = view.ArtistsView(ctx)
 		temp = "artists.html"
 	} else if v := r.URL.Query().Get("popular"); v != "" {
 		// /v?popular={artist-id}
-		m := handler.music()
+		m := ctx.Music()
 		id, _ := strconv.Atoi(v)
 		artist, _ := m.LookupArtist(id)
-		view = handler.popularView(artist)
+		result = view.PopularView(ctx, artist)
 		temp = "popular.html"
 	} else if v := r.URL.Query().Get("singles"); v != "" {
 		// /v?singles={artist-id}
-		m := handler.music()
+		m := ctx.Music()
 		id, _ := strconv.Atoi(v)
 		artist, _ := m.LookupArtist(id)
-		view = handler.singlesView(artist)
+		result = view.SinglesView(ctx, artist)
 		temp = "singles.html"
 	} else if v := r.URL.Query().Get("home"); v != "" {
 		// /v?home=x
-		view = handler.homeView()
+		result = view.HomeView(ctx)
 		temp = "home.html"
 	} else if v := r.URL.Query().Get("q"); v != "" {
 		// /v?q={pattern}
-		view = handler.searchView(strings.TrimSpace(v))
+		result = view.SearchView(ctx, strings.TrimSpace(v))
 		temp = "search.html"
 	} else if v := r.URL.Query().Get("radio"); v != "" {
 		// /v?radio=x
-		view = handler.radioView(handler.user)
+		result = view.RadioView(ctx)
 		temp = "radio.html"
 	} else if v := r.URL.Query().Get("movies"); v != "" {
 		// /v?movies=x
-		view = handler.moviesView()
+		result = view.MoviesView(ctx)
 		temp = "movies.html"
 	} else if v := r.URL.Query().Get("movie"); v != "" {
 		// /v?movie={movie-id}
-		vid := handler.video()
+		vid := ctx.Video()
 		id, _ := strconv.Atoi(v)
 		movie, _ := vid.LookupMovie(id)
-		view = handler.movieView(movie)
+		result = view.MovieView(ctx, movie)
 		temp = "movie.html"
 	} else if v := r.URL.Query().Get("profile"); v != "" {
 		// /v?profile={person-id}
-		vid := handler.video()
+		vid := ctx.Video()
 		id, _ := strconv.Atoi(v)
 		person, _ := vid.LookupPerson(id)
-		view = handler.profileView(person)
+		result = view.ProfileView(ctx, person)
 		temp = "profile.html"
 	} else if v := r.URL.Query().Get("genre"); v != "" {
 		// /v?genre={genre-name}
 		name := strings.TrimSpace(v)
-		view = handler.genreView(name)
+		result = view.GenreView(ctx, name)
 		temp = "genre.html"
 	} else if v := r.URL.Query().Get("keyword"); v != "" {
 		// /v?keyword={keyword-name}
 		name := strings.TrimSpace(v)
-		view = handler.keywordView(name)
+		result = view.KeywordView(ctx, name)
 		temp = "keyword.html"
 	} else if v := r.URL.Query().Get("watch"); v != "" {
 		// /v?watch={movie-id}
-		vid := handler.video()
+		vid := ctx.Video()
 		id, _ := strconv.Atoi(v)
 		movie, _ := vid.LookupMovie(id)
-		view = handler.watchView(movie)
+		result = view.WatchView(ctx, movie)
 		temp = "watch.html"
 	} else if v := r.URL.Query().Get("podcasts"); v != "" {
 		// /v?podcasts=x
-		view = handler.podcastsView()
+		result = view.PodcastsView(ctx)
 		temp = "podcasts.html"
 	} else if v := r.URL.Query().Get("series"); v != "" {
 		// /v?series={series-id}
-		p := handler.podcast()
+		p := ctx.Podcast()
 		id, _ := strconv.Atoi(v)
 		series, _ := p.LookupSeries(id)
-		view = handler.seriesView(series)
+		result = view.SeriesView(ctx, series)
 		temp = "series.html"
 	} else if v := r.URL.Query().Get("episode"); v != "" {
 		// /v?episode={episode-id}
-		p := handler.podcast()
+		p := ctx.Podcast()
 		id, _ := strconv.Atoi(v)
 		episode, _ := p.LookupEpisode(id)
-		view = handler.seriesEpisodeView(episode)
+		result = view.SeriesEpisodeView(ctx, episode)
 		temp = "episode.html"
 	} else {
-		view = handler.indexView()
+		result = view.IndexView(ctx)
 		temp = "index.html"
 	}
 
-	handler.render(temp, view, w, r)
+	render(ctx, temp, result, w, r)
 }
 
-func (handler *UserHandler) render(temp string, view interface{},
+func render(ctx Context, temp string, view interface{},
 	w http.ResponseWriter, r *http.Request) {
-	err := handler.template.ExecuteTemplate(w, temp, view)
+	err := ctx.Template().ExecuteTemplate(w, temp, view)
 	if err != nil {
 		serverErr(w, err)
 	}

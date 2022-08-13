@@ -38,6 +38,7 @@ package server
 import (
 	"github.com/defsub/takeout/lib/spiff"
 	"github.com/defsub/takeout/progress"
+	"github.com/defsub/takeout/view"
 )
 
 // ---------------------------------------------------------------------------
@@ -366,7 +367,7 @@ type StatusResponse struct {
 type ArtistResponse struct {
 	// in: body
 	Body struct {
-		ArtistView
+		view.Artist
 	}
 }
 
@@ -374,7 +375,7 @@ type ArtistResponse struct {
 type ArtistsResponse struct {
 	// in: body
 	Body struct {
-		ArtistsView
+		view.Artists
 	}
 }
 
@@ -382,7 +383,7 @@ type ArtistsResponse struct {
 type GenreResponse struct {
 	// in: body
 	Body struct {
-		GenreView
+		view.Genre
 	}
 }
 
@@ -390,7 +391,7 @@ type GenreResponse struct {
 type HomeResponse struct {
 	// in: body
 	Body struct {
-		HomeView
+		view.Home
 	}
 }
 
@@ -398,7 +399,7 @@ type HomeResponse struct {
 type IndexResponse struct {
 	// in: body
 	Body struct {
-		IndexView
+		view.Index
 	}
 }
 
@@ -406,7 +407,7 @@ type IndexResponse struct {
 type KeywordResponse struct {
 	// in: body
 	Body struct {
-		KeywordView
+		view.Keyword
 	}
 }
 
@@ -414,7 +415,7 @@ type KeywordResponse struct {
 type MovieResponse struct {
 	// in: body
 	Body struct {
-		MovieView
+		view.Movie
 	}
 }
 
@@ -422,7 +423,7 @@ type MovieResponse struct {
 type MoviesResponse struct {
 	// in: body
 	Body struct {
-		MoviesView
+		view.Movies
 	}
 }
 
@@ -430,7 +431,7 @@ type MoviesResponse struct {
 type OffsetResponse struct {
 	// in: body
 	Body struct {
-		OffsetView
+		view.Offset
 	}
 }
 
@@ -446,7 +447,7 @@ type PlaylistResponse struct {
 type PodcastsResponse struct {
 	// in: body
 	Body struct {
-		PodcastsView
+		view.Podcasts
 	}
 }
 
@@ -454,7 +455,7 @@ type PodcastsResponse struct {
 type PopularResponse struct {
 	// in: body
 	Body struct {
-		PopularView
+		view.Popular
 	}
 }
 
@@ -462,7 +463,7 @@ type PopularResponse struct {
 type ProfileResponse struct {
 	// in: body
 	Body struct {
-		ProfileView
+		view.Profile
 	}
 }
 
@@ -478,7 +479,7 @@ type ProgressParameter struct {
 type ProgressResponse struct {
 	// in: body
 	Body struct {
-		ProgressView
+		view.Progress
 	}
 }
 
@@ -486,7 +487,7 @@ type ProgressResponse struct {
 type RadioResponse struct {
 	// in: body
 	Body struct {
-		RadioView
+		view.Radio
 	}
 }
 
@@ -494,7 +495,7 @@ type RadioResponse struct {
 type ReleaseResponse struct {
 	// in: body
 	Body struct {
-		ReleaseView
+		view.Release
 	}
 }
 
@@ -502,7 +503,7 @@ type ReleaseResponse struct {
 type SearchResponse struct {
 	// in: body
 	Body struct {
-		SearchView
+		view.Search
 	}
 }
 
@@ -510,7 +511,7 @@ type SearchResponse struct {
 type SeriesResponse struct {
 	// in: body
 	Body struct {
-		SeriesView
+		view.Series
 	}
 }
 
@@ -518,7 +519,7 @@ type SeriesResponse struct {
 type SeriesEpisodeResponse struct {
 	// in: body
 	Body struct {
-		SeriesEpisodeView
+		view.SeriesEpisode
 	}
 }
 
@@ -526,6 +527,6 @@ type SeriesEpisodeResponse struct {
 type SinglesResponse struct {
 	// in: body
 	Body struct {
-		SinglesView
+		view.Singles
 	}
 }

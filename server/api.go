@@ -22,12 +22,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"regexp"
 	"strings"
-	"time"
 
-	"github.com/defsub/takeout/lib/date"
 	"github.com/defsub/takeout/lib/encoding/xspf"
 	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/lib/spiff"
@@ -35,6 +32,7 @@ import (
 	"github.com/defsub/takeout/music"
 	"github.com/defsub/takeout/progress"
 	"github.com/defsub/takeout/ref"
+	"github.com/defsub/takeout/view"
 )
 
 type login struct {
@@ -48,14 +46,9 @@ type status struct {
 	Cookie  string
 }
 
-// POST /api/login
-func (handler *Handler) apiLogin(w http.ResponseWriter, r *http.Request) {
+func apiLogin(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
 	w.Header().Set("Content-type", ApplicationJson)
-
-	if r.Method != "POST" {
-		serverErr(w, ErrInvalidMethod)
-		return
-	}
 
 	var l login
 	body, _ := ioutil.ReadAll(r.Body)
@@ -66,7 +59,7 @@ func (handler *Handler) apiLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var result status
-	cookie, err := handler.doLogin(l.User, l.Pass)
+	cookie, err := doLogin(ctx, l.User, l.Pass)
 	if err == nil {
 		http.SetCookie(w, &cookie)
 		result = status{
@@ -86,8 +79,45 @@ func (handler *Handler) apiLogin(w http.ResponseWriter, r *http.Request) {
 	enc.Encode(result)
 }
 
-func (handler *UserHandler) recvStation(w http.ResponseWriter, r *http.Request,
+func writePlaylist(w http.ResponseWriter, r *http.Request, plist *spiff.Playlist) {
+	if strings.HasSuffix(r.URL.Path, ".xspf") {
+		// create XML spiff with tracks fully resolved
+		ctx := contextValue(r)
+		w.Header().Set("Content-type", xspf.XMLContentType)
+		encoder := xspf.NewXMLEncoder(w)
+		encoder.Header(plist.Spiff.Title)
+		locationRegexp := regexp.MustCompile(`/api/(tracks)/([0-9]+)/location`)
+		for i := range plist.Spiff.Entries {
+			matches := locationRegexp.FindStringSubmatch(plist.Spiff.Entries[i].Location[0])
+			if matches != nil {
+				src := matches[1]
+				if src == "tracks" {
+					m := ctx.Music()
+					id := str.Atoi(matches[2])
+					track, err := m.LookupTrack(id)
+					if err != nil {
+						continue
+					}
+					url := m.TrackURL(&track)
+					plist.Spiff.Entries[i].Location = []string{url.String()}
+				}
+			}
+			encoder.Encode(plist.Spiff.Entries[i])
+		}
+		encoder.Footer()
+
+	} else {
+		// use json spiff with track location
+		w.Header().Set("Content-type", ApplicationJson)
+		result, _ := plist.Marshal()
+		w.Write(result)
+	}
+}
+
+// TODO check
+func recvStation(w http.ResponseWriter, r *http.Request,
 	s *music.Station) error {
+	ctx := contextValue(r)
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, s)
 	if err != nil {
@@ -98,10 +128,10 @@ func (handler *UserHandler) recvStation(w http.ResponseWriter, r *http.Request,
 		http.Error(w, "bummer", http.StatusBadRequest)
 		return err
 	}
-	s.User = handler.user.Name
+	s.User = ctx.User().Name
 	if s.Ref == "/api/playlist" {
 		// copy playlist
-		p := handler.music().LookupPlaylist(handler.user)
+		p := ctx.Music().LookupPlaylist(ctx.User())
 		if p != nil {
 			s.Playlist = p.Playlist
 		}
@@ -109,33 +139,367 @@ func (handler *UserHandler) recvStation(w http.ResponseWriter, r *http.Request,
 	return nil
 }
 
-// GET /api/radio
-// POST /api/radio
-func (handler *UserHandler) apiRadio(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "GET":
-		view := handler.radioView(handler.user)
-		enc := json.NewEncoder(w)
-		enc.Encode(view)
-	case "POST":
-		var s music.Station
-		err := handler.recvStation(w, r, &s)
-		if err != nil {
-			return
-		}
-		err = handler.music().CreateStation(&s)
+func makeEmptyPlaylist(w http.ResponseWriter, r *http.Request) (*music.Playlist, error) {
+	ctx := contextValue(r)
+	plist := spiff.NewPlaylist(spiff.TypeMusic)
+	plist.Spiff.Location = r.URL.Path
+	data, _ := plist.Marshal()
+	p := music.Playlist{User: ctx.User().Name, Playlist: data}
+	err := ctx.Music().CreatePlaylist(&p)
+	return &p, err
+}
+
+func apiPlaylistGet(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	p := ctx.Music().LookupPlaylist(ctx.User())
+	if p == nil {
+		var err error
+		p, err = makeEmptyPlaylist(w, r)
 		if err != nil {
 			serverErr(w, err)
 			return
 		}
-		w.WriteHeader(http.StatusCreated)
-		enc := json.NewEncoder(w)
-		enc.Encode(s)
-	default:
-		http.Error(w, "bummer", http.StatusBadRequest)
+	}
+	w.Header().Set("Content-type", ApplicationJson)
+	w.WriteHeader(http.StatusOK)
+	w.Write(p.Playlist)
+}
+
+func apiPlaylistPatch(w http.ResponseWriter, r *http.Request) {
+	var err error
+
+	ctx := contextValue(r)
+	user := ctx.User()
+	m := ctx.Music()
+	p := m.LookupPlaylist(user)
+	if p == nil {
+		var err error
+		p, err = makeEmptyPlaylist(w, r)
+		if err != nil {
+			serverErr(w, err)
+			return
+		}
+	}
+
+	before := p.Playlist
+
+	// apply patch
+	patch, _ := ioutil.ReadAll(r.Body)
+	p.Playlist, err = spiff.Patch(p.Playlist, patch)
+	if err != nil {
+		serverErr(w, err)
+		return
+	}
+	plist, _ := spiff.Unmarshal(p.Playlist)
+	ref.Resolve(ctx, plist)
+
+	// save result
+	if plist.Spiff.Entries == nil {
+		plist.Spiff.Entries = []spiff.Entry{}
+	}
+	p.Playlist, _ = plist.Marshal()
+	m.UpdatePlaylist(p)
+
+	v, _ := spiff.Compare(before, p.Playlist)
+	if v {
+		// entries didn't change, only metadata
+		w.WriteHeader(http.StatusNoContent)
+	} else {
+		w.Header().Set("Content-type", ApplicationJson)
+		w.WriteHeader(http.StatusOK)
+		w.Write(p.Playlist)
 	}
 }
 
+func apiProgressGet(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	view := view.ProgressView(ctx)
+	apiView(w, r, view)
+}
+
+func apiProgressPost(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	user := ctx.User()
+	var offsets progress.Offsets
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		badRequest(w, err)
+		return
+	}
+	err = json.Unmarshal(body, &offsets)
+	if err != nil {
+		badRequest(w, err)
+		return
+	}
+	for i := range offsets.Offsets {
+		// will update array inplace
+		o := &offsets.Offsets[i]
+		if len(o.User) != 0 {
+			// post must not have a user
+			badRequest(w, err)
+			return
+		}
+		// use authenticated user
+		o.User = user.Name
+		if !o.Valid() {
+			badRequest(w, ErrInvalidOffset)
+			return
+		}
+	}
+	for _, o := range offsets.Offsets {
+		// update each offset as needed
+		log.Printf("update progress %s %d/%d\n", o.ETag, o.Offset, o.Duration)
+		err = ctx.Progress().Update(user, o)
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func apiView(w http.ResponseWriter, r *http.Request, view interface{}) {
+	w.Header().Set("Content-type", ApplicationJson)
+	enc := json.NewEncoder(w)
+	enc.Encode(view)
+}
+
+func apiHome(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	view := view.HomeView(ctx)
+	apiView(w, r, view)
+}
+
+func apiIndex(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	view := view.IndexView(ctx)
+	apiView(w, r, view)
+}
+
+func apiSearch(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	if v := r.URL.Query().Get("q"); v != "" {
+		// /api/search?q={pattern}
+		view := view.SearchView(ctx, strings.TrimSpace(v))
+		apiView(w, r, view)
+	} else {
+		notFoundErr(w)
+	}
+}
+
+func apiArtists(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	apiView(w, r, view.ArtistsView(ctx))
+}
+
+func apiArtistGet(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	id := r.URL.Query().Get(":id")
+	artist, err := ctx.FindArtist(id)
+	if err != nil {
+		notFoundErr(w)
+	} else {
+		apiView(w, r, view.ArtistView(ctx, artist))
+	}
+}
+
+func apiArtistGetResource(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	id := r.URL.Query().Get(":id")
+	res := r.URL.Query().Get(":res")
+	artist, err := ctx.FindArtist(id)
+	if err != nil {
+		notFoundErr(w)
+	} else {
+		switch res {
+		case "popular":
+			apiView(w, r, view.PopularView(ctx, artist))
+		case "singles":
+			apiView(w, r, view.SinglesView(ctx, artist))
+		case "playlist":
+			apiArtistGetPlaylist(w, r)
+		default:
+			notFoundErr(w)
+		}
+	}
+}
+
+func apiArtistGetPlaylist(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	id := r.URL.Query().Get(":id")
+	res := r.URL.Query().Get(":res")
+	artist, err := ctx.FindArtist(id)
+	if err != nil {
+		notFoundErr(w)
+	} else {
+		// /api/artists/{id}/{res}/playlist -> /music/artists/{id}/{res}
+		nref := fmt.Sprintf("/music/artists/%s/%s", id, res)
+		plist := ref.ResolveArtistPlaylist(ctx,
+			view.ArtistView(ctx, artist), r.URL.Path, nref)
+		writePlaylist(w, r, plist)
+	}
+}
+
+func apiRadioGet(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	apiView(w, r, view.RadioView(ctx))
+}
+
+func apiRadioPost(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	var s music.Station
+	err := recvStation(w, r, &s)
+	if err != nil {
+		return
+	}
+	err = ctx.Music().CreateStation(&s)
+	if err != nil {
+		serverErr(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	enc := json.NewEncoder(w)
+	enc.Encode(s)
+}
+
+func apiRadioStationGetPlaylist(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	id := r.URL.Query().Get(":id")
+	station, err := ctx.FindStation(id)
+	if err != nil {
+		notFoundErr(w)
+		return
+	}
+	if !station.Visible(ctx.User()) {
+		notFoundErr(w)
+		return
+	}
+	plist := ref.RefreshStation(ctx, &station)
+	writePlaylist(w, r, plist)
+}
+
+func apiMovies(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	apiView(w, r, view.MoviesView(ctx))
+}
+
+func apiMovieGet(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	id := r.URL.Query().Get(":id")
+	movie, err := ctx.FindMovie(id)
+	if err != nil {
+		notFoundErr(w)
+	} else {
+		apiView(w, r, view.MovieView(ctx, movie))
+	}
+}
+
+func apiMovieGetPlaylist(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	id := r.URL.Query().Get(":id")
+	movie, err := ctx.FindMovie(id)
+	if err != nil {
+		notFoundErr(w)
+	} else {
+		view := view.MovieView(ctx, movie)
+		plist := ref.ResolveMoviePlaylist(ctx, view, r.URL.Path)
+		writePlaylist(w, r, plist)
+	}
+}
+
+func apiMovieProfileGet(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	id := r.URL.Query().Get(":id")
+	person, err := ctx.Video().LookupPerson(str.Atoi(id))
+	if err != nil {
+		notFoundErr(w)
+	} else {
+		apiView(w, r, view.ProfileView(ctx, person))
+	}
+}
+
+func apiMovieGenreGet(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	name := r.URL.Query().Get(":name")
+	// TODO sanitize
+	apiView(w, r, view.GenreView(ctx, name))
+}
+
+func apiMovieKeywordGet(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	name := r.URL.Query().Get(":name")
+	// TODO sanitize
+	apiView(w, r, view.KeywordView(ctx, name))
+}
+
+func apiPodcasts(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	apiView(w, r, view.PodcastsView(ctx))
+}
+
+func apiPodcastSeriesGet(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	id := r.URL.Query().Get(":id")
+	series, err := ctx.Podcast().FindSeries(id)
+	if err != nil {
+		notFoundErr(w)
+	} else {
+		apiView(w, r, view.SeriesView(ctx, series))
+	}
+}
+
+func apiPodcastSeriesGetPlaylist(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	id := r.URL.Query().Get(":id")
+	series, err := ctx.Podcast().FindSeries(id)
+	if err != nil {
+		notFoundErr(w)
+	} else {
+		view := view.SeriesView(ctx, series)
+		plist := ref.ResolveSeriesPlaylist(ctx, view, r.URL.Path)
+		writePlaylist(w, r, plist)
+	}
+}
+
+func apiPodcastSeriesEpisodeGet(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	id := r.URL.Query().Get(":id")
+	if id != "" {
+		// series is optional for now
+		_, err := ctx.Podcast().FindSeries(id)
+		if err != nil {
+			notFoundErr(w)
+			return
+		}
+	}
+	eid := r.URL.Query().Get(":eid")
+	episode, err := ctx.Podcast().FindEpisode(eid)
+	if err != nil {
+		notFoundErr(w)
+	} else {
+		apiView(w, r, view.SeriesEpisodeView(ctx, episode))
+	}
+}
+
+func apiPodcastSeriesEpisodeGetPlaylist(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	id := r.URL.Query().Get(":id")
+	eid := r.URL.Query().Get(":eid")
+	series, err := ctx.Podcast().FindSeries(id)
+	if err != nil {
+		notFoundErr(w)
+		return
+	}
+	episode, err := ctx.Podcast().FindEpisode(eid)
+	if err != nil {
+		notFoundErr(w)
+	} else {
+		plist := ref.ResolveSeriesEpisodePlaylist(ctx,
+			view.SeriesView(ctx, series),
+			view.SeriesEpisodeView(ctx, episode),
+			r.URL.Path)
+		writePlaylist(w, r, plist)
+	}
+}
+
+// TODO check
+//
 // PUT /api/radio/1 < Station{}
 // 204: no content
 // 404: not found
@@ -150,34 +514,33 @@ func (handler *UserHandler) apiRadio(w http.ResponseWriter, r *http.Request) {
 // 204: success, no content
 // 404: not found
 // 500: error
-func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, id int) {
-	s, err := handler.music().LookupStation(id)
+func apiStation(w http.ResponseWriter, r *http.Request, id int) {
+	ctx := contextValue(r)
+	s, err := ctx.Music().LookupStation(id)
 	if err != nil {
 		notFoundErr(w)
 		return
 	}
-	if !s.Visible(handler.user) {
+	if !s.Visible(ctx.User()) {
 		notFoundErr(w)
 		return
 	}
 
 	switch r.Method {
 	case "GET":
-		resolver := ref.NewResolver(handler.config, handler)
-		resolver.RefreshStation(&s, handler.user)
-
+		ref.RefreshStation(ctx, &s)
 		w.WriteHeader(http.StatusOK)
 		w.Write(s.Playlist)
 	case "PUT":
 		var up music.Station
-		err := handler.recvStation(w, r, &up)
+		err := recvStation(w, r, &up)
 		if err != nil {
 			return
 		}
 		s.Name = up.Name
 		s.Ref = up.Ref
 		s.Playlist = up.Playlist
-		err = handler.music().UpdateStation(&s)
+		err = ctx.Music().UpdateStation(&s)
 		if err != nil {
 			serverErr(w, err)
 			return
@@ -192,17 +555,16 @@ func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, i
 		}
 		// unmarshal & resovle
 		plist, _ := spiff.Unmarshal(s.Playlist)
-		resolver := ref.NewResolver(handler.config, handler)
-		resolver.Resolve(handler.user, plist)
+		ref.Resolve(ctx, plist)
 		if plist.Spiff.Entries == nil {
 			plist.Spiff.Entries = []spiff.Entry{}
 		}
 		// marshal & persist
 		s.Playlist, _ = plist.Marshal()
-		handler.music().UpdateStation(&s)
+		ctx.Music().UpdateStation(&s)
 		w.WriteHeader(http.StatusNoContent)
 	case "DELETE":
-		err = handler.music().DeleteStation(&s)
+		err = ctx.Music().DeleteStation(&s)
 		if err != nil {
 			serverErr(w, err)
 			return
@@ -213,530 +575,68 @@ func (handler *UserHandler) apiStation(w http.ResponseWriter, r *http.Request, i
 	}
 }
 
-// GET /api/(artists|releases|movies|series|tv)/id/(playlist|popular|radio|singles)
-func (handler *UserHandler) apiRefPlaylist(w http.ResponseWriter, r *http.Request,
-	listType string, creator, title, image string, spiffDate time.Time, nref string) {
-	plist := spiff.NewPlaylist(listType)
-	//plist.Spiff.Location = fmt.Sprintf("%s%s", handler.config.Server.URL, r.URL.Path)
-	plist.Spiff.Location = r.URL.Path
-	plist.Spiff.Creator = creator
-	plist.Spiff.Title = title
-	plist.Spiff.Image = image
-	plist.Spiff.Date = date.FormatJson(spiffDate)
-	plist.Spiff.Entries = []spiff.Entry{{Ref: nref}}
-	resolver := ref.NewResolver(handler.config, handler)
-	resolver.Resolve(handler.user, plist)
-	if plist.Spiff.Entries == nil {
-		plist.Spiff.Entries = []spiff.Entry{}
-	}
-	if strings.HasSuffix(r.URL.Path, ".xspf") {
-		w.Header().Set("Content-type", xspf.XMLContentType)
-		w.WriteHeader(http.StatusOK)
-		encoder := xspf.NewXMLEncoder(w)
-		encoder.Header(title)
-		locationRegexp := regexp.MustCompile(`/api/(movies|tracks|episodes)/([0-9]+)/location`)
-		for i := range plist.Spiff.Entries {
-			matches := locationRegexp.FindStringSubmatch(plist.Spiff.Entries[i].Location[0])
-			if matches != nil {
-				var url *url.URL
-				src := matches[1]
-				if src == "tracks" {
-					m := handler.music()
-					id := str.Atoi(matches[2])
-					track, err := m.LookupTrack(id)
-					if err != nil {
-						continue
-					}
-					url = m.TrackURL(&track)
-					plist.Spiff.Entries[i].Location = []string{url.String()}
-					// } else if src == "movies" {
-					// 	// TODO not supported yet
-					// 	id := str.Atoi(matches[2])
-					// 	movie, err := vid.LookupMovie(id)
-					// 	if err != nil {
-					// 		continue
-					// 	}
-					// 	url = vid.MovieURL(movie)
-					// 	plist.Entries[i].Location = []string{url.String()}
-				}
-			}
-			encoder.Encode(plist.Spiff.Entries[i])
-		}
-		encoder.Footer()
-	} else {
-		w.WriteHeader(http.StatusOK)
-		result, _ := plist.Marshal()
-		w.Write(result)
-	}
-}
-
-// GET /api/playlist
-func (handler *UserHandler) apiPlaylist(w http.ResponseWriter, r *http.Request) {
-	var err error
-
-	m := handler.music()
-	p := m.LookupPlaylist(handler.user)
-	if p == nil {
-		plist := spiff.NewPlaylist(spiff.TypeMusic) // TODO music may not be correct
-		//plist.Spiff.Location = fmt.Sprintf("%s/api/playlist", handler.config.Server.URL)
-		plist.Spiff.Location = "/api/playlist"
-		data, _ := plist.Marshal()
-		p = &music.Playlist{User: handler.user.Name, Playlist: data}
-		err := m.CreatePlaylist(p)
-		if err != nil {
-			serverErr(w, err)
-			return
-		}
-	}
-
-	var plist *spiff.Playlist
-	dirty := false
-	before := p.Playlist
-
-	if r.Method == "PATCH" {
-		patch, _ := ioutil.ReadAll(r.Body)
-		p.Playlist, err = spiff.Patch(p.Playlist, patch)
-		if err != nil {
-			serverErr(w, err)
-			return
-		}
-		plist, _ = spiff.Unmarshal(p.Playlist)
-		resolver := ref.NewResolver(handler.config, handler)
-		resolver.Resolve(handler.user, plist)
-		dirty = true
-	}
-
-	if dirty {
-		if plist.Spiff.Entries == nil {
-			plist.Spiff.Entries = []spiff.Entry{}
-		}
-		p.Playlist, _ = plist.Marshal()
-		m.UpdatePlaylist(p)
-
-		v, _ := spiff.Compare(before, p.Playlist)
-		if v {
-			// entries didn't change, only metadata
-			w.WriteHeader(http.StatusNoContent)
-		} else {
-			w.WriteHeader(http.StatusOK)
-			w.Write(p.Playlist)
-		}
-	} else {
-		w.WriteHeader(http.StatusOK)
-		w.Write(p.Playlist)
-	}
-}
-
-// POST /api/progress
-// GET /api/progress
-func (handler *UserHandler) apiProgress(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "POST":
-		var offsets progress.Offsets
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			badRequest(w, err)
-			return
-		}
-		err = json.Unmarshal(body, &offsets)
-		if err != nil {
-			badRequest(w, err)
-			return
-		}
-		for i := range offsets.Offsets {
-			// will update array inplace
-			o := &offsets.Offsets[i]
-			if len(o.User) != 0 {
-				// post must not have a user
-				badRequest(w, err)
-				return
-			}
-			// use authenticated user
-			o.User = handler.user.Name
-			if !o.Valid() {
-				badRequest(w, ErrInvalidOffset)
-				return
-			}
-		}
-		for _, o := range offsets.Offsets {
-			// update each offset as needed
-			log.Printf("update progress %s %d/%d\n", o.ETag, o.Offset, o.Duration)
-			err = handler.progress().Update(handler.user, o)
-		}
-		w.WriteHeader(http.StatusNoContent)
-	case "GET":
-		view := handler.progressView()
-		handler.apiView(w, r, view)
-	default:
-		badRequest(w, ErrInvalidMethod)
-	}
-}
-
-func (handler *UserHandler) apiView(w http.ResponseWriter, r *http.Request, view interface{}) {
-	enc := json.NewEncoder(w)
-	enc.Encode(view)
-}
-
-// GET /api/search
-func (handler *UserHandler) apiSearch(w http.ResponseWriter, r *http.Request) {
-	if v := r.URL.Query().Get("q"); v != "" {
-		// /api/search?q={pattern}
-		view := handler.searchView(strings.TrimSpace(v))
-		handler.apiView(w, r, view)
-	} else {
+func apiReleaseGet(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	id := r.URL.Query().Get(":id")
+	release, err := ctx.FindRelease(id)
+	if err != nil {
 		notFoundErr(w)
+	} else {
+		apiView(w, r, view.ReleaseView(ctx, release))
 	}
 }
 
-// POST /api/login -> see apiLogin
-//
-// GET,PATCH /api/playlist -> see apiPlaylist
-//
-// GET /api/radio > RadioView{}
-// GET /api/radio/1 > spiff.Playlist{}
-// POST /api/radio
-// GET,PATH,DELETE /api/radio/1 >
-//
-// GET /api/index > IndexView{}
-// GET /api/home > HomeView{}
-// GET /api/search > SearchView{}
-//
-// GET /api/tracks/1/location -> Redirect
-//
-// GET /api/artists > ArtistsView{}
-// GET /api/artists/1 > ArtistView{}
-// GET /api/artists/1/playlist > spiff.Playlist{}
-// GET /api/artists/1/popular > PopularView{}
-// GET /api/artists/1/popular/playlist > spiff.Playlist{}
-// GET /api/artists/1/singles > SinglesView{}
-// GET /api/artists/1/singles/playlist > spiff.Playlist{}
-// GET /api/artists/1/radio > spiff.Playlist{}
-//
-// GET /api/releases/1 > ReleaseView{}
-// GET /api/releases/1/playlist > spiff.Playlist{}
-//
-// POST /api/scrobble <
-//
-// 200: success
-// 500: error
-func (handler *UserHandler) apiHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-type", ApplicationJson)
+func apiReleaseGetPlaylist(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	id := r.URL.Query().Get(":id")
+	release, err := ctx.FindRelease(id)
+	if err != nil {
+		notFoundErr(w)
+	} else {
+		view := view.ReleaseView(ctx, release)
+		plist := ref.ResolveReleasePlaylist(ctx, view, r.URL.Path)
+		writePlaylist(w, r, plist)
+	}
+}
 
-	// if r.URL.Path == "/api/watch" {
-	// 	v := video.NewVideo(handler.config)
-	// 	v.Open()
-	// 	movie, _ := v.Movie(11)
-	// 	fmt.Printf("%+v\n", movie)
-	// 	u := v.MovieURL(movie)
-	// 	fmt.Printf("url %s\n", u.String())
-	// 	w.WriteHeader(http.StatusOK)
-	// 	w.Write([]byte(u.String()))
+func apiTrackLocation(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	id := r.URL.Query().Get(":id")
+	track, err := ctx.FindTrack(id)
+	if err != nil {
+		notFoundErr(w)
+	} else {
+		url := ctx.Music().TrackURL(&track)
+		http.Redirect(w, r, url.String(), http.StatusFound)
+	}
+}
+
+func apiMovieLocation(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	id := r.URL.Query().Get(":id")
+	movie, err := ctx.FindMovie(id)
+	if err != nil {
+		notFoundErr(w)
+	} else {
+		url := ctx.Video().MovieURL(movie)
+		http.Redirect(w, r, url.String(), http.StatusFound)
+	}
+}
+
+func apiSeriesEpisodeLocation(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	//id := r.URL.Query().Get(":id")
+	eid := r.URL.Query().Get(":eid")
+	// series, err := ctx.Podcast().FindSeries(id)
+	// if err != nil {
+	// 	notFoundErr(w)
 	// 	return
 	// }
-
-	switch r.URL.Path {
-	case "/api/playlist":
-		handler.apiPlaylist(w, r)
-	case "/api/progress":
-		handler.apiProgress(w, r)
-	case "/api/radio":
-		handler.apiRadio(w, r)
-	case "/api/index":
-		handler.apiView(w, r, handler.indexView())
-	case "/api/home":
-		handler.apiView(w, r, handler.homeView())
-	case "/api/artists":
-		handler.apiView(w, r, handler.artistsView())
-	case "/api/search":
-		handler.apiSearch(w, r)
-	case "/api/movies":
-		handler.apiView(w, r, handler.moviesView())
-	case "/api/podcasts":
-		handler.apiView(w, r, handler.podcastsView())
-	default:
-		// /api/(movies|tracks|episodes)/id/location
-		locationRegexp := regexp.MustCompile(`/api/(movies|tracks|episodes)/([0-9]+)/location`)
-		matches := locationRegexp.FindStringSubmatch(r.URL.Path)
-		if matches != nil {
-			var url *url.URL
-			m := handler.music()
-			vid := handler.video()
-			p := handler.podcast()
-			src := matches[1]
-			if src == "tracks" {
-				id := str.Atoi(matches[2])
-				track, _ := m.LookupTrack(id)
-				url = m.TrackURL(&track)
-			} else if src == "movies" {
-				id := str.Atoi(matches[2])
-				movie, _ := vid.LookupMovie(id)
-				url = vid.MovieURL(movie)
-			} else if src == "episodes" {
-				id := str.Atoi(matches[2])
-				episode, _ := p.LookupEpisode(id)
-				url = p.EpisodeURL(episode)
-			}
-			// TODO use 307 instead?
-			//fmt.Printf("location is %s\n", url.String())
-			http.Redirect(w, r, url.String(), http.StatusFound)
-			return
-		}
-
-		// /api/artists/id/(popular|singles)/playlist
-		subPlayistRegexp := regexp.MustCompile(`/api/artists/([0-9]+)/([a-z]+)/playlist(\.xspf)?`)
-		matches = subPlayistRegexp.FindStringSubmatch(r.URL.Path)
-		if matches != nil {
-			id := str.Atoi(matches[1])
-			m := handler.music()
-			artist, _ := m.LookupArtist(id)
-			image := m.ArtistImage(&artist)
-			sub := matches[2]
-			ext := matches[3]
-			if ext != "" && ext != ".xspf" {
-				notFoundErr(w)
-				return
-			}
-			switch sub {
-			case "popular":
-				// /api/artists/id/popular/playlist
-				handler.apiRefPlaylist(w, r, spiff.TypeMusic,
-					artist.Name,
-					fmt.Sprintf("%s \u2013 Popular", artist.Name),
-					image,
-					time.Now(),
-					fmt.Sprintf("/music/artists/%d/popular", id))
-			case "singles":
-				// /api/artists/id/singles/playlist
-				handler.apiRefPlaylist(w, r, spiff.TypeMusic,
-					artist.Name,
-					fmt.Sprintf("%s \u2013 Singles", artist.Name),
-					image,
-					time.Now(),
-					fmt.Sprintf("/music/artists/%d/singles", id))
-			default:
-				notFoundErr(w)
-			}
-			return
-		}
-
-		// /api/(artists|releases|movies|series|tv)/id/(playlist|popular|radio|singles)
-		playlistRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)/(playlist|popular|singles|radio)(\.xspf)?`)
-		matches = playlistRegexp.FindStringSubmatch(r.URL.Path)
-		if matches != nil {
-			v := matches[1]
-			id := str.Atoi(matches[2])
-			m := handler.music()
-			res := matches[3]
-			switch v {
-			case "artists":
-				artist, _ := m.LookupArtist(id)
-				image := m.ArtistImage(&artist)
-				switch res {
-				case "playlist":
-					// /api/artists/1/playlist
-					handler.apiRefPlaylist(w, r, spiff.TypeMusic,
-						artist.Name,
-						fmt.Sprintf("%s \u2013 Shuffle", artist.Name),
-						image,
-						time.Now(),
-						fmt.Sprintf("/music/artists/%d/shuffle", id))
-				case "radio":
-					// /api/artists/1/radio
-					handler.apiRefPlaylist(w, r, spiff.TypeMusic,
-						"Radio",
-						fmt.Sprintf("%s \u2013 Radio", artist.Name),
-						image,
-						time.Now(),
-						fmt.Sprintf("/music/artists/%d/similar", id))
-				case "popular":
-					// /api/artists/1/popular
-					handler.apiView(w, r, handler.popularView(artist))
-				case "singles":
-					// /api/artists/1/singles
-					handler.apiView(w, r, handler.singlesView(artist))
-				default:
-					notFoundErr(w)
-				}
-			case "releases":
-				// /api/releases/1/playlist
-				if res == "playlist" {
-					release, _ := m.LookupRelease(id)
-					handler.apiRefPlaylist(w, r, spiff.TypeMusic,
-						release.Artist,
-						release.Name,
-						release.Cover("250"),
-						release.ReleaseDate,
-						fmt.Sprintf("/music/releases/%d/tracks", id))
-				} else {
-					notFoundErr(w)
-				}
-			case "movies":
-				// /api/movies/1/playlist
-				if res == "playlist" {
-					movie, _ := handler.video().LookupMovie(id)
-					handler.apiRefPlaylist(w, r, spiff.TypeVideo,
-						"Movie", // TODO
-						movie.Title,
-						handler.video().MoviePoster(movie),
-						movie.Date,
-						fmt.Sprintf("/movies/%d", id))
-				} else {
-					notFoundErr(w)
-				}
-			case "series":
-				// /api/series/1/playlist
-				if res == "playlist" {
-					series, _ := handler.podcast().LookupSeries(id)
-					handler.apiRefPlaylist(w, r, spiff.TypePodcast,
-						series.Author,
-						series.Title,
-						handler.podcast().SeriesImage(series),
-						series.Date,
-						fmt.Sprintf("/series/%d", id))
-				} else {
-					notFoundErr(w)
-				}
-			case "tv":
-				// /api/tv/1/playlist
-				if res == "playlist" {
-					// tv, _ := handler.video().LookupTV(id)
-					// handler.apiRefPlaylist(w, r, spiff.TypeVideo,
-					// 	tv.,
-					// 	tv.Title,
-					// 	handler.video().TVImage(tv),
-					// 	tv.Date,
-					// 	fmt.Sprintf("/tv/%d", id))
-				} else {
-					notFoundErr(w)
-				}
-			default:
-				notFoundErr(w)
-			}
-			return
-		}
-
-		// /api/(artists|radio|releases|movies|profiles|progress|series|tv)/id
-		resourceRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)`)
-		matches = resourceRegexp.FindStringSubmatch(r.URL.Path)
-		if matches != nil {
-			v := matches[1]
-			id := str.Atoi(matches[2])
-			switch v {
-			case "artists":
-				// /api/artists/1
-				artist, err := handler.music().LookupArtist(id)
-				if err != nil {
-					notFoundErr(w)
-				} else {
-					handler.apiView(w, r, handler.artistView(artist))
-				}
-			case "releases":
-				// /api/releases/1
-				release, err := handler.music().LookupRelease(id)
-				if err != nil {
-					notFoundErr(w)
-				} else {
-					handler.apiView(w, r, handler.releaseView(release))
-				}
-			case "radio":
-				// /api/radio/1
-				handler.apiStation(w, r, id)
-			case "movies":
-				// /api/movies/1
-				movie, err := handler.video().LookupMovie(id)
-				if err != nil {
-					notFoundErr(w)
-				} else {
-					handler.apiView(w, r, handler.movieView(movie))
-				}
-			case "tv":
-				// /api/tv/1
-				// tv, err := handler.video().LookupTV(id)
-			case "profiles":
-				// /api/profiles/1
-				person, err := handler.video().LookupPerson(id)
-				if err != nil {
-					notFoundErr(w)
-				} else {
-					handler.apiView(w, r, handler.profileView(person))
-				}
-			case "series":
-				// /api/series/1
-				series, err := handler.podcast().LookupSeries(id)
-				if err != nil {
-					notFoundErr(w)
-				} else {
-					handler.apiView(w, r, handler.seriesView(series))
-				}
-			case "progress":
-				// /api/progress/1
-				offset := handler.progress().Offset(handler.user, id)
-				if offset == nil {
-					notFoundErr(w)
-				} else {
-					switch r.Method {
-					case "GET":
-						// GET /api/progress/1
-						handler.apiView(w, r, handler.offsetView(*offset))
-					case "DELETE":
-						// DELETE /api/progress/offsets/1
-						err := handler.progress().Delete(handler.user, *offset)
-						if err != nil {
-							serverErr(w, err)
-						} else {
-							w.WriteHeader(http.StatusNoContent)
-						}
-					default:
-						badRequest(w, ErrInvalidMethod)
-					}
-				}
-			default:
-				notFoundErr(w)
-			}
-			return
-		}
-
-		// /api/series/1/episodes/1
-		// /api/tv/1/episodes/1
-		episodesRegexp := regexp.MustCompile(`/api/([a-z]+)/([0-9]+)/episodes/([0-9]+)`)
-		matches = episodesRegexp.FindStringSubmatch(r.URL.Path)
-		if matches != nil {
-			v := matches[1]
-			//id := str.Atoi(matches[2])
-			episode := str.Atoi(matches[3])
-			switch v {
-			case "series":
-				episode, err := handler.podcast().LookupEpisode(episode)
-				if err != nil {
-					notFoundErr(w)
-				} else {
-					handler.apiView(w, r, handler.seriesEpisodeView(episode))
-				}
-			case "tv":
-			}
-			return
-		}
-
-		// /api/movies/genres/name
-		// allow dash and space in name
-		genresRegexp := regexp.MustCompile(`/api/movies/genres/([a-zA-Z -]+)`)
-		matches = genresRegexp.FindStringSubmatch(r.URL.Path)
-		if matches != nil {
-			name := strings.TrimSpace(matches[1])
-			handler.apiView(w, r, handler.genreView(name))
-			return
-		}
-
-		// /api/movies/keywords/name
-		// allow dash and space in name
-		keywordsRegexp := regexp.MustCompile(`/api/movies/keywords/([a-zA-Z -]+)`)
-		matches = keywordsRegexp.FindStringSubmatch(r.URL.Path)
-		if matches != nil {
-			name := strings.TrimSpace(matches[1])
-			handler.apiView(w, r, handler.keywordView(name))
-			return
-		}
-
+	episode, err := ctx.Podcast().FindEpisode(eid)
+	if err != nil {
 		notFoundErr(w)
+	} else {
+		url := ctx.Podcast().EpisodeURL(episode)
+		http.Redirect(w, r, url.String(), http.StatusFound)
 	}
 }

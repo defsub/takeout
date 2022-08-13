@@ -19,6 +19,7 @@ package video
 
 import (
 	"net/url"
+	"strconv"
 
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/lib/bucket"
@@ -55,6 +56,19 @@ func (v *Video) Open() (err error) {
 
 func (v *Video) Close() {
 	v.closeDB()
+}
+
+func (v *Video) FindMovie(identifier string) (Movie, error) {
+	id, err := strconv.Atoi(identifier)
+	if err != nil {
+		return v.LookupIMID(identifier)
+	} else {
+		return v.LookupMovie(id)
+	}
+}
+
+func (v *Video) FindMovies(identifiers []string) []Movie {
+	return v.lookupIMIDs(identifiers)
 }
 
 func (v *Video) newSearch() *search.Search {

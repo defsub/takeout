@@ -288,6 +288,11 @@ func (m *Music) updateTrackTitle(t Track, newTitle string) (err error) {
 	return
 }
 
+func (m *Music) updateTrackRID(t Track, rid string) (err error) {
+	err = m.db.Model(t).Update("r_id", rid).Error
+	return
+}
+
 // Part of the sync process to find releases that match the track. The
 // preferred release will be the first one so dates corresponding to
 // original release dates.
@@ -423,12 +428,25 @@ func (m *Music) ArtistSingleTracks(a Artist, limit ...int) []Track {
 		l = limit[0]
 	}
 
-	m.db.Where("b.title is null and tracks.artist = ?"+
-		" and tracks.title in (select distinct single_name from releases where artist = ? and type = 'Single')"+
+	// m.db.Where("b.title is null and tracks.artist = ?"+
+	// 	" and tracks.title in (select distinct single_name from releases where artist = ? and type = 'Single')"+
+	// 	a.Name, a.Name).
+	// 	Joins("left outer join tracks b on tracks.title = b.title and tracks.date > b.date").
+	// 	Group("tracks.title").
+	// 	Order("tracks.date").
+	// 	Limit(l).
+	// 	Find(&tracks)
+
+	// "select artist, `release`, title, date from tracks where artist =
+	// 'Iron Maiden' and title in (select distinct single_name from
+	// releases where artist = 'Iron Maiden' and type = 'Single') group by
+	// title having min(date) order by date"
+	m.db.Where("artist = ? and title in"+
+		" (select distinct single_name from releases where artist = ? and type = 'Single')",
 		a.Name, a.Name).
-		Joins("left outer join tracks b on tracks.title = b.title and tracks.date > b.date").
-		Group("tracks.title").
-		Order("tracks.date").
+		Group("title").
+		Having("min(date)").
+		Order("date").
 		Limit(l).
 		Find(&tracks)
 
@@ -673,10 +691,40 @@ func (m *Music) LookupRelease(id int) (Release, error) {
 	return release, err
 }
 
+// Lookup a release given the MusicBrainz REID.
+func (m *Music) LookupREID(reid string) (Release, error) {
+	var release Release
+	err := m.db.First(&release, "re_id = ?", reid).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return Release{}, errors.New("release not found")
+	}
+	return release, err
+}
+
+// Lookup a track given the MusicBrainz RID.
+func (m *Music) LookupRID(rid string) (Track, error) {
+	var track Track
+	err := m.db.First(&track, "r_id = ?", rid).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return Track{}, errors.New("track not found")
+	}
+	return track, err
+}
+
 // Lookup an artist given the internal record ID.
 func (m *Music) LookupArtist(id int) (Artist, error) {
 	var artist Artist
 	err := m.db.First(&artist, id).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return Artist{}, errors.New("artist not found")
+	}
+	return artist, err
+}
+
+// Lookup an artist given the MusicBrainz ARID.
+func (m *Music) LookupARID(arid string) (Artist, error) {
+	var artist Artist
+	err := m.db.First(&artist, "ar_id = ?", arid).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return Artist{}, errors.New("artist not found")
 	}
@@ -691,6 +739,12 @@ func (m *Music) LookupTrack(id int) (Track, error) {
 		return Track{}, errors.New("track not found")
 	}
 	return track, err
+}
+
+func (m *Music) tracksForRIDs(rids []string) []Track {
+	var tracks []Track
+	m.db.Where("r_id in (?)", rids).Find(&tracks)
+	return tracks
 }
 
 func (m *Music) tracksFor(keys []string) []Track {
@@ -841,6 +895,19 @@ func (m *Music) TrackCount() int64 {
 	var count int64
 	m.db.Model(&Track{}).Count(&count)
 	return count
+}
+
+func (m *Music) searchTracks(title, artist, album string) []Track {
+	var tracks []Track
+	var tx *gorm.DB
+	if len(album) != 0 {
+		tx = m.db.Where("title = ? and artist = ? and (`release` = ? or `release_title` = ?)",
+			title, artist, album, album)
+	} else {
+		tx = m.db.Where("title = ? and artist = ?", title, artist)
+	}
+	tx.Order("date").Find(&tracks)
+	return tracks
 }
 
 func (m *Music) deletePopularFor(artist string) error {

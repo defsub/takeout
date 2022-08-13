@@ -938,37 +938,32 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 		}
 	}
 
-	index, err := m.creditsIndex(reid)
+	indices, err := m.creditsIndex(reid)
 	if err != nil {
 		return nil, err
 	}
 
-	re := regexp.MustCompile(`^(\d+)-(\d+)-(.+)$`)
 	newIndex := make(search.IndexMap)
-	for k, v := range index {
-		matches := re.FindStringSubmatch(k)
-		if matches == nil {
-			log.Printf("no re match %s\n", k)
-			continue
-		}
-		discNum := str.Atoi(matches[1])
-		trackNum := str.Atoi(matches[2])
-		trackTitle := matches[3]
+	for _, index := range indices {
 		matched := false
 		for _, t := range tracks {
-			if t.DiscNum == discNum &&
-				t.TrackNum == trackNum {
+			if t.DiscNum == index.DiscNum &&
+				t.TrackNum == index.TrackNum {
 				// use track key
-				newIndex[t.Key] = v
-				if t.Title != trackTitle {
-					m.updateTrackTitle(t, trackTitle)
+				newIndex[t.Key] = index.Fields
+				if t.Title != index.Title {
+					m.updateTrackTitle(t, index.Title)
+				}
+				if index.RID != "" {
+					m.updateTrackRID(t, index.RID)
 				}
 				matched = true
 			}
 		}
 		if !matched {
 			// likely video discs
-			log.Printf("no match %s\n", k)
+			log.Printf("no match %d/%d/%s\n",
+				index.DiscNum, index.TrackNum, index.Title)
 		}
 	}
 

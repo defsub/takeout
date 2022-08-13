@@ -168,6 +168,13 @@ type ProgressConfig struct {
 	DB DatabaseConfig
 }
 
+type ActivityConfig struct {
+	DB                  DatabaseConfig
+	RecentScrobbleLimit int
+	RecentListenLimit   int
+	RecentWatchLimit    int
+}
+
 type RecommendConfig struct {
 	When []DateRecommend
 }
@@ -247,6 +254,7 @@ type Config struct {
 	Assistant AssistantConfig
 	Podcast   PodcastConfig
 	Progress  ProgressConfig
+	Activity  ActivityConfig
 }
 
 func (mc *MusicConfig) UserArtistID(name string) (string, bool) {
@@ -469,6 +477,13 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Progress.DB.Driver", "sqlite3")
 	v.SetDefault("Progress.DB.Source", "progress.db")
 	v.SetDefault("Progress.DB.LogMode", "true")
+
+	v.SetDefault("Activity.DB.Driver", "sqlite3")
+	v.SetDefault("Activity.DB.Source", "activity.db")
+	v.SetDefault("Activity.DB.LogMode", "true")
+	v.SetDefault("Activity.RecentScrobbleLimit", "25")
+	v.SetDefault("Activity.RecentListenLimit", "25")
+	v.SetDefault("Activity.RecentWatchLimit", "25")
 }
 
 func userAgent() string {

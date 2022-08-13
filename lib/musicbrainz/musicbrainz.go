@@ -116,8 +116,12 @@ type ArtistCredit struct {
 }
 
 type Work struct {
-	Title     string     `json:"title"`
-	Relations []Relation `json:"relations"`
+	ID             string     `json:"id"`
+	Title          string     `json:"title"`
+	Disambiguation string     `json:"disambiguation"`
+	Language       string     `json:"language"`
+	Type           string     `json:"type"`
+	Relations      []Relation `json:"relations"`
 }
 
 // TODO artist detail
