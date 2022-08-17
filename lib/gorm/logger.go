@@ -50,7 +50,7 @@ func Logger(v string) logger.Interface {
 	case "discard":
 		return logger.Discard
 	default:
-		return DebugLogger
-		//return DefaultLogger
+		//return DebugLogger
+		return DefaultLogger
 	}
 }
