@@ -29,11 +29,33 @@ import (
 )
 
 type Media struct {
+	config   *config.Config
 	music    *music.Music
 	video    *video.Video
 	podcast  *podcast.Podcast
 	progress *progress.Progress
 }
+
+func (m Media) Config() *config.Config {
+	return m.config
+}
+
+func (m Media) Music() *music.Music {
+	return m.music
+}
+
+func (m Media) Podcast() *podcast.Podcast {
+	return m.podcast
+}
+
+func (m Media) Progress() *progress.Progress {
+	return m.progress
+}
+
+func (m Media) Video() *video.Video {
+	return m.video
+}
+
 
 func mediaConfigFor(root *config.Config, user *auth.User) (string, *config.Config, error) {
 	// only supports one media collection right now

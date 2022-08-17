@@ -62,13 +62,22 @@ const (
 	TypeLive    = "live"
 )
 
-func (m *Music) creditsIndex(reid string) (search.IndexMap, error) {
+type trackIndex struct {
+	// these fields are used to match against existing tracks
+	DiscNum  int
+	TrackNum int
+	Title    string
+	RID      string
+	// these are the indexed fields to store in the search db
+	Fields   search.FieldMap
+}
+
+func (m *Music) creditsIndex(reid string) ([]trackIndex, error) {
 	rel, err := m.mbz.Release(reid)
 	if err != nil {
 		return nil, err
 	}
 
-	index := make(search.IndexMap)
 	fields := make(search.FieldMap)
 
 	// general fields
@@ -130,6 +139,8 @@ func (m *Music) creditsIndex(reid string) (search.IndexMap, error) {
 
 	relationCredits(fields, rel.Relations)
 
+	var indices []trackIndex
+
 	for _, m := range rel.Media {
 		for _, t := range m.Tracks {
 			trackFields := search.CloneFields(fields)
@@ -150,12 +161,20 @@ func (m *Music) creditsIndex(reid string) (search.IndexMap, error) {
 			for _, a := range t.ArtistCredit {
 				addField(trackFields, FieldArtist, a.Name)
 			}
-			key := fmt.Sprintf("%d-%d-%s", m.Position, t.Position, fixName(t.Recording.Title))
-			index[key] = trackFields
+
+			index := trackIndex{
+				DiscNum:  m.Position,
+				TrackNum: t.Position,
+				Title:    fixName(t.Recording.Title),
+				RID:      t.Recording.ID,
+				Fields:   trackFields,
+			}
+			fmt.Printf("%d/%d/%s/%s\n", index.DiscNum, index.TrackNum, index.Title, index.RID)
+			indices = append(indices, index)
 		}
 	}
 
-	return index, nil
+	return indices, nil
 }
 
 func setField(c search.FieldMap, key string, value interface{}) search.FieldMap {
@@ -173,7 +192,7 @@ func addField(c search.FieldMap, key string, value interface{}) search.FieldMap 
 
 	// drums = drums (drum set)
 	// guitar = lead guitar, slide guitar, rhythm guitar, acoustic
-	// bass = bass guitar, electric bass guitar
+	// bass = bass guitar, electric bass guitar8eb5ae9e-ba52-4a8f-8513-822a5ccde819
 	// vocals = lead vocals, backing vocals
 	alternates := []string{
 		FieldBass,

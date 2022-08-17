@@ -18,9 +18,11 @@
 package music
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -140,6 +142,48 @@ func (m *Music) TrackLookup(etag string) *Track {
 func (m *Music) TrackImage(t Track) *url.URL {
 	url, _ := url.Parse(m.TrackCover(t, "front-250"))
 	return url
+}
+
+func (m *Music) FindArtist(identifier string) (Artist, error) {
+	id, err := strconv.Atoi(identifier)
+	if err != nil {
+		return m.LookupARID(identifier)
+	} else {
+		return m.LookupArtist(id)
+	}
+}
+
+func (m *Music) FindRelease(identifier string) (Release, error) {
+	id, err := strconv.Atoi(identifier)
+	if err != nil {
+		return m.LookupREID(identifier)
+	} else {
+
+		return m.LookupRelease(id)
+	}
+}
+
+func (m *Music) FindStation(identifier string) (Station, error) {
+	id, err := strconv.Atoi(identifier)
+	if err != nil {
+		return Station{}, errors.New("station not found")
+	} else {
+		return m.LookupStation(id)
+	}
+}
+
+func (m *Music) FindTrack(identifier string) (Track, error) {
+	id, err := strconv.Atoi(identifier)
+	if err != nil {
+		return m.LookupRID(identifier)
+	} else {
+		return m.LookupTrack(id)
+	}
+}
+
+func (m *Music) FindTracks(identifiers []string) []Track {
+	// TODO support more than RIDs later
+	return m.tracksForRIDs(identifiers)
 }
 
 func (m *Music) newSearch() *search.Search {
@@ -339,3 +383,127 @@ func Shuffle(tracks []Track) []Track {
 func (m *Music) HasMusic() bool {
 	return m.TrackCount() > 0
 }
+
+func (m *Music) SearchTracks(title, artist, album string) []Track {
+	return m.searchTracks(title, artist, album)
+}
+
+// var (
+// 	resolve1 = regexp.MustCompile(`/(artists|radio)$`)
+// 	resolve2 = regexp.MustCompile(`/(artists|radio/stations|releases|tracks)/([0-9a-zA-Z-]+)$`)
+// 	resolve3 = regexp.MustCompile(`/(artists)/([0-9a-zA-Z-]+)/(deep|popular|radio|shuffle|similar|singles|tracks)?$`)
+// 	resolve4 = regexp.MustCompile(`/(releases)/([0-9a-zA-Z-]+)/(tracks)?$`)
+// )
+
+// func (m *Music) ResolvePlaylist(user *auth.User, ref string) (*spiff.Playlist, error) {
+// 	result, err := m.Resolve(user, ref)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	tracks, ok := result.([]Track)
+// 	if !ok {
+// 		return nil, errors.New("bad ref")
+// 	}
+// 	matches := resolve3.FindStringSubmatch(ref)
+// 	if matches != nil {
+// 		artist, err := m.FindArtist(matches[0])
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		plist := spiff.NewPlaylist(spiff.TypeMusic)
+// 		r.populateSpiff(plist, user, url,
+// 			artist.Name,
+// 			fmt.Sprintf("%s \u2013 %s", artist.Name, artistPlaylistTitles[listType]),
+// 			r.loc.ArtistImage(artist),
+// 			time.Now(),
+// 			fmt.Sprintf("/music/artists/%s/%s", id, listType))
+// 		return plist, nil
+// 	}
+
+// }
+
+// func (m *Music) Resolve(user *auth.User, ref string) (interface{}, error) {
+// 	// /artists
+// 	// /radio
+// 	matches := resolve1.FindStringSubmatch(ref)
+// 	if matches != nil {
+// 		switch matches[0] {
+// 		case "artists":
+// 			return m.Artists(), nil
+// 		case "radio":
+// 			return m.Stations(user), nil
+// 		}
+// 	}
+
+// 	// /artists/{id}
+// 	// /radio/stations/{id}
+// 	// /releases/{id}
+// 	// /tracks/{id}
+// 	matches = resolve2.FindStringSubmatch(ref)
+// 	if matches != nil {
+// 		id := matches[1]
+// 		switch matches[0] {
+// 		case "artists":
+// 			return m.FindArtist(id)
+// 		case "radio/stations":
+// 			return m.FindStation(id)
+// 		case "releases":
+// 			return m.FindRelease(id)
+// 		case "tracks":
+// 			return m.FindTrack(id)
+// 		}
+// 	}
+
+// 	// /artists/{id}/deep
+// 	// /artists/{id}/popular
+// 	// /artists/{id}/radio
+// 	// /artists/{id}/shuffle
+// 	// /artists/{id}/similar
+// 	// /artists/{id}/singles
+// 	// /artists/{id}/tracks
+// 	matches = resolve3.FindStringSubmatch(ref)
+// 	if matches != nil {
+// 		id := matches[1]
+// 		artist, err := m.FindArtist(id)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		sub := matches[2]
+// 		var result []Track
+// 		switch sub {
+// 		case "deep":
+// 			result = m.ArtistDeep(artist, m.config.Music.RadioLimit)
+// 		case "popular":
+// 			result = m.ArtistPopularTracks(artist)
+// 		case "radio", "similar":
+// 			result = m.ArtistRadio(artist)
+// 		case "shuffle":
+// 			result = m.ArtistShuffle(artist, m.config.Music.RadioLimit)
+// 		case "singles":
+// 			result = m.ArtistSingleTracks(artist)
+// 		case "tracks":
+// 			result = m.ArtistTracks(artist)
+// 		}
+// 		return result, nil
+// 	}
+
+// 	// /releases/{id}/tracks
+// 	matches = resolve4.FindStringSubmatch(ref)
+// 	if matches != nil {
+// 		id := matches[1]
+// 		release, err := m.FindRelease(id)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		sub := matches[2]
+// 		var result []Track
+// 		switch sub {
+// 		case "tracks":
+// 			result = m.ReleaseTracks(release)
+// 		}
+// 		return result, nil
+// 	}
+
+// 	return nil, nil
+// }

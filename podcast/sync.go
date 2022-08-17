@@ -89,7 +89,8 @@ func (p *Podcast) syncPodcast(url string) error {
 
 	var episodes []string
 	for _, i := range channel.Items {
-		eid := hash.MD5Hex(i.GUID)
+		//eid := hash.MD5Hex(i.GUID)
+		eid := i.GUID
 		episode := p.findEpisode(eid)
 		if episode == nil {
 			episode = &Episode{

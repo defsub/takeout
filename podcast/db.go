@@ -22,19 +22,10 @@ import (
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 func (p *Podcast) openDB() (err error) {
-	var glog logger.Interface
-	if p.config.Podcast.DB.LogMode == false {
-		glog = logger.Discard
-	} else {
-		glog = logger.Default
-	}
-	cfg := &gorm.Config{
-		Logger: glog,
-	}
+	cfg := p.config.Music.DB.GormConfig()
 
 	if p.config.Podcast.DB.Driver == "sqlite3" {
 		p.db, err = gorm.Open(sqlite.Open(p.config.Podcast.DB.Source), cfg)
@@ -155,6 +146,16 @@ func (p *Podcast) LookupEpisode(id int) (Episode, error) {
 	}
 	return episode, err
 }
+
+func (p *Podcast) LookupEID(eid string) (Episode, error) {
+	var episode Episode
+	err := p.db.First(&episode, "e_id = ?", eid).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return Episode{}, errors.New("episode not found")
+	}
+	return episode, err
+}
+
 
 func (p *Podcast) SeriesCount() int64 {
 	var count int64

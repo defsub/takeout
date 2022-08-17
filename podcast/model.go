@@ -42,7 +42,7 @@ func (Series) TableName() string {
 type Episode struct {
 	gorm.Model
 	SID         string // series ID
-	EID         string `gorm:"uniqueIndex:idx_episode"` // hash of GUID
+	EID         string `gorm:"uniqueIndex:idx_episode"` // GUID
 	Title       string
 	Author      string
 	Link        string

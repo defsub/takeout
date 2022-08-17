@@ -47,39 +47,3 @@ func (o Offset) Valid() bool {
 	}
 	return true
 }
-
-// playlist uri
-// - index
-// - position
-//
-// /api/res/id/playlist?index=x&position=y
-//
-// /api/artists/id/playlist
-// /api/artists/id/radio
-// /api/artists/id/popular/playlist
-// /api/artists/id/singles/playlist
-// /api/releases/id/playlist
-// /api/movies/id/playlist
-// /api/series/id/playlist
-//
-//
-
-type Playlist struct {
-	gorm.Model
-	User     string `gorm:"index:idx_playlist_user" json:"-"`
-	Playlist string
-	Index    int       `gorm:"default:0"`
-	Position float64   `gorm:"default:0"`
-	Date     time.Time `gorm:"uniqueIndex:idx_playlist_date"`
-}
-
-type Playlists struct {
-	Playlists []Playlist
-}
-
-func (p Playlist) Valid() bool {
-	if len(p.User) == 0 || len(p.Playlist) == 0 || p.Date.IsZero() || p.Index < 0 || p.Position < 0 {
-		return false
-	}
-	return true
-}

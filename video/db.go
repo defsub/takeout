@@ -25,19 +25,10 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 func (v *Video) openDB() (err error) {
-	var glog logger.Interface
-	if v.config.Video.DB.LogMode == false {
-		glog = logger.Discard
-	} else {
-		glog = logger.Default
-	}
-	cfg := &gorm.Config{
-		Logger: glog,
-	}
+	cfg := v.config.Music.DB.GormConfig()
 
 	switch v.config.Music.DB.Driver {
 	case "sqlite3":
@@ -269,6 +260,30 @@ func (v *Video) LookupMovie(id int) (Movie, error) {
 		return Movie{}, errors.New("movie not found")
 	}
 	return movie, err
+}
+
+func (v *Video) LookupTMID(tmid int) (Movie, error) {
+	var movie Movie
+	err := v.db.First(&movie, "tm_id = ?", tmid).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return Movie{}, errors.New("movie not found")
+	}
+	return movie, err
+}
+
+func (v *Video) LookupIMID(imid string) (Movie, error) {
+	var movie Movie
+	err := v.db.First(&movie, "im_id = ?", imid).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return Movie{}, errors.New("movie not found")
+	}
+	return movie, err
+}
+
+func (v *Video) lookupIMIDs(imids []string) []Movie {
+	var movies []Movie
+	v.db.Where("im_id in (?)", imids).Find(&movies)
+	return movies
 }
 
 func (v *Video) LookupPerson(id int) (Person, error) {

@@ -22,8 +22,16 @@ import (
 )
 
 // See the following specifications:
-//  https://www.xspf.org/xspf-v1.html
-//  https://www.xspf.org/jspf/
+//  https://www.xspf.org/spec
+//  https://www.xspf.org/jspf
+
+type Header struct {
+	Title    string  `json:"title"`
+	Creator  string  `json:"creator,omitempty"`
+	Image    string  `json:"image,omitempty"`
+	Location string  `json:"location,omitempty"`
+	Date     string  `json:"date,omitempty"` // "2005-01-08T17:10:47-05:00",
+}
 
 type Playlist struct {
 	Spiff    Spiff   `json:"playlist"`
@@ -33,11 +41,12 @@ type Playlist struct {
 }
 
 type Spiff struct {
-	Title    string  `json:"title"`
-	Creator  string  `json:"creator,omitempty"`
-	Image    string  `json:"image,omitempty"`
-	Location string  `json:"location,omitempty"`
-	Date     string  `json:"date,omitempty"` // "2005-01-08T17:10:47-05:00",
+	// Title    string  `json:"title"`
+	// Creator  string  `json:"creator,omitempty"`
+	// Image    string  `json:"image,omitempty"`
+	// Location string  `json:"location,omitempty"`
+	// Date     string  `json:"date,omitempty"` // "2005-01-08T17:10:47-05:00",
+	Header
 	Entries  []Entry `json:"track"`
 }
 
@@ -61,7 +70,7 @@ const (
 )
 
 func NewPlaylist(listType string) *Playlist {
-	return &Playlist{Spiff{"", "", "", "", "", []Entry{}}, -1, 0, listType}
+	return &Playlist{Spiff{Header{}, []Entry{}}, -1, 0, listType}
 }
 
 func Unmarshal(data []byte) (*Playlist, error) {

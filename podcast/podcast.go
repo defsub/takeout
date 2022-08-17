@@ -18,7 +18,9 @@
 package podcast
 
 import (
+	"errors"
 	"net/url"
+	"strconv"
 
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/lib/client"
@@ -85,4 +87,22 @@ func (p *Podcast) EpisodeURL(e Episode) *url.URL {
 		return nil
 	}
 	return u
+}
+
+func (p *Podcast) FindSeries(identifier string) (Series, error) {
+	id, err := strconv.Atoi(identifier)
+	if err != nil {
+		return Series{}, errors.New("not supported")
+	} else {
+		return p.LookupSeries(id)
+	}
+}
+
+func (p *Podcast) FindEpisode(identifier string) (Episode, error) {
+	id, err := strconv.Atoi(identifier)
+	if err != nil {
+		return p.LookupEID(identifier)
+	} else {
+		return p.LookupEpisode(id)
+	}
 }

@@ -26,6 +26,7 @@ import (
 	"github.com/defsub/takeout/lib/actions"
 	"github.com/defsub/takeout/lib/token"
 	"github.com/defsub/takeout/music"
+	"github.com/defsub/takeout/view"
 )
 
 const (
@@ -36,16 +37,12 @@ const (
 	UserParamCookie = "cookie"
 )
 
-func (handler *Handler) hookHandler(w http.ResponseWriter, r *http.Request) {
+func hookHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
 	w.Header().Set("Content-type", ApplicationJson)
 
-	if r.Method != "POST" {
-		serverErr(w, ErrInvalidMethod)
-		return
-	}
-
 	tokenString := r.Header.Get(actions.GoogleAssistantSignature)
-	err := token.ValidateGoogleToken(handler.config, tokenString, handler.config.Assistant.ProjectID)
+	err := token.ValidateGoogleToken(ctx.Config(), tokenString, ctx.Config().Assistant.ProjectID)
 	if err != nil {
 		serverErr(w, err)
 		return
@@ -67,22 +64,24 @@ func (handler *Handler) hookHandler(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	if !hookRequest.Verified() {
-		handler.verificationRequired(hookRequest, hookResponse)
+		verificationRequired(ctx, hookRequest, hookResponse)
 	} else {
 		cookie := hookRequest.UserParam(UserParamCookie)
 		if cookie == "" {
 			if hookRequest.IntentName() == IntentAuth {
 				// try to authenticate
-				handler.authNext(hookRequest, hookResponse)
+				authNext(ctx, hookRequest, hookResponse)
 			} else {
-				handler.authRequired(hookRequest, hookResponse)
+				authRequired(ctx, hookRequest, hookResponse)
 			}
 		} else {
-			user, _ := handler.authCheck(hookRequest, hookResponse, cookie)
+			user, _ := authCheck(ctx, hookRequest, hookResponse, cookie)
 			if user == nil {
-				handler.authRequired(hookRequest, hookResponse)
+				authRequired(ctx, hookRequest, hookResponse)
 			} else {
-				handler.fulfillIntent(user, w, hookRequest, hookResponse)
+
+
+				fulfillIntent(ctx, user, w, hookRequest, hookResponse)
 			}
 		}
 	}
@@ -101,9 +100,9 @@ func (handler *Handler) hookHandler(w http.ResponseWriter, r *http.Request) {
 	hookResponse.Send(w)
 }
 
-func (handler *Handler) fulfillIntent(user *auth.User, resp http.ResponseWriter,
+func fulfillIntent(ctx Context, user *auth.User, resp http.ResponseWriter,
 	r *actions.WebhookRequest, w *actions.WebhookResponse) {
-	userHandler, err := handler.configure(user, resp)
+	ctx, err := upgradeContext(ctx, user)
 	if err != nil {
 		serverErr(resp, err)
 		return
@@ -111,19 +110,15 @@ func (handler *Handler) fulfillIntent(user *auth.User, resp http.ResponseWriter,
 
 	switch r.IntentName() {
 	case IntentPlay:
-		userHandler.fulfillPlay(r, w)
+		fulfillPlay(ctx, r, w)
 	case IntentNew:
-		userHandler.fulfillNew(r, w)
+		fulfillNew(ctx, r, w)
 	default:
-		userHandler.fulfillWelcome(r, w)
+		fulfillWelcome(ctx, r, w)
 	}
 }
 
-func (handler *UserHandler) artistPopular(m *music.Music, a *music.Artist) []music.Track {
-	return m.ArtistPopularTracks(*a, handler.config.Assistant.TrackLimit)
-}
-
-func (handler *UserHandler) releaseLike(m *music.Music, release string) []music.Track {
+func releaseLike(m *music.Music, release string) []music.Track {
 	var tracks []music.Track
 	releases := m.ReleasesLike("%" + release + "%")
 	if len(releases) > 0 {
@@ -133,10 +128,12 @@ func (handler *UserHandler) releaseLike(m *music.Music, release string) []music.
 	return tracks
 }
 
-func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.WebhookResponse) {
+func fulfillPlay(ctx Context, r *actions.WebhookRequest, w *actions.WebhookResponse) {
 	var tracks []music.Track
 
-	m := handler.music()
+	m := ctx.Music()
+	config := ctx.Config()
+
 	song := r.SongParam()
 	artist := r.ArtistParam()
 	release := r.ReleaseParam()
@@ -149,17 +146,18 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 	if artist != "" {
 		a := m.ArtistLike(artist)
 		if a != nil {
+			v := view.ArtistView(ctx, *a)
 			if radio != "" {
 				// play [artist] radio
-				tracks = m.ArtistRadio(*a)
+				tracks = v.Radio.Tracks()
 			} else if popular != "" {
 				// play popular songs by [artist]
-				tracks = handler.artistPopular(m, a)
+				tracks = v.Popular.Tracks()
 			} else if latest != "" {
 				// play the new [artist]
 				// play the latest [artist]
 				// play the latest by/from [artist]
-				releases := m.ArtistReleases(a)
+				releases := v.Releases
 				if len(releases) > 0 {
 					r := releases[len(releases)-1]
 					tracks = m.ReleaseTracks(r)
@@ -193,7 +191,7 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 		query = fmt.Sprintf(`+title:"%s*"`, song)
 	} else if release != "" {
 		// play album [release]
-		tracks = handler.releaseLike(m, release)
+		tracks = releaseLike(m, release)
 		if len(tracks) == 0 {
 			query = fmt.Sprintf(`+release:"%s*"`, release)
 		}
@@ -201,10 +199,11 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 		// play [any]
 		a := m.ArtistLike(any)
 		if a != nil {
-			tracks = handler.artistPopular(m, a)
+			v := view.ArtistView(ctx, *a)
+			tracks = v.Popular.Tracks()
 		}
 		if len(tracks) == 0 {
-			tracks = handler.releaseLike(m, any)
+			tracks = releaseLike(m, any)
 		}
 		if len(tracks) == 0 {
 			query = fmt.Sprintf(`+title:"%s*"`, any)
@@ -212,45 +211,47 @@ func (handler *UserHandler) fulfillPlay(r *actions.WebhookRequest, w *actions.We
 	}
 
 	if query != "" {
-		tracks = m.Search(query, handler.config.Assistant.TrackLimit)
+		tracks = m.Search(query, config.Assistant.TrackLimit)
 	}
 
 	if len(tracks) > 0 {
-		addSimple(w, handler.config.Assistant.Play)
+		addSimple(w, config.Assistant.Play)
 		for _, t := range tracks {
-			name := handler.config.Assistant.MediaObjectName.Execute(t)
-			desc := handler.config.Assistant.MediaObjectDesc.Execute(t)
+			name := config.Assistant.MediaObjectName.Execute(t)
+			desc := config.Assistant.MediaObjectDesc.Execute(t)
 			w.AddMedia(name, desc,
 				m.TrackURL(&t).String(),
 				m.TrackImage(t).String())
 		}
 	} else {
-		addSimple(w, handler.config.Assistant.Error)
+		addSimple(w, config.Assistant.Error)
 	}
 }
 
-func (handler *UserHandler) fulfillNew(r *actions.WebhookRequest, w *actions.WebhookResponse) {
-	home := handler.homeView()
+func fulfillNew(ctx Context, r *actions.WebhookRequest, w *actions.WebhookResponse) {
+	home := view.HomeView(ctx)
+	config := ctx.Config()
 
-	speech := handler.config.Assistant.Recent.Speech.Text
-	text := handler.config.Assistant.Recent.Text.Text
+	speech := config.Assistant.Recent.Speech.Text
+	text := config.Assistant.Recent.Text.Text
 
 	for i, rel := range home.AddedReleases {
-		if i == handler.config.Assistant.RecentLimit {
+		if i == config.Assistant.RecentLimit {
 			break
 		} else if i > 0 {
 			speech += " and " // TODO
 			text += ", "
 		}
-		speech += handler.config.Assistant.Release.Speech.Execute(rel)
-		text += handler.config.Assistant.Release.Speech.Execute(rel)
+		speech += config.Assistant.Release.Speech.Execute(rel)
+		text += config.Assistant.Release.Speech.Execute(rel)
 	}
 	w.AddSimple(speech, text)
 }
 
-func (handler *UserHandler) fulfillWelcome(r *actions.WebhookRequest, w *actions.WebhookResponse) {
-	addSimple(w, handler.config.Assistant.Welcome)
-	w.AddSuggestions(handler.config.Assistant.SuggestionNew)
+func fulfillWelcome(ctx Context, r *actions.WebhookRequest, w *actions.WebhookResponse) {
+	config := ctx.Config()
+	addSimple(w, config.Assistant.Welcome)
+	w.AddSuggestions(config.Assistant.SuggestionNew)
 }
 
 func addSimple(w *actions.WebhookResponse, m config.AssistantResponse) {
@@ -261,39 +262,54 @@ func addSimpleTemplate(w *actions.WebhookResponse, m config.AssistantResponse, v
 	w.AddSimple(m.Speech.Execute(vars), m.Text.Execute(vars))
 }
 
-func (handler *Handler) authRequired(r *actions.WebhookRequest, w *actions.WebhookResponse) {
-	code := handler.auth.GenerateCode()
+func authRequired(ctx Context, r *actions.WebhookRequest, w *actions.WebhookResponse) {
+	code := ctx.Auth().GenerateCode()
+	config := ctx.Config()
 	vars := map[string]string{"Code": code.Value}
-	addSimpleTemplate(w, handler.config.Assistant.Link, vars)
-	w.AddSuggestions(handler.config.Assistant.SuggestionAuth)
+	addSimpleTemplate(w, config.Assistant.Link, vars)
+	w.AddSuggestions(config.Assistant.SuggestionAuth)
 	w.AddSessionParam("code", code.Value)
 }
 
-func (handler *Handler) authNext(r *actions.WebhookRequest, w *actions.WebhookResponse) {
+func authNext(ctx Context, r *actions.WebhookRequest, w *actions.WebhookResponse) {
 	ok := true
 	value := r.SessionParam("code")
 	if value == "" {
 		ok = false
 	}
-	code := handler.auth.LinkedCode(value)
+	code := ctx.Auth().LinkedCode(value)
 	if code == nil {
 		ok = false
 	}
 	if !ok {
-		handler.authRequired(r, w)
+		authRequired(ctx, r, w)
 		return
 	}
 
 	w.AddUserParam(UserParamCookie, code.Cookie)
-	addSimple(w, handler.config.Assistant.Linked)
+	addSimple(w, ctx.Config().Assistant.Linked)
 	w.AddSuggestions("Talk to Takeout")
 }
 
-func (handler *Handler) authCheck(r *actions.WebhookRequest, w *actions.WebhookResponse,
+func authCheck(ctx Context, r *actions.WebhookRequest, w *actions.WebhookResponse,
 	cookie string) (*auth.User, error) {
-	return handler.auth.UserAuthValue(cookie)
+	a := ctx.Auth()
+	session := a.AuthenticateToken(cookie)
+	if session == nil {
+		return nil, ErrUnauthorized
+	} else if session.Expired() {
+		a.Logout(session)
+		return nil, ErrUnauthorized
+	}
+	user, err := a.SessionUser(session)
+	if err != nil {
+		a.Logout(session)
+		return nil, ErrUnauthorized
+	}
+	a.Refresh(session)
+	return user, nil
 }
 
-func (handler *Handler) verificationRequired(r *actions.WebhookRequest, w *actions.WebhookResponse) {
-	addSimple(w, handler.config.Assistant.Guest)
+func verificationRequired(ctx Context, r *actions.WebhookRequest, w *actions.WebhookResponse) {
+	addSimple(w, ctx.Config().Assistant.Guest)
 }

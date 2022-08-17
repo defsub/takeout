@@ -21,12 +21,9 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/defsub/takeout/auth"
-	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/lib/client"
 	"github.com/defsub/takeout/lib/date"
 	"github.com/defsub/takeout/lib/log"
@@ -34,6 +31,7 @@ import (
 	"github.com/defsub/takeout/music"
 	"github.com/defsub/takeout/podcast"
 	"github.com/defsub/takeout/video"
+	"github.com/defsub/takeout/view"
 )
 
 type Locator interface {
@@ -41,196 +39,168 @@ type Locator interface {
 	LocateMovie(video.Movie) string
 	LocateEpisode(podcast.Episode) string
 
+	FindArtist(string) (music.Artist, error)
+	FindRelease(string) (music.Release, error)
+	FindTrack(string) (music.Track, error)
+	FindStation(string) (music.Station, error)
+	FindMovie(string) (video.Movie, error)
+	FindSeries(string) (podcast.Series, error)
+
 	TrackImage(music.Track) string
 	MovieImage(video.Movie) string
 	EpisodeImage(podcast.Episode) string
-
-	LookupArtist(int) (music.Artist, error)
-	LookupRelease(int) (music.Release, error)
-	LookupTrack(int) (music.Track, error)
-	LookupStation(int) (music.Station, error)
-	LookupMovie(int) (video.Movie, error)
-	LookupSeries(int) (podcast.Series, error)
-
-	ArtistSingleTracks(music.Artist) []music.Track
-	ArtistPopularTracks(music.Artist) []music.Track
-	ArtistTracks(music.Artist) []music.Track
-	ArtistShuffle(music.Artist) []music.Track
-	ArtistRadio(music.Artist) []music.Track
-	ArtistDeep(music.Artist) []music.Track
-
-	ReleaseTracks(music.Release) []music.Track
-	MusicSearch(string, int) []music.Track
-
-	SeriesEpisodes(podcast.Series) []podcast.Episode
 }
 
-type Resolver struct {
-	config *config.Config
-	loc    Locator
+type Context interface {
+	view.Context
+	Locator
 }
 
-func NewResolver(c *config.Config, l Locator) *Resolver {
-	return &Resolver{
-		config: c,
-		loc:    l,
+func trackEntry(ctx Context, t music.Track) spiff.Entry {
+	return spiff.Entry{
+		Creator:    t.Artist,
+		Album:      t.ReleaseTitle,
+		Title:      t.Title,
+		Image:      ctx.TrackImage(t),
+		Location:   []string{ctx.LocateTrack(t)},
+		Identifier: []string{t.ETag},
+		Size:       []int64{t.Size},
+		Date:       date.FormatJson(t.ReleaseDate),
 	}
 }
 
-func (r *Resolver) addTrackEntries(tracks []music.Track, entries []spiff.Entry) []spiff.Entry {
+func movieEntry(ctx Context, m video.Movie) spiff.Entry {
+	return spiff.Entry{
+		Creator:    "Movie", // TODO need better creator
+		Album:      m.Title,
+		Title:      m.Title,
+		Image:      ctx.MovieImage(m),
+		Location:   []string{ctx.LocateMovie(m)},
+		Identifier: []string{m.ETag},
+		Size:       []int64{m.Size},
+		Date:       date.FormatJson(m.Date),
+	}
+}
+
+func episodeEntry(ctx Context, series podcast.Series, e podcast.Episode) spiff.Entry {
+	author := e.Author
+	if author == "" {
+		author = series.Author
+	}
+	return spiff.Entry{
+		Creator:    author,
+		Album:      series.Title,
+		Title:      e.Title,
+		Image:      ctx.EpisodeImage(e),
+		Location:   []string{ctx.LocateEpisode(e)},
+		Identifier: []string{e.EID},
+		Size:       []int64{e.Size},
+		Date:       date.FormatJson(e.Date),
+	}
+}
+
+func addTrackEntries(ctx Context, tracks []music.Track, entries []spiff.Entry) []spiff.Entry {
 	for _, t := range tracks {
-		e := spiff.Entry{
-			Creator:    t.Artist,
-			Album:      t.ReleaseTitle,
-			Title:      t.Title,
-			Image:      r.loc.TrackImage(t),
-			Location:   []string{r.loc.LocateTrack(t)},
-			Identifier: []string{t.ETag},
-			Size:       []int64{t.Size},
-			Date:       date.FormatJson(t.ReleaseDate),
-		}
-		entries = append(entries, e)
+		entries = append(entries, trackEntry(ctx, t))
 	}
 	return entries
 }
 
-func (r *Resolver) addMovieEntries(movies []video.Movie, entries []spiff.Entry) []spiff.Entry {
+func addMovieEntries(ctx Context, movies []video.Movie, entries []spiff.Entry) []spiff.Entry {
 	for _, m := range movies {
-		e := spiff.Entry{
-			Creator:    "Movie", // TODO need better creator
-			Album:      m.Title,
-			Title:      m.Title,
-			Image:      r.loc.MovieImage(m),
-			Location:   []string{r.loc.LocateMovie(m)},
-			Identifier: []string{m.ETag},
-			Size:       []int64{m.Size},
-			Date:       date.FormatJson(m.Date),
-		}
-		entries = append(entries, e)
+		entries = append(entries, movieEntry(ctx, m))
 	}
 	return entries
 }
 
-func (r *Resolver) addEpisodeEntries(series podcast.Series, episodes []podcast.Episode,
+func addEpisodeEntries(ctx Context, series podcast.Series, episodes []podcast.Episode,
 	entries []spiff.Entry) []spiff.Entry {
 	for _, e := range episodes {
-		author := e.Author
-		if author == "" {
-			author = series.Author
-		}
-		e := spiff.Entry{
-			Creator:    author,
-			Album:      series.Title,
-			Title:      e.Title,
-			Image:      r.loc.EpisodeImage(e),
-			Location:   []string{r.loc.LocateEpisode(e)},
-			Identifier: []string{e.EID},
-			Size:       []int64{e.Size},
-			Date:       date.FormatJson(e.Date),
-		}
-		entries = append(entries, e)
+		entries = append(entries, episodeEntry(ctx, series, e))
 	}
 	return entries
 }
 
-// Artist Track Refs:
-// /music/artists/{id}/singles - artist tracks released as singles
-// /music/artists/{id}/popular - artist tracks that are popular (lastfm)
-// /music/artists/{id}/tracks - artist tracks
-// /music/artists/{id}/similar - artist and similar artist tracks (radio)
-// /music/artists/{id}/shuffle - selection of shuffled artist tracks
-// /music/artists/{id}/deep - atrist deep tracks
-func (r *Resolver) resolveArtistRef(id, res string, entries []spiff.Entry) ([]spiff.Entry, error) {
-	n, err := strconv.Atoi(id)
+// /music/artists/{id}/{res}
+func resolveArtistRef(ctx Context, id, res string, entries []spiff.Entry) ([]spiff.Entry, error) {
+	artist, err := ctx.FindArtist(id)
 	if err != nil {
 		return entries, err
 	}
-	artist, err := r.loc.LookupArtist(n)
-	if err != nil {
-		return entries, err
-	}
-	var tracks []music.Track
-	switch res {
-	case "singles":
-		tracks = r.loc.ArtistSingleTracks(artist)
-	case "popular":
-		tracks = r.loc.ArtistPopularTracks(artist)
-	case "tracks":
-		tracks = r.loc.ArtistTracks(artist)
-	case "shuffle":
-		tracks = r.loc.ArtistShuffle(artist)
-	case "similar":
-		tracks = r.loc.ArtistRadio(artist)
-	case "deep":
-		tracks = r.loc.ArtistDeep(artist)
-	}
-	entries = r.addTrackEntries(tracks, entries)
+	v := view.ArtistView(ctx, artist)
+	tracks := resolveArtistTrackList(v, res)
+	entries = addTrackEntries(ctx, tracks.Tracks(), entries)
 	return entries, nil
 }
 
+func resolveArtistTrackList(v *view.Artist, res string) view.TrackList {
+	var tracks view.TrackList
+	switch res {
+	case "deep":
+		tracks = v.Deep
+	case "popular":
+		tracks = v.Popular
+	case "radio", "similar":
+		tracks = v.Radio
+	case "shuffle", "playlist":
+		tracks = v.Shuffle
+	case "singles":
+		tracks = v.Singles
+	case "tracks":
+		tracks = v.Tracks
+	}
+	return tracks
+}
+
 // /music/releases/{id}/tracks
-func (r *Resolver) resolveReleaseRef(id string, entries []spiff.Entry) ([]spiff.Entry, error) {
-	n, err := strconv.Atoi(id)
+func resolveReleaseRef(ctx Context, id string, entries []spiff.Entry) ([]spiff.Entry, error) {
+	release, err := ctx.FindRelease(id)
 	if err != nil {
 		return entries, err
 	}
-	release, err := r.loc.LookupRelease(n)
-	if err != nil {
-		return entries, err
-	}
-	tracks := r.loc.ReleaseTracks(release)
-	entries = r.addTrackEntries(tracks, entries)
+	rv := view.ReleaseView(ctx, release)
+	tracks := rv.Tracks
+	entries = addTrackEntries(ctx, tracks, entries)
 	return entries, nil
 }
 
 // /music/tracks/{id}
-func (r *Resolver) resolveTrackRef(id string, entries []spiff.Entry) ([]spiff.Entry, error) {
-	n, err := strconv.Atoi(id)
+func resolveTrackRef(ctx Context, id string, entries []spiff.Entry) ([]spiff.Entry, error) {
+	t, err := ctx.FindTrack(id)
 	if err != nil {
 		return entries, err
 	}
-	t, err := r.loc.LookupTrack(n)
-	if err != nil {
-		return entries, err
-	}
-	entries = r.addTrackEntries([]music.Track{t}, entries)
+	entries = addTrackEntries(ctx, []music.Track{t}, entries)
 	return entries, nil
 }
 
 // /movies/{id}
-func (r *Resolver) resolveMovieRef(id string, entries []spiff.Entry) ([]spiff.Entry, error) {
-	n, err := strconv.Atoi(id)
+func resolveMovieRef(ctx Context, id string, entries []spiff.Entry) ([]spiff.Entry, error) {
+	m, err := ctx.FindMovie(id)
 	if err != nil {
 		return entries, err
 	}
-	m, err := r.loc.LookupMovie(n)
-	if err != nil {
-		return entries, err
-	}
-	entries = r.addMovieEntries([]video.Movie{m}, entries)
+	entries = addMovieEntries(ctx, []video.Movie{m}, entries)
 	return entries, nil
 }
 
 // /series/{id}
-func (r *Resolver) resolveSeriesRef(id string, entries []spiff.Entry) ([]spiff.Entry, error) {
-	n, err := strconv.Atoi(id)
+func resolveSeriesRef(ctx Context, id string, entries []spiff.Entry) ([]spiff.Entry, error) {
+	series, err := ctx.FindSeries(id)
 	if err != nil {
 		return entries, err
 	}
-	series, err := r.loc.LookupSeries(n)
+	pv := view.SeriesView(ctx, series)
+	episodes := pv.Episodes
 	if err != nil {
 		return entries, err
 	}
-	episodes := r.loc.SeriesEpisodes(series)
-	if err != nil {
-		return entries, err
-	}
-	entries = r.addEpisodeEntries(series, episodes, entries)
+	entries = addEpisodeEntries(ctx, series, episodes, entries)
 	return entries, nil
 }
 
 // /music/search?q={q}[&radio=1]
-func (r *Resolver) resolveSearchRef(uri string, entries []spiff.Entry) ([]spiff.Entry, error) {
+func resolveSearchRef(ctx Context, uri string, entries []spiff.Entry) ([]spiff.Entry, error) {
 	u, err := url.Parse(uri)
 	if err != nil {
 		log.Println(err)
@@ -238,53 +208,53 @@ func (r *Resolver) resolveSearchRef(uri string, entries []spiff.Entry) ([]spiff.
 	}
 
 	q := u.Query().Get("q")
-	radio := u.Query().Get("radio")
+	radio := u.Query().Get("radio") != ""
+
+	fmt.Printf("search q=%s radio=%v\n", q, radio)
 
 	var tracks []music.Track
 	if q != "" {
-		limit := r.config.Music.SearchLimit
-		if radio != "" {
-			limit = r.config.Music.RadioSearchLimit
+		limit := ctx.Config().Music.SearchLimit
+		if radio {
+			limit = ctx.Config().Music.RadioSearchLimit
 		}
-		tracks = r.loc.MusicSearch(q, limit)
+		tracks = ctx.Music().Search(q, limit)
 	}
 
-	if radio != "" {
+	if radio {
 		tracks = music.Shuffle(tracks)
-		if len(tracks) > r.config.Music.RadioLimit {
-			tracks = tracks[:r.config.Music.RadioLimit]
+		limit := ctx.Config().Music.RadioLimit
+		if len(tracks) > limit {
+			tracks = tracks[:limit]
 		}
 	}
 
-	entries = r.addTrackEntries(tracks, entries)
+	fmt.Printf("track is %d\n", len(tracks))
+
+	entries = addTrackEntries(ctx, tracks, entries)
 	return entries, nil
 }
 
 // /music/radio/{id}
-func (r *Resolver) resolveRadioRef(id string, entries []spiff.Entry, user *auth.User) ([]spiff.Entry, error) {
-	n, err := strconv.Atoi(id)
+func resolveRadioRef(ctx Context, id string, entries []spiff.Entry) ([]spiff.Entry, error) {
+	s, err := ctx.FindStation(id)
 	if err != nil {
 		return entries, err
 	}
-	s, err := r.loc.LookupStation(n)
-	if err != nil {
-		return entries, err
-	}
-	if !s.Visible(user) {
+	if !s.Visible(ctx.User()) {
 		return entries, err
 	}
 
 	// rerun the station ref to get new tracks
-	r.RefreshStation(&s, user)
+	plist := RefreshStation(ctx, &s)
 
-	plist, _ := spiff.Unmarshal(s.Playlist)
 	entries = append(entries, plist.Spiff.Entries...)
 
 	return entries, nil
 }
 
-func (r *Resolver) resolvePlsRef(url, creator, image string, entries []spiff.Entry) ([]spiff.Entry, error) {
-	client := client.NewClient(r.config)
+func resolvePlsRef(ctx Context, url, creator, image string, entries []spiff.Entry) ([]spiff.Entry, error) {
+	client := client.NewClient(ctx.Config())
 	result, err := client.GetPLS(url)
 	if err != nil {
 		return entries, err
@@ -307,9 +277,9 @@ func (r *Resolver) resolvePlsRef(url, creator, image string, entries []spiff.Ent
 	return entries, nil
 }
 
-func (r *Resolver) RefreshStation(s *music.Station, user *auth.User) {
+func RefreshStation(ctx Context, s *music.Station) *spiff.Playlist {
 	plist := spiff.NewPlaylist(spiff.TypeMusic)
-	plist.Spiff.Location = fmt.Sprintf("/api/radio/%d", s.ID)
+	plist.Spiff.Location = fmt.Sprintf("/api/radio/stations/%d", s.ID)
 	plist.Spiff.Title = s.Name
 	plist.Spiff.Image = s.Image
 	plist.Spiff.Creator = s.Creator
@@ -320,10 +290,10 @@ func (r *Resolver) RefreshStation(s *music.Station, user *auth.User) {
 		plist.Type = spiff.TypeStream
 		if strings.HasSuffix(s.Ref, ".pls") {
 			var entries []spiff.Entry
-			entries, err := r.resolvePlsRef(s.Ref, s.Creator, s.Image, entries)
+			entries, err := resolvePlsRef(ctx, s.Ref, s.Creator, s.Image, entries)
 			if err != nil {
 				log.Printf("pls error %s\n", err)
-				return
+				return nil
 			}
 			plist.Spiff.Entries = entries
 		} else {
@@ -332,28 +302,31 @@ func (r *Resolver) RefreshStation(s *music.Station, user *auth.User) {
 		}
 	} else {
 		plist.Spiff.Entries = []spiff.Entry{{Ref: s.Ref}}
-		r.Resolve(user, plist)
+		Resolve(ctx, plist)
 		if plist.Spiff.Entries == nil {
 			plist.Spiff.Entries = []spiff.Entry{}
 		}
 	}
 
-	s.Playlist, _ = plist.Marshal()
-
 	// TODO not saved for now
+	//s.Playlist, _ = plist.Marshal()
 	//m.UpdateStation(s)
+
+	return plist
 }
 
-func (r *Resolver) Resolve(user *auth.User, plist *spiff.Playlist) (err error) {
-	var entries []spiff.Entry
+var (
+	artistsRegexp  = regexp.MustCompile(`^/music/artists/([0-9a-zA-Z-]+)/([\w]+)$`)
+	releasesRegexp = regexp.MustCompile(`^/music/releases/([0-9a-zA-Z-]+)/tracks$`)
+	tracksRegexp   = regexp.MustCompile(`^/music/tracks/([\d]+)$`)
+	searchRegexp   = regexp.MustCompile(`^/music/search.*`)
+	radioRegexp    = regexp.MustCompile(`^/music/radio/stations/([\d]+)$`)
+	moviesRegexp   = regexp.MustCompile(`^/movies/([\d]+)$`)
+	seriesRegexp   = regexp.MustCompile(`^/podcasts/series/([\d]+)$`)
+)
 
-	artistsRegexp := regexp.MustCompile(`/music/artists/([\d]+)/([\w]+)`)
-	releasesRegexp := regexp.MustCompile(`/music/releases/([\d]+)/tracks`)
-	tracksRegexp := regexp.MustCompile(`/music/tracks/([\d]+)`)
-	searchRegexp := regexp.MustCompile(`/music/search.*`)
-	radioRegexp := regexp.MustCompile(`/music/radio/([\d]+)`)
-	moviesRegexp := regexp.MustCompile(`/movies/([\d]+)`)
-	seriesRegexp := regexp.MustCompile(`/series/([\d]+)`)
+func Resolve(ctx Context, plist *spiff.Playlist) (err error) {
+	var entries []spiff.Entry
 
 	for _, e := range plist.Spiff.Entries {
 		if e.Ref == "" {
@@ -365,7 +338,7 @@ func (r *Resolver) Resolve(user *auth.User, plist *spiff.Playlist) (err error) {
 
 		matches := artistsRegexp.FindStringSubmatch(pathRef)
 		if matches != nil {
-			entries, err = r.resolveArtistRef(matches[1], matches[2], entries)
+			entries, err = resolveArtistRef(ctx, matches[1], matches[2], entries)
 			if err != nil {
 				return err
 			}
@@ -374,7 +347,7 @@ func (r *Resolver) Resolve(user *auth.User, plist *spiff.Playlist) (err error) {
 
 		matches = releasesRegexp.FindStringSubmatch(pathRef)
 		if matches != nil {
-			entries, err = r.resolveReleaseRef(matches[1], entries)
+			entries, err = resolveReleaseRef(ctx, matches[1], entries)
 			if err != nil {
 				return err
 			}
@@ -383,7 +356,7 @@ func (r *Resolver) Resolve(user *auth.User, plist *spiff.Playlist) (err error) {
 
 		matches = tracksRegexp.FindStringSubmatch(pathRef)
 		if matches != nil {
-			entries, err = r.resolveTrackRef(matches[1], entries)
+			entries, err = resolveTrackRef(ctx, matches[1], entries)
 			if err != nil {
 				return err
 			}
@@ -391,7 +364,7 @@ func (r *Resolver) Resolve(user *auth.User, plist *spiff.Playlist) (err error) {
 		}
 
 		if searchRegexp.MatchString(pathRef) {
-			entries, err = r.resolveSearchRef(pathRef, entries)
+			entries, err = resolveSearchRef(ctx, pathRef, entries)
 			if err != nil {
 				return err
 			}
@@ -400,7 +373,7 @@ func (r *Resolver) Resolve(user *auth.User, plist *spiff.Playlist) (err error) {
 
 		matches = radioRegexp.FindStringSubmatch(pathRef)
 		if matches != nil {
-			entries, err = r.resolveRadioRef(matches[1], entries, user)
+			entries, err = resolveRadioRef(ctx, matches[1], entries)
 			if err != nil {
 				return err
 			}
@@ -409,7 +382,7 @@ func (r *Resolver) Resolve(user *auth.User, plist *spiff.Playlist) (err error) {
 
 		matches = moviesRegexp.FindStringSubmatch(pathRef)
 		if matches != nil {
-			entries, err = r.resolveMovieRef(matches[1], entries)
+			entries, err = resolveMovieRef(ctx, matches[1], entries)
 			if err != nil {
 				return err
 			}
@@ -418,7 +391,7 @@ func (r *Resolver) Resolve(user *auth.User, plist *spiff.Playlist) (err error) {
 
 		matches = seriesRegexp.FindStringSubmatch(pathRef)
 		if matches != nil {
-			entries, err = r.resolveSeriesRef(matches[1], entries)
+			entries, err = resolveSeriesRef(ctx, matches[1], entries)
 			if err != nil {
 				return err
 			}
@@ -429,4 +402,75 @@ func (r *Resolver) Resolve(user *auth.User, plist *spiff.Playlist) (err error) {
 	plist.Spiff.Entries = entries
 
 	return nil
+}
+
+func ResolveArtistPlaylist(ctx Context, v *view.Artist, path, nref string) *spiff.Playlist {
+	// /music/artists/{id}/{resource}
+	parts := strings.Split(nref, "/")
+	res := parts[4]
+	trackList := resolveArtistTrackList(v, res)
+
+	plist := spiff.NewPlaylist(spiff.TypeMusic)
+	plist.Spiff.Location = path
+	plist.Spiff.Creator = v.Artist.Name
+	plist.Spiff.Title = trackList.Title
+	plist.Spiff.Image = v.Image
+	plist.Spiff.Date = date.FormatJson(time.Now())
+	if trackList.Tracks != nil {
+		plist.Spiff.Entries = addTrackEntries(ctx, trackList.Tracks(), plist.Spiff.Entries)
+	}
+	return plist
+}
+
+func ResolveReleasePlaylist(ctx Context, v *view.Release, path string) *spiff.Playlist {
+	// /music/release/{id}
+	plist := spiff.NewPlaylist(spiff.TypeMusic)
+	plist.Spiff.Location = path
+	plist.Spiff.Creator = v.Release.Artist
+	plist.Spiff.Title = v.Release.Artist
+	plist.Spiff.Image = v.Image
+	plist.Spiff.Date = date.FormatJson(v.Release.Date)
+	plist.Spiff.Entries = addTrackEntries(ctx, v.Tracks, plist.Spiff.Entries)
+	return plist
+}
+
+func ResolveMoviePlaylist(ctx Context, v *view.Movie, path string) *spiff.Playlist {
+	// /movies/{id}
+	plist := spiff.NewPlaylist(spiff.TypeVideo)
+	plist.Spiff.Location = path
+	plist.Spiff.Creator = "Movie"
+	plist.Spiff.Title = v.Movie.Title
+	plist.Spiff.Image = ctx.MovieImage(v.Movie)
+	plist.Spiff.Date = date.FormatJson(v.Movie.Date)
+	plist.Spiff.Entries = []spiff.Entry{
+		movieEntry(ctx, v.Movie),
+	}
+	return plist
+}
+
+func ResolveSeriesPlaylist(ctx Context, v *view.Series, path string) *spiff.Playlist {
+	// /podcasts/series/{id}
+	plist := spiff.NewPlaylist(spiff.TypePodcast)
+	plist.Spiff.Location = path
+	plist.Spiff.Creator = v.Series.Author
+	plist.Spiff.Title = v.Series.Title
+	plist.Spiff.Image = v.Series.Image
+	plist.Spiff.Date = date.FormatJson(v.Series.Date)
+	plist.Spiff.Entries = addEpisodeEntries(ctx, v.Series, v.Episodes, plist.Spiff.Entries)
+	return plist
+}
+
+func ResolveSeriesEpisodePlaylist(ctx Context, series *view.Series,
+	v *view.SeriesEpisode, path string) *spiff.Playlist {
+	// /podcasts/series/{id}/episode/{eid}
+	plist := spiff.NewPlaylist(spiff.TypePodcast)
+	plist.Spiff.Location = path
+	plist.Spiff.Creator = series.Series.Author
+	plist.Spiff.Title = v.Episode.Title
+	plist.Spiff.Image = v.EpisodeImage(v.Episode)
+	plist.Spiff.Date = date.FormatJson(v.Episode.Date)
+	plist.Spiff.Entries = []spiff.Entry{
+		episodeEntry(ctx, series.Series, v.Episode),
+	}
+	return plist
 }

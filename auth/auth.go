@@ -21,9 +21,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"errors"
-	rando "math/rand"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/defsub/takeout"
@@ -32,7 +30,6 @@ import (
 	"golang.org/x/crypto/scrypt"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 const (
@@ -58,43 +55,20 @@ type User struct {
 	Media string
 }
 
-type Code struct {
-	gorm.Model
-	Value   string `gorm:"unique_index:idx_code_value"`
-	Expires time.Time
-	Cookie  string
-}
-
-func mediaList(media string) []string {
-	list := strings.Split(media, ",")
-	for i := range list {
-		list[i] = strings.Trim(list[i], " ")
-	}
-	return list
-}
-
-func (u *User) MediaList() []string {
-	if len(u.Media) == 0 {
-		return make([]string, 0)
-	}
-	return mediaList(u.Media)
-}
-
-func (u *User) FirstMedia() string {
-	list := u.MediaList()
-	return list[0]
-}
-
 type Session struct {
 	gorm.Model
-	User    string
-	Cookie  string
+	User    string `gorm:"unique_index:idx_session_user"`
+	Cookie  string `gorm:"unique_index:idx_session_cookie"`
 	Expires time.Time
 }
 
-func (s *Session) expired() bool {
+func (s *Session) Expired() bool {
 	now := time.Now()
 	return now.After(s.Expires)
+}
+
+func (s *Session) Valid() bool {
+	return !s.Expired()
 }
 
 type Auth struct {
@@ -107,15 +81,7 @@ func NewAuth(config *config.Config) *Auth {
 }
 
 func (a *Auth) Open() (err error) {
-	var glog logger.Interface
-	if a.config.Auth.DB.LogMode == false {
-		glog = logger.Discard
-	} else {
-		glog = logger.Default
-	}
-	cfg := &gorm.Config{
-		Logger: glog,
-	}
+	cfg := a.config.Music.DB.GormConfig()
 
 	if a.config.Auth.DB.Driver == "sqlite3" {
 		a.db, err = gorm.Open(sqlite.Open(a.config.Auth.DB.Source), cfg)
@@ -205,16 +171,6 @@ func (a *Auth) ChangePass(email, newpass string) error {
 	return a.db.Model(u).Update("salt", u.Salt).Update("key", u.Key).Error
 }
 
-func (a *Auth) AssignMedia(email, media string) error {
-	var u User
-	err := a.db.Where("name = ?", email).First(&u).Error
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return ErrUserNotFound
-	}
-	u.Media = media
-	return a.db.Model(u).Update("media", u.Media).Error
-}
-
 func (a *Auth) Expire(cookie *http.Cookie) {
 	cookie.MaxAge = 0
 	cookie.Expires = time.Now().Add(-24 * time.Hour)
@@ -231,26 +187,23 @@ func (a *Auth) newCookie(session *Session) http.Cookie {
 		HttpOnly: true}
 }
 
-func (a *Auth) Valid(cookie http.Cookie) bool {
-	if cookie.Name != CookieName {
-		return false
+func (a *Auth) AuthenticateCookie(cookie *http.Cookie) *Session {
+	if cookie == nil || cookie.Name != CookieName {
+		return nil
 	}
-	session := a.findCookieSession(cookie)
-	if session == nil || session.expired() {
-		return false
-	}
-	return true
+	return a.findCookieSession(cookie)
 }
 
-func (a *Auth) TokenUser(token string) (*User, error) {
-	session := a.findSession(token)
-	if session == nil {
-		return nil, ErrSessionNotFound
-	}
-	if session.expired() {
-		return nil, ErrSessionExpired
-	}
+func (a *Auth) AuthenticateToken(token string) *Session {
+	return a.findSession(token)
+}
 
+func (a *Auth) CheckToken(token string) bool {
+	session := a.AuthenticateToken(token)
+	return session != nil && session.Valid()
+}
+
+func (a *Auth) SessionUser(session *Session) (*User, error) {
 	var u User
 	err := a.db.Where("name = ?", session.User).First(&u).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
@@ -259,66 +212,24 @@ func (a *Auth) TokenUser(token string) (*User, error) {
 	return &u, nil
 }
 
-func (a *Auth) Refresh(cookie *http.Cookie) error {
-	session := a.findCookieSession(*cookie)
-	if session == nil {
-		return ErrSessionNotFound
+func (a *Auth) RefreshCookie(session *Session, cookie *http.Cookie) error {
+	err := a.Refresh(session)
+	if err != nil {
+		return err
 	}
-	a.touch(session)
 	cookie.MaxAge = session.maxAge()
 	return nil
 }
 
-func (a *Auth) UserAuth(cookie http.Cookie) (*User, error) {
-	return a.UserAuthValue(cookie.Value)
-}
-
-// TODO make private later
-func (a *Auth) UserAuthValue(value string) (*User, error) {
-	session := a.findSession(value)
+func (a *Auth) Refresh(session *Session) error {
 	if session == nil {
-		return nil, ErrSessionNotFound
+		return ErrSessionNotFound
 	}
-
-	// TODO add cache
-	var u User
-	err := a.db.Where("name = ?", session.User).First(&u).Error
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, ErrUserNotFound
-	}
-
-	return &u, nil
+	a.touch(session)
+	return nil
 }
 
-func (a *Auth) Authenticate(value string) bool {
-	session := a.findSession(value)
-	return session != nil
-}
-
-func (a *Auth) AssignedMedia() []string {
-	var list []string
-	rows, err := a.db.Table("users").
-		Select("distinct(media)").Rows()
-	if err != nil {
-		return list
-	}
-	uniqueMedia := make(map[string]bool)
-	for rows.Next() {
-		var v string
-		rows.Scan(&v)
-		for _, media := range mediaList(v) {
-			uniqueMedia[media] = true
-		}
-	}
-	rows.Close()
-	for k := range uniqueMedia {
-		list = append(list, k)
-	}
-	return list
-}
-
-func (a *Auth) Logout(cookie http.Cookie) {
-	session := a.findCookieSession(cookie)
+func (a *Auth) Logout(session *Session) {
 	if session != nil {
 		a.db.Delete(session)
 	}
@@ -328,13 +239,13 @@ func (a *Auth) key(pass string, salt []byte) ([]byte, error) {
 	return scrypt.Key([]byte(pass), salt, 32768, 8, 1, 32)
 }
 
-func (a *Auth) findCookieSession(cookie http.Cookie) *Session {
+func (a *Auth) findCookieSession(cookie *http.Cookie) *Session {
 	return a.findSession(cookie.Value)
 }
 
-func (a *Auth) findSession(value string) *Session {
+func (a *Auth) findSession(token string) *Session {
 	var session Session
-	err := a.db.Where("cookie = ?", value).First(&session).Error
+	err := a.db.Where("cookie = ?", token).First(&session).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil
 	}
@@ -372,75 +283,6 @@ func (a *Auth) maxAge() time.Duration {
 	return a.config.Auth.MaxAge
 }
 
-func (a *Auth) codeAge() time.Duration {
-	return a.config.Auth.CodeAge
-}
-
 func (s *Session) maxAge() int {
 	return int(s.Expires.Sub(time.Now()).Seconds())
-}
-
-const (
-	CodeChars = "123456789ABCDEFGHILKMNPQRSTUVWXYZ"
-	CodeSize  = 6
-)
-
-func randomCode() string {
-	var code string
-	rando.Seed(time.Now().UnixNano())
-	for i := 0; i < CodeSize; i++ {
-		n := rando.Intn(len(CodeChars))
-		code += string(CodeChars[n])
-	}
-	return code
-}
-
-func (a *Auth) createCode(c *Code) (err error) {
-	err = a.db.Create(c).Error
-	return
-}
-
-func (a *Auth) findCode(value string) *Code {
-	var code Code
-	err := a.db.Where("value = ?", value).First(&code).Error
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil
-	}
-	return &code
-}
-
-func (a *Auth) GenerateCode() *Code {
-	value := randomCode()
-	expires := time.Now().Add(a.codeAge())
-	c := &Code{Value: value, Expires: expires}
-	a.db.Create(c)
-	return c
-}
-
-func (c *Code) expired() bool {
-	now := time.Now()
-	return now.After(c.Expires)
-}
-
-func (a *Auth) LinkedCode(value string) *Code {
-	code := a.findCode(value)
-	if code == nil || code.Cookie == "" || code.expired() {
-		return nil
-	}
-	return code
-}
-
-// This assumes cookie is valid
-func (a *Auth) AuthorizeCode(value, cookie string) error {
-	code := a.findCode(value)
-	if code == nil {
-		return ErrCodeNotFound
-	}
-	if code.expired() {
-		return ErrCodeExpired
-	}
-	if code.Cookie != "" {
-		return ErrCodeAlreadyUsed
-	}
-	return a.db.Model(code).Update("cookie", cookie).Error
 }

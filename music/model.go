@@ -137,6 +137,7 @@ type Track struct {
 	DiscCount    int
 	REID         string `gorm:"index:idx_track_reid"`
 	RGID         string `gorm:"index:idx_track_rgid"`
+	RID          string `gorm:"index:idx_track_rid"` // recording id
 	MediaTitle   string
 	ReleaseTitle string `spiff:"album"`
 	ReleaseDate  time.Time
