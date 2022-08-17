@@ -22,19 +22,10 @@ import (
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 func (p *Progress) openDB() (err error) {
-	var glog logger.Interface
-	if p.config.Progress.DB.LogMode == false {
-		glog = logger.Discard
-	} else {
-		glog = logger.Default
-	}
-	cfg := &gorm.Config{
-		Logger: glog,
-	}
+	cfg := p.config.Music.DB.GormConfig()
 
 	if p.config.Progress.DB.Driver == "sqlite3" {
 		p.db, err = gorm.Open(sqlite.Open(p.config.Progress.DB.Source), cfg)

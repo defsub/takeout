@@ -25,19 +25,10 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 func (v *Video) openDB() (err error) {
-	var glog logger.Interface
-	if v.config.Video.DB.LogMode == false {
-		glog = logger.Discard
-	} else {
-		glog = logger.Default
-	}
-	cfg := &gorm.Config{
-		Logger: glog,
-	}
+	cfg := v.config.Music.DB.GormConfig()
 
 	switch v.config.Music.DB.Driver {
 	case "sqlite3":

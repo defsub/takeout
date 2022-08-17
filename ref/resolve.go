@@ -49,25 +49,6 @@ type Locator interface {
 	TrackImage(music.Track) string
 	MovieImage(video.Movie) string
 	EpisodeImage(podcast.Episode) string
-
-	// LookupArtist(int) (music.Artist, error)
-	// LookupRelease(int) (music.Release, error)
-	// LookupTrack(int) (music.Track, error)
-	// LookupStation(int) (music.Station, error)
-	// LookupMovie(int) (video.Movie, error)
-	// LookupSeries(int) (podcast.Series, error)
-
-	// ArtistSingleTracks(music.Artist) []music.Track
-	// ArtistPopularTracks(music.Artist) []music.Track
-	// ArtistTracks(music.Artist) []music.Track
-	// ArtistShuffle(music.Artist) []music.Track
-	// ArtistRadio(music.Artist) []music.Track
-	// ArtistDeep(music.Artist) []music.Track
-
-	// ReleaseTracks(music.Release) []music.Track
-	// MusicSearch(string, int) []music.Track
-
-	//SeriesEpisodes(podcast.Series) []podcast.Episode
 }
 
 type Context interface {

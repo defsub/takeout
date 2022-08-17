@@ -23,6 +23,7 @@ import (
 	"html/template"
 	"net/http"
 
+	"github.com/defsub/takeout/activity"
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/music"
@@ -46,6 +47,7 @@ func contextValue(r *http.Request) Context {
 }
 
 type Context interface {
+	Activity() *activity.Activity
 	Auth() *auth.Auth
 	Config() *config.Config
 	Music() *music.Music
@@ -72,6 +74,7 @@ type Context interface {
 }
 
 type RequestContext struct {
+	activity *activity.Activity
 	auth     *auth.Auth
 	config   *config.Config
 	user     *auth.User
@@ -81,11 +84,16 @@ type RequestContext struct {
 
 func makeContext(ctx Context, u *auth.User, c *config.Config, m *Media) RequestContext {
 	return RequestContext{
+		activity: ctx.Activity(),
 		config:   c,
 		media:    m,
 		template: ctx.Template(),
 		user:     u,
 	}
+}
+
+func (ctx RequestContext) Activity() *activity.Activity {
+	return ctx.activity
 }
 
 func (ctx RequestContext) Auth() *auth.Auth {

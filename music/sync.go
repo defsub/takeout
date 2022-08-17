@@ -359,9 +359,13 @@ func (m *Music) checkReleaseArtwork(r *Release) error {
 	return nil
 }
 
+var (
+	fuzzyArtistRegexp = regexp.MustCompile(`[^a-zA-Z0-9& -]`)
+	fuzzyNameRegexp = regexp.MustCompile(`[^a-zA-Z0-9]`)
+)
+
 func fuzzyArtist(name string) string {
-	re := regexp.MustCompile(`[^a-zA-Z0-9& -]`)
-	return re.ReplaceAllString(name, "")
+	return fuzzyArtistRegexp.ReplaceAllString(name, "")
 }
 
 func FuzzyName(name string) string {
@@ -370,8 +374,7 @@ func FuzzyName(name string) string {
 	// treat "p·u·l·s·e" as "pulse" for comparison - Pink Floyd album Pulse
 	name = strings.Replace(name, "p·u·l·s·e", "Pulse", -1)
 	// TODO need to configurize this stuff
-	re := regexp.MustCompile(`[^a-zA-Z0-9]`)
-	return re.ReplaceAllString(name, "")
+	return fuzzyNameRegexp.ReplaceAllString(name, "")
 }
 
 func fixName(name string) string {

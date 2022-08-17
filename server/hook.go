@@ -293,7 +293,21 @@ func authNext(ctx Context, r *actions.WebhookRequest, w *actions.WebhookResponse
 
 func authCheck(ctx Context, r *actions.WebhookRequest, w *actions.WebhookResponse,
 	cookie string) (*auth.User, error) {
-	return ctx.Auth().UserAuthValue(cookie)
+	a := ctx.Auth()
+	session := a.AuthenticateToken(cookie)
+	if session == nil {
+		return nil, ErrUnauthorized
+	} else if session.Expired() {
+		a.Logout(session)
+		return nil, ErrUnauthorized
+	}
+	user, err := a.SessionUser(session)
+	if err != nil {
+		a.Logout(session)
+		return nil, ErrUnauthorized
+	}
+	a.Refresh(session)
+	return user, nil
 }
 
 func verificationRequired(ctx Context, r *actions.WebhookRequest, w *actions.WebhookResponse) {

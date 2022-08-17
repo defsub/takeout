@@ -38,6 +38,9 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.7.1
+	github.com/tidwall/btree v1.4.1 // indirect
+	github.com/tidwall/buntdb v1.2.9 // indirect
+	github.com/tidwall/gjson v1.14.3 // indirect
 	github.com/willf/bitset v1.2.0 // indirect
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	golang.org/x/net v0.0.0-20220805013720-a33c5aa5df48

@@ -22,48 +22,21 @@ import (
 	"strings"
 
 	"github.com/bmizerany/pat"
+	"github.com/defsub/takeout/activity"
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
-	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/lib/hub"
+	"github.com/defsub/takeout/lib/log"
 )
 
 const (
-	ApplicationJson = "application/json"
-
 	SuccessRedirect = "/"
 	LinkRedirect    = "/static/link.html"
 	LoginRedirect   = "/static/login.html"
+
+	AuthorizationHeader = "Authorization"
+	BearerAuthorization = "Bearer"
 )
-
-// remove?
-// func (handler *UserHandler) tracksHandler(w http.ResponseWriter, r *http.Request, m *music.Music) {
-// 	var tracks []music.Track
-// 	if v := r.URL.Query().Get("q"); v != "" {
-// 		tracks = m.Search(strings.TrimSpace(v))
-// 	}
-
-// 	if len(tracks) > 0 {
-// 		handler.doSpiff(m, "Takeout", tracks, w, r)
-// 	} else {
-// 		notFoundErr(w)
-// 		return
-// 	}
-// }
-
-// remove?
-// func (handler *UserHandler) doSpiff(m *music.Music, title string, tracks []music.Track,
-// 	w http.ResponseWriter, r *http.Request) {
-// 	w.Header().Set("Content-type", xspf.XMLContentType)
-
-// 	encoder := xspf.NewXMLEncoder(w)
-// 	encoder.Header(title)
-// 	for _, t := range tracks {
-// 		t.Location = []string{m.TrackURL(&t).String()}
-// 		encoder.Encode(t)
-// 	}
-// 	encoder.Footer()
-// }
 
 func doLogin(ctx Context, user, pass string) (http.Cookie, error) {
 	return ctx.Auth().Login(user, pass)
@@ -90,7 +63,9 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		// success
 		http.SetCookie(w, &cookie)
-		http.Redirect(w, r, SuccessRedirect, http.StatusTemporaryRedirect)
+		// Use 303 for PRG
+		// https://en.wikipedia.org/wiki/Post/Redirect/Get
+		http.Redirect(w, r, SuccessRedirect, http.StatusSeeOther)
 		return
 	}
 	authErr(w, ErrUnauthorized)
@@ -112,7 +87,7 @@ func linkHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func authorizeBearer(ctx Context, w http.ResponseWriter, r *http.Request) *auth.User {
-	value := r.Header.Get("Authorization")
+	value := r.Header.Get(AuthorizationHeader)
 	if value == "" {
 		return nil
 	}
@@ -124,17 +99,27 @@ func authorizeBearer(ctx Context, w http.ResponseWriter, r *http.Request) *auth.
 		token = result[0]
 	case 2:
 		// Authorization: Bearer <token>
-		if strings.EqualFold(result[0], "Bearer") {
+		if strings.EqualFold(result[0], BearerAuthorization) {
 			token = result[1]
 		}
 	}
 	if len(token) == 0 {
 		return nil
 	}
-	user, err := ctx.Auth().TokenUser(token)
-	if err != nil {
+	a := ctx.Auth()
+	session := a.AuthenticateToken(token)
+	if session == nil {
+		return nil
+	} else if session.Expired() {
+		a.Logout(session)
 		return nil
 	}
+	user, err := a.SessionUser(session)
+	if err != nil {
+		a.Logout(session)
+		return nil
+	}
+	a.Refresh(session)
 	return user
 }
 
@@ -150,25 +135,30 @@ func authorizeCookie(ctx Context, w http.ResponseWriter, r *http.Request) *auth.
 		return nil
 	}
 
-	valid := a.Valid(*cookie)
-	if !valid {
-		a.Logout(*cookie)
+	session := a.AuthenticateCookie(cookie)
+	if session == nil {
+		authErr(w, ErrUnauthorized)
+		return nil
+	} else if session.Expired() {
+		// old session
+		a.Logout(session)
 		a.Expire(cookie)
 		http.SetCookie(w, cookie)
 		authErr(w, ErrUnauthorized)
 		return nil
 	}
 
-	user, err := a.UserAuth(*cookie)
+	user, err := a.SessionUser(session)
 	if err != nil {
-		a.Logout(*cookie)
-		authErr(w, ErrUnauthorized)
+		// session with no user?
+		a.Logout(session)
 		a.Expire(cookie)
+		authErr(w, ErrUnauthorized)
 		http.SetCookie(w, cookie)
 		return nil
 	}
 
-	a.Refresh(cookie)
+	a.RefreshCookie(session, cookie)
 	http.SetCookie(w, cookie)
 
 	return user
@@ -211,8 +201,7 @@ func authHandler(ctx RequestContext, handler http.HandlerFunc) http.Handler {
 
 func requestHandler(ctx RequestContext, handler http.HandlerFunc) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		r = withContext(r, ctx)
-		handler.ServeHTTP(w, r)
+		handler.ServeHTTP(w, withContext(r, ctx))
 	}
 	return http.HandlerFunc(fn)
 }
@@ -231,26 +220,37 @@ func makeAuth(config *config.Config) (*auth.Auth, error) {
 	return a, err
 }
 
+func makeActivity(config *config.Config) (*activity.Activity, error) {
+	a := activity.NewActivity(config)
+	err := a.Open()
+	return a, err
+}
+
 func makeHub(config *config.Config) (*hub.Hub, error) {
 	h := hub.NewHub()
 	go h.Run()
 	return h, nil
 }
 
-func Serve(config *config.Config) {
-	//schedule(config)
+func Serve(config *config.Config) error {
+	auth, err := makeAuth(config)
+	log.CheckError(err)
+
+	activity, err := makeActivity(config)
+	log.CheckError(err)
 
 	hub, err := makeHub(config)
-	if err != nil {
-		log.CheckError(err)
-	}
+	log.CheckError(err)
 
-	auth, err := makeAuth(config)
-	if err != nil {
-		log.CheckError(err)
-	}
+	schedule(config)
 
-	ctx := RequestContext{config: config, auth: auth, template: getTemplates(config)}
+	// base context for all requests
+	ctx := RequestContext{
+		activity: activity,
+		auth:     auth,
+		config:   config,
+		template: getTemplates(config),
+	}
 
 	resFileServer := http.FileServer(mountResFS(resStatic))
 	staticHandler := func(w http.ResponseWriter, r *http.Request) {
@@ -327,6 +327,14 @@ func Serve(config *config.Config) {
 	mux.Get("/api/progress", authHandler(ctx, apiProgressGet))
 	mux.Post("/api/progress", authHandler(ctx, apiProgressPost))
 
+	// activity
+	mux.Get("/api/activity", authHandler(ctx, apiActivityGet))
+	mux.Post("/api/activity", authHandler(ctx, apiActivityPost))
+	mux.Get("/api/activity/tracks", authHandler(ctx, apiActivityTracksGet))
+	mux.Get("/api/activity/movies", authHandler(ctx, apiActivityMoviesGet))
+	mux.Get("/api/activity/releases", authHandler(ctx, apiActivityReleasesGet))
+	// /activity/radio - ?
+
 	// Hub
 	mux.Get("/live", hubHandler(ctx, hub))
 
@@ -336,19 +344,9 @@ func Serve(config *config.Config) {
 	// // swaggerHandler := func(w http.ResponseWriter, r *http.Request) {
 	// // 	http.Redirect(w, r, "/static/swagger.json", 302)
 	// // }
-
-	// http.HandleFunc("/static/", staticHandler)
 	// http.HandleFunc("/swagger.json", swaggerHandler)
-	// http.HandleFunc("/tracks", tracksHandler)
-	// http.HandleFunc("/", viewHandler)
-	// http.HandleFunc("/v", viewHandler)
-	// http.HandleFunc("/login", loginHandler)
-	// http.HandleFunc("/link", linkHandler)
-	// http.HandleFunc("/api/login", apiLoginHandler)
-	// http.HandleFunc("/api/", apiHandler)
-	// http.HandleFunc("/hook/", hookHandler)
-	// http.HandleFunc("/live", liveHandler)
+
 	log.Printf("listening on %s\n", config.Server.Listen)
 	http.Handle("/", mux)
-	http.ListenAndServe(config.Server.Listen, nil)
+	return http.ListenAndServe(config.Server.Listen, nil)
 }

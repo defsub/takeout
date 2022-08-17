@@ -31,7 +31,7 @@ import (
 )
 
 type Authenticator interface {
-	Authenticate(string) bool
+	CheckToken(string) bool
 }
 
 type Message struct {
@@ -148,7 +148,7 @@ func (c *Client) reader(auth Authenticator) {
 		return
 	}
 	token := cmd[1]
-	if auth.Authenticate(string(token)) == false {
+	if auth.CheckToken(string(token)) == false {
 		// auth failed
 		log.Printf("bad token %s\n", string(token))
 		return

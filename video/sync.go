@@ -69,17 +69,10 @@ func (v *Video) SyncSince(lastSync time.Time) error {
 	return nil
 }
 
-func (v *Video) syncBucket(bucket bucket.Bucket, lastSync time.Time) error {
-	objectCh, err := bucket.List(lastSync)
-	if err != nil {
-		return err
-	}
-
-	client := tmdb.NewTMDB(v.config)
-
+var (
 	// Movies/Thriller/Zero Dark Thirty (2012).mkv
 	// Movies/Thriller/Zero Dark Thirty (2012) - HD.mkv
-	movieRegexp := regexp.MustCompile(`.*/(.+?)\s*\(([\d]+)\)(\s-\s(.+))?\.(mkv|mp4)$`)
+	movieRegexp = regexp.MustCompile(`.*/(.+?)\s*\(([\d]+)\)(\s-\s(.+))?\.(mkv|mp4)$`)
 
 	// The Shining
 	// Doctor Who (1963) - S01E01 - An Unearthly Child.mkv
@@ -88,7 +81,16 @@ func (v *Video) syncBucket(bucket bucket.Bucket, lastSync time.Time) error {
 	// Sopranos (1999) - S05E21 - Made in America.mkv
 	// Sopranos (2007) - S05E21 - Made in America.mkv
 	// Name (Date) - SXXEYY[ - Optional].mkv
-	//tvRegexp := regexp.MustCompile(`.*/(.+?)\s*\(([\d]+)\)(\s-\s(.+))?\.(mkv|mp4)$`)
+	//tvRegexp = regexp.MustCompile(`.*/(.+?)\s*\(([\d]+)\)(\s-\s(.+))?\.(mkv|mp4)$`)
+)
+
+func (v *Video) syncBucket(bucket bucket.Bucket, lastSync time.Time) error {
+	objectCh, err := bucket.List(lastSync)
+	if err != nil {
+		return err
+	}
+
+	client := tmdb.NewTMDB(v.config)
 
 	s := v.newSearch()
 	defer s.Close()
@@ -136,9 +138,10 @@ func (v *Video) syncBucket(bucket bucket.Bucket, lastSync time.Time) error {
 	return nil
 }
 
+var fuzzyNameRegexp = regexp.MustCompile(`[^a-zA-Z0-9]`)
+
 func fuzzyName(name string) string {
-	re := regexp.MustCompile(`[^a-zA-Z0-9]`)
-	return re.ReplaceAllString(name, "")
+	return fuzzyNameRegexp.ReplaceAllString(name, "")
 }
 
 func (v *Video) syncMovie(client *tmdb.TMDB, tmid int,

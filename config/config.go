@@ -31,8 +31,11 @@ import (
 	"time"
 
 	"github.com/defsub/takeout"
+	g "github.com/defsub/takeout/lib/gorm"
 	"github.com/defsub/takeout/lib/log"
 	"github.com/spf13/viper"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 var (
@@ -66,7 +69,11 @@ type RewriteRule struct {
 type DatabaseConfig struct {
 	Driver  string
 	Source  string
-	LogMode bool
+	Logger string
+}
+
+func (c DatabaseConfig) GormConfig() *gorm.Config {
+	return &gorm.Config{Logger: gormLogger(c.Logger)}
 }
 
 type Template struct {
@@ -169,10 +176,11 @@ type ProgressConfig struct {
 }
 
 type ActivityConfig struct {
-	DB                  DatabaseConfig
-	RecentScrobbleLimit int
-	RecentListenLimit   int
-	RecentWatchLimit    int
+	DB                       DatabaseConfig
+	RecentMovieLimit         int
+	RecentReleaseLimit       int
+	RecentSeriesEpisodeLimit int
+	RecentTrackLimit         int
 }
 
 type RecommendConfig struct {
@@ -279,7 +287,7 @@ func (mc *MusicConfig) readMaps() {
 
 func configDefaults(v *viper.Viper) {
 	v.SetDefault("Auth.DB.Driver", "sqlite3")
-	v.SetDefault("Auth.DB.LogMode", "false")
+	v.SetDefault("Auth.DB.Logger", "default")
 	v.SetDefault("Auth.DB.Source", "auth.db")
 	v.SetDefault("Auth.MaxAge", "24h")
 	v.SetDefault("Auth.CodeAge", "1h")
@@ -359,7 +367,7 @@ func configDefaults(v *viper.Viper) {
 
 	v.SetDefault("Music.DB.Driver", "sqlite3")
 	v.SetDefault("Music.DB.Source", "music.db")
-	v.SetDefault("Music.DB.LogMode", "false")
+	v.SetDefault("Music.DB.Logger", "default")
 
 	v.SetDefault("TMDB.Key", "903a776b0638da68e9ade38ff538e1d3")
 	v.SetDefault("TMDB.Language", "en-US")
@@ -372,7 +380,7 @@ func configDefaults(v *viper.Viper) {
 
 	v.SetDefault("Video.DB.Driver", "sqlite3")
 	v.SetDefault("Video.DB.Source", "video.db")
-	v.SetDefault("Video.DB.LogMode", "true")
+	v.SetDefault("Video.DB.Logger", "default")
 	v.SetDefault("Video.ReleaseCountries", []string{
 		"US",
 	})
@@ -461,7 +469,7 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Podcast.Client.UseCache", true)
 	v.SetDefault("Podcast.DB.Driver", "sqlite3")
 	v.SetDefault("Podcast.DB.Source", "podcast.db")
-	v.SetDefault("Podcast.DB.LogMode", "true")
+	v.SetDefault("Podcast.DB.Logger", "default")
 	v.SetDefault("Podcast.RecentLimit", "25")
 	v.SetDefault("Podcast.SyncInterval", "1h")
 	v.SetDefault("Podcast.Series", []string{
@@ -476,14 +484,15 @@ func configDefaults(v *viper.Viper) {
 
 	v.SetDefault("Progress.DB.Driver", "sqlite3")
 	v.SetDefault("Progress.DB.Source", "progress.db")
-	v.SetDefault("Progress.DB.LogMode", "true")
+	v.SetDefault("Progress.DB.Logger", "default")
 
 	v.SetDefault("Activity.DB.Driver", "sqlite3")
 	v.SetDefault("Activity.DB.Source", "activity.db")
-	v.SetDefault("Activity.DB.LogMode", "true")
-	v.SetDefault("Activity.RecentScrobbleLimit", "25")
-	v.SetDefault("Activity.RecentListenLimit", "25")
-	v.SetDefault("Activity.RecentWatchLimit", "25")
+	v.SetDefault("Activity.DB.Logger", "default")
+	v.SetDefault("Activity.RecentMovieLimit", "10")
+	v.SetDefault("Activity.RecentReleaseLimit", "10")
+	v.SetDefault("Activity.RecentSeriesEpisodeLimit", "10")
+	v.SetDefault("Activity.RecentTrackLimit", "10")
 }
 
 func userAgent() string {
@@ -590,4 +599,8 @@ func LoadConfig(dir string) (*Config, error) {
 		// if that's desired.
 	}
 	return c, err
+}
+
+func gormLogger(name string) logger.Interface {
+	return g.Logger(name)
 }

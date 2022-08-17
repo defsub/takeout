@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/defsub/takeout/activity"
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/music"
@@ -31,6 +32,7 @@ import (
 
 type Context interface {
 	Config() *config.Config
+	Activity() *activity.Activity
 	Music() *music.Music
 	Podcast() *podcast.Podcast
 	Progress() *progress.Progress
@@ -234,6 +236,28 @@ type Progress struct {
 // swagger:model
 type Offset struct {
 	Offset progress.Offset
+}
+
+// swagger:model
+type Activity struct {
+	RecentMovies   []activity.Movie
+	RecentTracks   []activity.Track
+	RecentReleases []activity.Release
+}
+
+// swagger:model
+type ActivityMovies struct {
+	Movies []activity.Movie
+}
+
+// swagger:model
+type ActivityTracks struct {
+	Tracks []activity.Track
+}
+
+// swagger:model
+type ActivityReleases struct {
+	Releases []activity.Release
 }
 
 func IndexView(ctx Context) *Index {
@@ -536,5 +560,31 @@ func ProgressView(ctx Context) *Progress {
 func OffsetView(ctx Context, offset progress.Offset) *Offset {
 	view := &Offset{}
 	view.Offset = offset
+	return view
+}
+
+func ActivityView(ctx Context) *Activity {
+	view := &Activity{}
+	view.RecentTracks = ctx.Activity().RecentTracks(ctx.User(), ctx.Music())
+	view.RecentMovies = ctx.Activity().RecentMovies(ctx.User(), ctx.Video())
+	view.RecentReleases = ctx.Activity().RecentReleases(ctx.User(), ctx.Music())
+	return view
+}
+
+func ActivityTracksView(ctx Context, start, end time.Time) *ActivityTracks {
+	view := &ActivityTracks{}
+	view.Tracks = ctx.Activity().Tracks(ctx.User(), ctx.Music(), start, end)
+	return view
+}
+
+func ActivityMoviesView(ctx Context, start, end time.Time) *ActivityMovies {
+	view := &ActivityMovies{}
+	view.Movies = ctx.Activity().Movies(ctx.User(), ctx.Video(), start, end)
+	return view
+}
+
+func ActivityReleasesView(ctx Context, start, end time.Time) *ActivityReleases {
+	view := &ActivityReleases{}
+	view.Releases = ctx.Activity().Releases(ctx.User(), ctx.Music(), start, end)
 	return view
 }

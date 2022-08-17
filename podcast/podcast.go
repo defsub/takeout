@@ -101,7 +101,7 @@ func (p *Podcast) FindSeries(identifier string) (Series, error) {
 func (p *Podcast) FindEpisode(identifier string) (Episode, error) {
 	id, err := strconv.Atoi(identifier)
 	if err != nil {
-		return Episode{}, errors.New("not supported")
+		return p.LookupEID(identifier)
 	} else {
 		return p.LookupEpisode(id)
 	}

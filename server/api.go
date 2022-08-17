@@ -24,7 +24,10 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
+	"github.com/defsub/takeout/activity"
+	"github.com/defsub/takeout/lib/date"
 	"github.com/defsub/takeout/lib/encoding/xspf"
 	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/lib/spiff"
@@ -33,6 +36,10 @@ import (
 	"github.com/defsub/takeout/progress"
 	"github.com/defsub/takeout/ref"
 	"github.com/defsub/takeout/view"
+)
+
+const (
+	ApplicationJson = "application/json"
 )
 
 type login struct {
@@ -79,6 +86,8 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 	enc.Encode(result)
 }
 
+var locationRegexp = regexp.MustCompile(`/api/(tracks)/([0-9]+)/location`)
+
 func writePlaylist(w http.ResponseWriter, r *http.Request, plist *spiff.Playlist) {
 	if strings.HasSuffix(r.URL.Path, ".xspf") {
 		// create XML spiff with tracks fully resolved
@@ -86,7 +95,6 @@ func writePlaylist(w http.ResponseWriter, r *http.Request, plist *spiff.Playlist
 		w.Header().Set("Content-type", xspf.XMLContentType)
 		encoder := xspf.NewXMLEncoder(w)
 		encoder.Header(plist.Spiff.Title)
-		locationRegexp := regexp.MustCompile(`/api/(tracks)/([0-9]+)/location`)
 		for i := range plist.Spiff.Entries {
 			matches := locationRegexp.FindStringSubmatch(plist.Spiff.Entries[i].Location[0])
 			if matches != nil {
@@ -256,8 +264,7 @@ func apiProgressPost(w http.ResponseWriter, r *http.Request) {
 
 func apiView(w http.ResponseWriter, r *http.Request, view interface{}) {
 	w.Header().Set("Content-type", ApplicationJson)
-	enc := json.NewEncoder(w)
-	enc.Encode(view)
+	json.NewEncoder(w).Encode(view)
 }
 
 func apiHome(w http.ResponseWriter, r *http.Request) {
@@ -328,7 +335,7 @@ func apiArtistGetPlaylist(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		notFoundErr(w)
 	} else {
-		// /api/artists/{id}/{res}/playlist -> /music/artists/{id}/{res}
+		// /api/artists/:id/:res/playlist -> /music/artists/:id/:res
 		nref := fmt.Sprintf("/music/artists/%s/%s", id, res)
 		plist := ref.ResolveArtistPlaylist(ctx,
 			view.ArtistView(ctx, artist), r.URL.Path, nref)
@@ -639,4 +646,67 @@ func apiSeriesEpisodeLocation(w http.ResponseWriter, r *http.Request) {
 		url := ctx.Podcast().EpisodeURL(episode)
 		http.Redirect(w, r, url.String(), http.StatusFound)
 	}
+}
+
+func apiActivityGet(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	apiView(w, r, view.ActivityView(ctx))
+}
+
+func apiActivityPost(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+
+	var events activity.Events
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		badRequest(w, err)
+		return
+	}
+	err = json.Unmarshal(body, &events)
+	if err != nil {
+		badRequest(w, err)
+		return
+	}
+
+	err = ctx.Activity().CreateEvents(events)
+	if err != nil {
+		serverErr(w, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func startEnd(r *http.Request) (time.Time, time.Time) {
+	start := time.Now()
+	end := start
+
+	s := r.URL.Query().Get("start")
+	if s != "" {
+		start = date.ParseDate(s)
+	}
+	e := r.URL.Query().Get("end")
+	if e != "" {
+		end = date.ParseDate(e)
+	}
+
+	return date.StartOfDay(start), date.EndOfDay(end)
+}
+
+func apiActivityTracksGet(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	start, end := startEnd(r)
+	apiView(w, r, view.ActivityTracksView(ctx, start, end))
+}
+
+func apiActivityMoviesGet(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	start, end := startEnd(r)
+	apiView(w, r, view.ActivityMoviesView(ctx, start, end))
+}
+
+func apiActivityReleasesGet(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	start, end := startEnd(r)
+	apiView(w, r, view.ActivityReleasesView(ctx, start, end))
 }
