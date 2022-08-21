@@ -15,14 +15,9 @@ to build custom interfaces.
 * Artist artwork from [Fanart.tv](https://fanart.tv/)
 * Movie metadata and artwork from [The Movie Database (TMDb)](https://www.themoviedb.org/)
 * Podcasts with series and episode metadata using [RSS 2.0](https://www.rssboard.org/rss-specification)
+* Internet radio stations
 * Support for [Google Assistant](https://assistant.google.com/). See [actions.md](doc/actions.md) for more details.
 * Media streaming directly from S3 using pre-signed time-based URLs
-* Recently added and released
-* Similar artists and releases
-* Popular tracks
-* Artist singles
-* Radio stations based on genres, mixes, singles, and anything searchable
-* Internet radio stations
 * User-based access control using cookies and [scrypt](https://pkg.go.dev/golang.org/x/crypto/scrypt?tab=doc)
 * Server-based playlist (using [jsonpatch](http://jsonpatch.com/))
 * Web and json views
@@ -30,7 +25,7 @@ to build custom interfaces.
 * [Flutter app](https://github.com/defsub/takeout_app) available for Android and iOS
 * [XSPF ("spiff")](https://xspf.org/) and JSPF playlists
 * Written in [Go](https://golang.org/), using [SQLite3](https://sqlite.org/index.html) and [Bleve](https://blevesearch.com/)
-* Supports [caching](https://github.com/gregjones/httpcache) of API data for faster syncing
+* Supports [caching](https://github.com/gregjones/httpcache) of API data for faster (re)syncing
 
 ## Quick Start
 
