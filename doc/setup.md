@@ -3,16 +3,16 @@
 ## Overview
 
 This setup assumes the use of a UNIX system such as Linux. Takeout is written
-in Go, so most systems will work just fine. Please adjust commands as
+in Go, so most systems will work just fine. Please adjust commands below as
 needed. You can setup on a virtual system in the cloud such as EC2, GCE,
 Digital Ocean, Linode, or use your spiffy computer at home.
 
 You need to have media stored in an S3 bucket somewhere. Some common services
 are AWS S3, Wasabi, Backblaze, and Minio. And if you're using that spiffy home
 computer, you can also install Minio at home and make your local media
-available via S3 to your home network. The other bucket services cost money but
-you have the added benefit of having your media securely available wherever you
-go.
+available via S3 to your home network. The other bucket services cost money,
+however you have the added benefit of having your media securely available
+wherever you go.
 
 Please see [bucket.md](bucket.md) for further details on how you should
 organize your media in S3. [rclone](https://rclone.org) is an excellent tool to
@@ -52,7 +52,7 @@ $ go install
 $ takeout version
 ```
 
-Create the takeout directory. There is the base directory will config files,
+Create the takeout directory. This is the base directory where config files,
 databases, and logs will be stored.
 
 ```console
@@ -60,8 +60,9 @@ $ TAKEOUT_HOME=~/takeout
 $ mkdir ${TAKEOUT_HOME}
 ```
 
-Create media sub-directory to store bucket specific configuration and
-databases.  Change "mymedia" to whatever name you like (here and below).
+Create a media sub-directory to store bucket specific configuration and
+databases.  Change "mymedia" to whatever name you like (here and below). Your
+media isn't stored here, just related config files and databases.
 
 ```console
 $ mkdir ${TAKEOUT_HOME}/mymedia
@@ -89,16 +90,63 @@ $ cd ${TAKEOUT_HOME}/mymedia
 $ ~/go/bin/takeout sync
 ```
 
+You may encounter sync errors like the following:
+
+    2022/08/11 11:08:41 artist not found: Billy F Gibbons
+	2022/08/11 11:08:41 track release not found: Billy F Gibbons/Hardware/12/1
+
+In this example the artist "Billy F Gibbons" was used to tag and store the
+media, however, MusicBrainz knows this artist as "Billy Gibbons". You can fix
+this with RewriteRules or adjust your media file names and/or directory names.
+
+Troubleshooting this stuff may be difficult so ask for help as needed.
+
 Create your first user. Change the example user "ozzy" and password. Please use
 a strong password to protect access to your media. Note that "mymedia" must
-match a takeout sub-directory name used above. The idea here is that there can
-be multiple users and users can use the same or different buckets of
+match the takeout sub-directory name used above. The idea here is that there
+can be multiple users and users can use the same or different buckets of
 media. Indie for Dad, scary movies for Mom, and some emo for the teenager.
 
 ```console
 $ cd ${TAKEOUT_HOME}
 $ ~/go/bin/takeout user --add --user="ozzy" --pass="changeme" --media="mymedia"
 ```
+
+Setup a secure TLS front-end to the Takeout server. [Nginx](http://nginx.org/)
+is a great option. [Let's Encrypt](https://letsencrypt.org/)) can be used to
+get a free TLS certificate. An Nginx config example would be:
+
+    server {
+        listen 0.0.0.0:80;
+        server_name myserver.org;
+        return 301 https://$host$request_uri;
+    }
+
+    upstream myapp {
+        server 127.0.0.1:3000;
+        keepalive 8;
+    }
+
+    server {
+        listen 443 ssl http2;
+        server_name myserver.org;
+
+        ssl_certificate /etc/letsencrypt/live/myserver.org/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/myserver.org/privkey.pem;
+        ssl_trusted_certificate /etc/letsencrypt/live/myserver.org/chain.pem;
+
+        access_log /var/log/nginx/myserver.org.log;
+
+        location / {
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header Host $http_host;
+          proxy_set_header X-NginX-Proxy true;
+          proxy_pass http://myapp/;
+          proxy_redirect off;
+        }
+    }
+
 
 Start the server.
 

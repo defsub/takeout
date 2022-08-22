@@ -1,7 +1,7 @@
 # Music Files
 
 Takeout will index all the objects in the S3 bucket to find music files that
-start with the configured prefix end with supported file extensions: mp3, flac,
+start with the configured prefix and end with supported file extensions: mp3, flac,
 ogg, m4a. Files are not accessed to inspect metadata tags. Instead, a specific
 file path structure is needed to understand and obtain metadata.
 
@@ -99,7 +99,7 @@ A multi-disc release by Tubeway Army in 2019:
 
 A file naming scheme isn't perfect and there can be issues. In most cases
 Takeout will try to make reasonable assumptions. For example, the Gorillaz
-self-title Gorillaz (2002) album has the track:
+self-titled Gorillaz (2002) album has the track:
 
     Music/Gorillaz/Gorillaz (2002)/02-5_4.flac
 
