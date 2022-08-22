@@ -24,7 +24,6 @@ import (
 	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/music"
 	"github.com/defsub/takeout/podcast"
-	"github.com/defsub/takeout/progress"
 	"github.com/defsub/takeout/video"
 )
 
@@ -33,7 +32,6 @@ type Media struct {
 	music    *music.Music
 	video    *video.Video
 	podcast  *podcast.Podcast
-	progress *progress.Progress
 }
 
 func (m Media) Config() *config.Config {
@@ -48,14 +46,9 @@ func (m Media) Podcast() *podcast.Podcast {
 	return m.podcast
 }
 
-func (m Media) Progress() *progress.Progress {
-	return m.progress
-}
-
 func (m Media) Video() *video.Video {
 	return m.video
 }
-
 
 func mediaConfigFor(root *config.Config, user *auth.User) (string, *config.Config, error) {
 	// only supports one media collection right now
@@ -90,8 +83,6 @@ func makeMedia(name string, config *config.Config) *Media {
 		log.CheckError(err)
 		media.podcast, err = media.makePodcast(config)
 		log.CheckError(err)
-		media.progress, err = media.makeProgress(config)
-		log.CheckError(err)
 		mediaMap[name] = media
 	}
 	return media
@@ -117,15 +108,6 @@ func (Media) makeVideo(config *config.Config) (*video.Video, error) {
 
 func (Media) makePodcast(config *config.Config) (*podcast.Podcast, error) {
 	p := podcast.NewPodcast(config)
-	err := p.Open()
-	if err != nil {
-		return nil, err
-	}
-	return p, nil
-}
-
-func (Media) makeProgress(config *config.Config) (*progress.Progress, error) {
-	p := progress.NewProgress(config)
 	err := p.Open()
 	if err != nil {
 		return nil, err

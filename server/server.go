@@ -27,6 +27,7 @@ import (
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/lib/hub"
 	"github.com/defsub/takeout/lib/log"
+	"github.com/defsub/takeout/progress"
 )
 
 const (
@@ -226,6 +227,12 @@ func makeActivity(config *config.Config) (*activity.Activity, error) {
 	return a, err
 }
 
+func makeProgress(config *config.Config) (*progress.Progress, error) {
+	p := progress.NewProgress(config)
+	err := p.Open()
+	return p, err
+}
+
 func makeHub(config *config.Config) (*hub.Hub, error) {
 	h := hub.NewHub()
 	go h.Run()
@@ -239,6 +246,9 @@ func Serve(config *config.Config) error {
 	activity, err := makeActivity(config)
 	log.CheckError(err)
 
+	progress, err := makeProgress(config)
+	log.CheckError(err)
+
 	hub, err := makeHub(config)
 	log.CheckError(err)
 
@@ -249,6 +259,7 @@ func Serve(config *config.Config) error {
 		activity: activity,
 		auth:     auth,
 		config:   config,
+		progress: progress,
 		template: getTemplates(config),
 	}
 

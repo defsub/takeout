@@ -1,87 +1,153 @@
 # Takeout Configuration
 
-## Configuration ##
+The Takeout server has a server configuration file and media specific
+configuration files, one per media sub-directory. The configuration file
+formats are parsed using [Viper](https://github.com/spf13/viper) so formats
+like JSON, TOML and YAML can be used. YAML is used in most examples unless
+stated otherwise.
 
-The configuration file _takeout.ini_ is used to store required configuration to
-setup and configure Takeout. YAML and other formats supported by
-[Viper](https://github.com/spf13/viper) can be used as well.
+## Server Configuration
 
+Most of these are defaults and are here as an example only.
 
-### Auth
+```
+server:
+  listen: :3000
 
-* Auth.DB.Driver - Database driver (default sqlite3)
-* Auth.DB.Logger - "default", "debug", or "discard"
-* Auth.DB.Source - Name of database (default auth.db)
-* Auth.MaxAge - Time until unused cookie expires (default 24h)
-* Auth.SecureCookies - Use secure cookies (default true)
+auth:
+  maxAge: 24h
+  secureCookies: true
+  DB:
+    Driver: sqlite3
+	Source: auth.db
+	Logger: default
 
-Note: only sqlite3 is supported
+progress:
+  DB:
+    Driver: sqlite3
+	Source: progress.db
+	Logger: default
 
-### Bucket
+activity:
+  DB:
+    Driver: sqlite3
+	Source: activity.db
+	Logger: default
+```
 
-All of these are required and only a few have defaults.
+## Database Configuration
 
-* Bucket.Endpoint - Fully qualified domain name of the S3 bucket endpoint
-* Bucket.Region - Bucket region
-* Bucket.AccessKeyID - Access key for S3 bucket
-* Bucket.SecretAccessKey - Secret key for S3 bucket
-* Bucket.BucketName - Name of the S3 bucket
-* Bucket.ObjectPrefix - Prefix of media within the S3 bucket
-* Bucket.UseSSL - Use SSL with endpoint (default true)
-* Bucket.URLExpiration - Time at with pre-signed URLs expire (default 72h)
+* Driver - Use "sqlite3", it's super fast and builtin
+* Source - Name of database file
+* Logger - Use debug, default or discard
 
-Note: client is the AWS S3 Go client. Wasabi, Backblaze and Minio have been tested.
+You can try mysql if you'd like. It has worked in the past but it's not tested
+much.
 
-### Music Database
+* Driver: "mysql"
+* Source: "takeout:takeout@tcp(127.0.0.1:3306)/mydb"
 
-* Music.DB.Driver - Database driver (default sqlite3)
-* Music.DB.Source - Name of database (default music.db)
-* Music.DB.LogMore - Log SQL commands (default false)
+## Bucket Configuration
 
-Note: only sqlite3 is supported
+See the included [config.yaml](config.yaml) example configuration. This
+configuration file must be included in each media sub-directory. The file
+specifies the bucket details along with movie and video metadata configuration.
 
-### Music Settings
+## Music Configuration
 
-* Music.ArtistRadioBreadth - How many similar artists to use (default 10)
-* Music.ArtistRadioDepth - How many similar artists tracks to include (default 3)
-* Music.DeepLimit - How many deep tracks (default 50)
-* Music.PopularLimit - How many popular tracks (default 50)
-* Music.RadioLimit - How many radio tracks (default 25)
-* Music.RadioSearchLimit - How many tracks to search for radio (default 1000)
-* Music.Recent - How recent is recent (default 8760h = 1 year)
-* Music.RecentLimit - How many recent (default 50)
-* Music.SearchLimit - How many items to return (default 100)
-* Music.SimilarArtistsLimit - Many many similar artists (default 10)
-* Music.SimilarReleases - Duration for similar (default 8760h = 1 year)
-* Music.SimilarRelesesLimit - Many many similar releases (default 10)
-* Music.SinglesLimit - How many singles (default 50)
+* ArtistRadioBreadth - How many similar artists to use (default 10)
+* ArtistRadioDepth - How many similar artists tracks to include (default 3)
+* DeepLimit - How many deep tracks (default 50)
+* PopularLimit - How many popular tracks (default 50)
+* RadioLimit - How many radio tracks (default 25)
+* RadioSearchLimit - How many tracks to search for radio (default 1000)
+* RadioStreams - Define Internet radio streams (see below)
+* Recent - How recent is recent (default 8760h = 1 year)
+* RecentLimit - How many recent (default 50)
+* SearchLimit - How many items to return (default 100)
+* SimilarArtistsLimit - Many many similar artists (default 10)
+* SimilarReleases - Duration for similar (default 8760h = 1 year)
+* SimilarRelesesLimit - Many many similar releases (default 10)
+* SinglesLimit - How many singles (default 50)
+* SyncInterval - How often to automtically resync media from buckets (1h)
+* PopularSyncInterval - How oftern to resync popular tracks from Last.fm (24h)
+* SimilarSyncInterval - How oftern to resync similar artists from Last.fm (24h)
 
-### Server
+## Internet Radio
 
-* Server.Listen - Address and port to listen on (default 127.0.0.1:3000)
+A few examples are included in the builtin configuration. Add your own as follows:
 
-Note: use Nginx or other frontend with TLS (and Let's Encrypt)
+```
+music:
+  RadioStreams:
+	- Creator:  "SomaFM"
+	  Title:    "Groove Salad"
+	  Image:    "https://somafm.com/img3/groovesalad-400.jpg"
+	  Location: "https://somafm.com/groovesalad130.pls"
+	- Creator:  "SomaFM"
+	  Title:    "Indie Pop Rocks"
+	  Image:    "https://somafm.com/img3/indiepop-400.jpg"
+	  Location: "https://somafm.com/indiepop130.pls"
+```
 
-### Search Index
+## Video Configuration
 
-* Search.BleveDir - Directory used to store index (default .)
+* Recent - How recent is recent (default 8760h = 1 year)
+* RecentLimit - How many recent (default 50)
+* SearchLimit - How many items to return (default 100)
+* SyncInterval - How often to automtically resync media from buckets (1h)
 
-### HTTP Client
+## Video Recommendations
 
-* Client.UseCache - Enable or disable http caching (default false)
-* Client.MaxAge - Age in seconds to use cached responses (default 30 days)
-* Client.CacheDir - Directory to store cached responses (default .httpcache)
+Movies can be recommended based on date patterns and search queries. It's a
+convenient way to watch movies without having to think too hard while you sit
+on the sofa. There many recommendations included in the builtin
+configuration. Add your own as shown below. Note that the Layout field
+corresponds to Go's clever yet funky [date parsing layouts](https://pkg.go.dev/time#pkg-constants).
 
-Note: this client is used for all API calls except Last.fm
+```
+video:
+  Recommend:
+    When:
+	  - Name:   "Friday the 13th Movies"
+	    Match:  "Fri 13"
+	    Layout: "Mon 02"
+		Query:  +character:voorhees
+      - Name:   "Star Wars Day"
+	    Match:  "May 04"
+	    Layout: "Jan 02"
+		Query:  +title:"star wars"
+	  - Name:   "Christmas Movies"
+	    Match:  "Dec"
+		Layout: "Jan"
+		Query:  +keyword:christmas
+```
 
-## Examples
+## Podcast Configuration
 
-### Required fields in ini format
+* RecentLimit - How many recent (default 25)
+* SyncInterval - How often to automtically resync from sources (1h)
+* Series - List of Podcasts sources. Several are builtin.
 
-	[bucket]
-	endpoint = "s3.us-west-1.wasabisys.com"
-	region = "us-west-1"
-	accessKeyID = "<insert access key here>"
-	secretAccessKey = "<insert secret key here>"
-	bucketName = "MyBucket"
-	objectPrefix = "MyMedia"
+Below is an example showning how to add your own Podcast series.
+
+```
+podcast:
+  Series:
+    - "https://feeds.twit.tv/twit.xml"
+    - "https://www.pbs.org/newshour/feeds/rss/podcasts/show"
+	- "http://feeds.feedburner.com/TEDTalks_audio"
+```
+
+## HTTP Client Configuration
+
+* UseCache - Enable or disable http caching (default false)
+* MaxAge - Age in seconds to use cached responses (default 30 days)
+* CacheDir - Directory to store cached responses (default .httpcache)
+
+## API Keys
+
+* FanArt.ProjectKey - Takeout uses 93ede276ba6208318031727060b697c8
+* LastFM.Key - Please obtain your own at [last.fm](https://www.last.fm/api)
+* LastFM.Secret - Please obtain your own at [last.fm](https://www.last.fm/api)
+* TMDB.Key - Takeout uses 903a776b0638da68e9ade38ff538e1d3
