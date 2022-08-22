@@ -17,6 +17,7 @@ mkdir -p $LOG_DIR
 LOG_FILE=$LOG_DIR/takeout.log
 PID_FILE=$RUN_DIR/takeout.pid
 
+# kill old instance if running
 if [ -f $PID_FILE ]; then
     pid=`head -1 $PID_FILE | egrep '[0-9]'`
     if [ $pid -gt 1 ]; then

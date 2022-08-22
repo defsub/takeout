@@ -147,6 +147,12 @@ get a free TLS certificate. An Nginx config example would be:
         }
     }
 
+Create some radio stations.
+
+```console
+$ cd ${TAKEOUT_HOME}/mymedia
+$ ~/go/bin/takeout radio
+```
 
 Start the server.
 

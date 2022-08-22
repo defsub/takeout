@@ -9,7 +9,7 @@ server:
 # - Change useCache to false to disable caching of metadata API calls
 client:
  useCache: true
- cacheDir: ./cache
+ cacheDir: ./httpcache
 
 # Security configuration
 # - Change secureCookies to false if you not using nginx and/or TLS.
