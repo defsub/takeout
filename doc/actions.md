@@ -18,7 +18,7 @@ criteria:
 
 An auth code is provided to the Assistant user which they must link within
 Takeout using their user, password, and code. Account linking based on a code
-is available here: [Takeout Link](https://takeout.fm/link)
+is available here: [Takeout Link](https://yourhost.com/link)
 
 More details available here:
 

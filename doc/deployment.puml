@@ -1,0 +1,54 @@
+@startuml
+'https://plantuml.com/deployment-diagram
+
+frame "Cloud Deployment" {
+    storage cloud_bucket [
+     <b>S3 Bucket
+     ==
+     Movie files
+     Music files
+    ]
+
+    rectangle cloud_server [
+        <b>Virtual Server
+        ==
+        Nginx :443
+        --
+        Takeout Server :3000
+    ]
+
+    rectangle cloud_app [
+        <b>Takeout App
+    ]
+
+    cloud_server --> cloud_bucket : Index media
+    cloud_app --> cloud_server : Browse media
+    cloud_app <-- cloud_bucket : Stream media
+}
+
+frame "Home Deployment" {
+    storage home_bucket [
+     <b>Home Computer
+     S3 Bucket (Minio)
+     ==
+     Movie files
+     Music files
+    ]
+
+    rectangle home_server [
+        <b>Home Computer
+        ==
+        Nginx :443 (optional)
+        --
+        Takeout Server :3000
+    ]
+
+    rectangle home_app [
+        <b>Takeout App
+    ]
+
+    home_server --> home_bucket : Index media
+    home_app --> home_server : Browse media
+    home_app <-- home_bucket : Stream media
+}
+@enduml

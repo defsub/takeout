@@ -1,0 +1,60 @@
+# Copyleft (C) 2022 The Takeout Authors. See COPYING.
+
+# Music configuration
+# - releaseCountries are preferred countries used in MusicBrainz release matching
+# - radioSeries are "series" names from MusicBrainz used to make radio stations
+# - radioOther are bleve search queries used to make radio stations
+music:
+  releaseCountries:
+    - US
+    - XW
+    - XE
+  radioSeries:
+    - The Rolling Stone Magazine's 500 Greatest Songs of All Time
+  radioOther:
+    - Top Hits:      +popularity:1
+    - Top 3 Hits:    +popularity:<4
+    - Top 5 Hits:    +popularity:<6
+    - Top 10 Hits:   +popularity:<11
+    - Deep Tracks:   +track:>10 -silence
+    - Epic 10+ Minute Tracks: +length:>600 -silence
+    - Epic 20+ Minute Tracks: +length:>1200 -silence
+
+# Bucket configuration
+# - This example has buckets for music and video
+# - This example uses the same bucket for music and video but they can be different
+# - Multiple music and/or video buckets are supported
+# - Change endpoint and region to match your bucket provider (Wasabi used as an example)
+#   Any S3 compatible service should work, such as: AWS, Backblaze, Wasabi, and Minio
+# - Change accessKeyID to your bucket accessKeyID
+# - Change secretAccessKey to your bucket secretAccessKey
+# - Change bucketName to your bucket name
+# - Change objectPrefix to your prefix (used to narrow the bucket files)
+# - Change URLExpiration based on your needs for pre-signed URL access to your media
+#   https://docs.aws.amazon.com/AmazonS3/latest/userguide/ShareObjectPreSignedURL.html
+# - Example RewriteRules are included by commented out
+buckets:
+  - media: music
+    endpoint: s3.us-west-1.wasabisys.com
+    region: us-west-1
+    accessKeyID: your-access-key-id
+    secretAccessKey: your-secret-access-key
+    bucketName: your-bucket-name
+    objectPrefix: Music
+    URLExpiration: 24h
+    UseSSL: true
+    # RewriteRules:
+    #  - Pattern: "^(.+/)Dr. Octagon(/Dr. Octagon, Part II.+/.+)$"
+    #    Replace: "$1Kool Keith$2"
+    #  - Pattern: "^(.+/White Zombie/La Sexorcisto_ Devil Music, )Volume One(.+/.+)$"
+    #    Replace: "$1Vol. 1$2"
+
+  - media: video
+    endpoint: s3.us-west-1.wasabisys.com
+    region: us-west-1
+    accessKeyID: your-access-key-id
+    secretAccessKey: your-secret-access-key
+    bucketName: your-bucket-name
+    objectPrefix: Movies
+    URLExpiration: 24h
+    UseSSL: true

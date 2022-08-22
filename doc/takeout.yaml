@@ -1,0 +1,17 @@
+# Copyleft (C) 2022 The Takeout Authors. See COPYING.
+
+# Server configuration
+# - Port 3000 is used by default for nginx
+server:
+ listen: :3000
+
+# Client configuration
+# - Change useCache to false to disable caching of metadata API calls
+client:
+ useCache: true
+ cacheDir: ./cache
+
+# Security configuration
+# - Change secureCookies to false if you not using nginx and/or TLS.
+auth:
+ secureCookies: true

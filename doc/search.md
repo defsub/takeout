@@ -32,7 +32,7 @@ simply "guitar". The same applies for "bass", "clarinet", "drums", "flute",
 "composer", "engineer", "lyricist", "mix", and "writer". Check MusicBrainz for
 more.
 
-## Examples
+## Music Examples
 
 Tracks with Mogwai in any field:
 
@@ -50,7 +50,7 @@ Tracks with Tom Morello that aren't Rage or Audioslave:
 
 	+morello -rage -audioslave
 
-Similar but more specific:
+Similar to above but more specific:
 
 	+guitar:morello -artist:rage -artist:audioslave
 
@@ -102,9 +102,67 @@ Epic 20+ minute songs:
 * vote - TMDb vote %
 * vote_count - TMDb vote count
 
+Crew jobs to index are configuratable. Defaults are:
+
+* director
+* executive_producer
+* novel
+* producer
+* screenplay
+* story
+
 Note that date fields are YYYY-MM-DD and leading zeros are required.
+
+## Movie Examples
+
+Directed by Tarantino:
+
+	+director:tarantino
+
+Movies with R rating:
+
+	+rating:R
+
+Animated movies with Liam Neeson:
+
+	+cast:"liam neeson" +genre:Animation
+
+Christmas movies with Bruce Willis:
+
+	+christmas +willis
+
+Yes, Die Hard is a Christmas movie.
+
+Same as above but more specific:
+
+    +keyword:"christmas" +cast:"bruce willis"
+
+Movies with a character named "Yoda":
+
+    +character:"yoda"
+
+Really long movies:
+
+    +runtime:>200
+
+Highly rated movies on IMDb:
+
+    +vote:>80
+
+And those that are not highly rated:
+
+	+vote:>0 +vote:<50
+
+Low budget films (<$250k):
+
+	+budget:>0 +budget:<250000
+
+High budget films (>$250M):
+
+    +budget:>250000000
 
 # Bleve
 
-Please see [Bleve](https://blevesearch.com/) documentation for further information on query syntax. Takeout
-is using [Query String](https://blevesearch.com/docs/Query-String-Query/).
+Takeout uses the Bleve search library for all search capabilities.  Please see
+[Bleve](https://blevesearch.com/) documentation for further information on
+query syntax. Takeout is using [Query String](https://blevesearch.com/docs/Query-String-Query/).

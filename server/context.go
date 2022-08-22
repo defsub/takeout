@@ -79,6 +79,7 @@ type RequestContext struct {
 	config   *config.Config
 	user     *auth.User
 	media    *Media
+	progress *progress.Progress
 	template *template.Template
 }
 
@@ -87,6 +88,7 @@ func makeContext(ctx Context, u *auth.User, c *config.Config, m *Media) RequestC
 		activity: ctx.Activity(),
 		config:   c,
 		media:    m,
+		progress: ctx.Progress(),
 		template: ctx.Template(),
 		user:     u,
 	}
@@ -113,7 +115,7 @@ func (ctx RequestContext) Podcast() *podcast.Podcast {
 }
 
 func (ctx RequestContext) Progress() *progress.Progress {
-	return ctx.media.progress
+	return ctx.progress
 }
 
 func (ctx RequestContext) Template() *template.Template {
