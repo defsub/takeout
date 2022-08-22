@@ -55,6 +55,7 @@ specifies the bucket details along with movie and video metadata configuration.
 
 ## Music Configuration
 
+* ArtistFile - Used to help find artists MBID
 * ArtistRadioBreadth - How many similar artists to use (default 10)
 * ArtistRadioDepth - How many similar artists tracks to include (default 3)
 * DeepLimit - How many deep tracks (default 50)
@@ -72,6 +73,30 @@ specifies the bucket details along with movie and video metadata configuration.
 * SyncInterval - How often to automtically resync media from buckets (1h)
 * PopularSyncInterval - How oftern to resync popular tracks from Last.fm (24h)
 * SimilarSyncInterval - How oftern to resync similar artists from Last.fm (24h)
+
+## Artists File
+
+When you run into trouble matching artist names to MusicBrainz artists, this
+file can save the day. You'll need this when there are artists with the same
+name and you want a specific one, artists with ambiguous names or for some
+reason or another Takeout just can't figure it out. Create an artist file like
+this:
+
+```
+{
+    "Belly" : "c118bc97-11a7-41dc-a55e-48c3bcf22ac2",
+    "POW!" : "e00ac97d-3ed1-4f3e-86e1-1b15dd3ad6ad",
+    "Phoenix" : "8d455809-96b3-4bb6-8829-ea4beb580d35",
+    "Isao Tomita" : "9119e57f-1086-48b2-8a93-57feacb7f6d9",
+    "Organisation _ Kraftwerk" : "7b6de1a2-d119-48a6-a17c-5472df12beeb",
+    "Kid Rock & The Twisted Brown Trucker" : "ad0ecd8b-805e-406e-82cb-5b00c3a3a29e",
+    "R.E.M_" : "ea4dfa26-f633-4da6-a52a-f49ea4897b58",
+    "Gary Numan & Ade Fenton" : "6cb79cb2-9087-44d4-828b-5c6fdff2c957",
+    "Sonic Youth, I.C.P. & The Ex" : "5cbef01b-cc35-4f52-af7b-d0df0c4f61b9",
+    "The Vines" : "4e045c96-538b-46ed-8ea8-7cae20b56574",
+    "CHVRCHΞS" : "6a93afbb-257f-4166-b389-9f2a1e5c5df8",
+}
+```
 
 ## Internet Radio
 
