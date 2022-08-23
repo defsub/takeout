@@ -7,7 +7,7 @@ TV app, web interface and VLC. Media is browsed using the Takeout server and
 streamed directly from S3 using pre-signed time-based URLs.
 
 Takeout is primarily a music player that also supports radio, movies and
-podcasts. It's not intended to be an replacement to more feature-rich systems
+podcasts. It's not intended to be a replacement for more feature-rich systems
 like [Plex](https://plex.tv) and [Jellyfin](https://jellyfin.org). Instead,
 Takeout takes inspiration from these systems and attempts to be a small yet
 capable system designed around media being stored in the cloud. Depending on
@@ -48,13 +48,13 @@ found in the doc directory.
 Please consider contributing your time or money to support the following
 projects and services.
 
-* MusicBrainz - (How to Contribute)[https://musicbrainz.org/doc/How_to_Contribute]
-* Fanart.tv - (Contribute)[https://fanart.tv/contribute/]
-* Just audio - (Support)[https://github.com/sponsors/ryanheise]
-* GORM - (Contribute)[https://gorm.io/contribute.html]
-* SomaFM - (Please support SomaFM)[https://somafm.com/support/]
-* Bagel Radio - (Donate)[https://www.bagelradio.com/]
-* GNU & the Free Software Foundation - (Donate)[https://my.fsf.org/donate]
+* MusicBrainz - [How to Contribute](https://musicbrainz.org/doc/How_to_Contribute)
+* Fanart.tv - [Contribute](https://fanart.tv/contribute/)
+* Just audio - [Support](https://github.com/sponsors/ryanheise)
+* GORM - [Contribute](https://gorm.io/contribute.html)
+* SomaFM - [Please support SomaFM](https://somafm.com/support/)
+* Bagel Radio - [Donate](https://www.bagelradio.com/)
+* GNU & the Free Software Foundation - [Donate](https://my.fsf.org/donate)
 
-And support the (Takeout Project)[https://github.com/defsub/takeout] by using
+And support the [Takeout Project](https://github.com/defsub/takeout) by using
 the software, finding bugs, sharing ideas, and contributing code.
