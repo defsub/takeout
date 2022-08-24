@@ -48,6 +48,10 @@ type TopTrack struct {
 }
 
 func (m *Lastfm) ArtistTopTracks(arid string) []TopTrack {
+	if m.config.LastFM.Key == "" || m.config.LastFM.Secret == "" {
+		return make([]TopTrack, 0)
+	}
+
 	client.RateLimit("last.fm")
 	api := lfm.New(m.config.LastFM.Key, m.config.LastFM.Secret)
 
@@ -68,6 +72,10 @@ func (m *Lastfm) ArtistTopTracks(arid string) []TopTrack {
 }
 
 func (m *Lastfm) SimilarArtists(arid string) map[string]float64 {
+	if m.config.LastFM.Key == "" || m.config.LastFM.Secret == "" {
+		return make(map[string]float64)
+	}
+
 	client.RateLimit("last.fm")
 	api := lfm.New(m.config.LastFM.Key, m.config.LastFM.Secret)
 	result, _ := api.Artist.GetSimilar(lfm.P{"mbid": arid})
@@ -94,6 +102,10 @@ func (m *Lastfm) SimilarArtists(arid string) map[string]float64 {
 }
 
 func (m *Lastfm) ArtistSearch(name string) (string, string) {
+	if m.config.LastFM.Key == "" || m.config.LastFM.Secret == "" {
+		return "", ""
+	}
+
 	client.RateLimit("last.fm")
 	api := lfm.New(m.config.LastFM.Key, m.config.LastFM.Secret)
 	result, _ := api.Artist.Search(lfm.P{"artist": name})

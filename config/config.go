@@ -306,8 +306,8 @@ func configDefaults(v *viper.Viper) {
 
 	v.SetDefault("Fanart.ProjectKey", "93ede276ba6208318031727060b697c8")
 
-	v.SetDefault("LastFM.Key", "none")
-	v.SetDefault("LastFM.Secret", "none")
+	v.SetDefault("LastFM.Key", "")
+	v.SetDefault("LastFM.Secret", "")
 
 	v.SetDefault("Music.ArtistRadioBreadth", "10")
 	v.SetDefault("Music.ArtistRadioDepth", "3")

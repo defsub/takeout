@@ -4,8 +4,8 @@
 
 This setup assumes the use of a UNIX system such as Linux. Takeout is written
 in Go, so most systems will work just fine. Please adjust commands below as
-needed. You can setup on a virtual system in the cloud such as EC2, GCE,
-Digital Ocean, Linode, or use your spiffy computer at home.
+needed. You can setup on a virtual private server (VPS) in the cloud such as
+EC2, GCE, Digital Ocean, Linode, or use your spiffy computer at home.
 
 You need to have media stored in an S3 bucket somewhere. Some common services
 are AWS S3, Wasabi, Backblaze, and Minio. And if you're using that spiffy home
@@ -14,14 +14,24 @@ available via S3 to your home network. The other bucket services cost money,
 however you have the added benefit of having your media securely available
 wherever you go.
 
+General VPS requirements:
+* Network - monthly 8GB in / 300MB out (depends on usage)
+* Storage - 500MB for databases and search index
+* CPU - Shared CPU with 1 core, 1GB RAM
+
+A recommended cloud setup would be:
+* Linode (Nanode 1GB $5/mo) for running Takeout
+* Wasabi ($5.99 TB/mo) for S3 media
+
+Remember that Takeout indirectly streams media and instead redirects
+clients/apps to the S3 bucket using pre-signed time-based URLs for
+streaming. Any media streaming network costs are only related to the S3 bucket
+provider and not the VPS.
+
 Please see [bucket.md](bucket.md) for further details on how you should
 organize your media in S3. [rclone](https://rclone.org) is an excellent tool to
 manage S3 buckets from the command line. Once that's all done, proceed with the
 steps below.
-
-One recommended cloud setup would be:
-* Linode (Nanode 1GB $5/mo) for running Takeout
-* Wasabi ($5.99 TB/mo) for S3 media
 
 ## Steps
 

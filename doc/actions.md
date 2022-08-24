@@ -1,7 +1,7 @@
 # Actions
 
 Note - this will stop working June 13, 2023 due to
-(Converstational Actions Sunset)[https://developers.google.com/assistant/ca-sunset]
+[Converstational Actions Sunset](https://developers.google.com/assistant/ca-sunset)
 
 Takeout optionally supports a Google Assistant webhook to play music using the
 Google Assistant app, Nest Audio, Nest Hub, Google Home, and related products
