@@ -58,3 +58,9 @@ buckets:
     objectPrefix: Movies
     URLExpiration: 24h
     UseSSL: true
+
+# Get your own API key from last.fm
+# https://www.last.fm/api
+lastfm:
+  key: "put api key here"
+  secret: "put shared secret here"

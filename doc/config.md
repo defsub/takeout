@@ -19,20 +19,20 @@ auth:
   secureCookies: true
   DB:
     Driver: sqlite3
-	Source: auth.db
-	Logger: default
+    Source: auth.db
+    Logger: default
 
 progress:
   DB:
     Driver: sqlite3
-	Source: progress.db
-	Logger: default
+    Source: progress.db
+    Logger: default
 
 activity:
   DB:
     Driver: sqlite3
-	Source: activity.db
-	Logger: default
+    Source: activity.db
+    Logger: default
 ```
 
 ## Database Configuration
@@ -98,6 +98,23 @@ this:
 }
 ```
 
+## Radio
+
+Radio features can be configured to make radio stations from all your
+tracks. By default the _takeout_ command will create stations for all your
+artist music genres and a station for each decade from 1960 to 2020. More can
+be added based on MusicBrainz _series_ and search queries. [config.yaml](config.yaml)
+has some examples. You can use this URL to search for MusicBrainz _series_:
+
+> https://musicbrainz.org/ws/2/series?query=series:%22rock%22+AND+type:%22Recording+series%22
+
+Use this command to create your stations after sync is complete:
+
+```console
+$ cd mymedia
+$ takeout radio
+```
+
 ## Internet Radio
 
 A few examples are included in the builtin configuration. Add your own as follows:
@@ -105,14 +122,14 @@ A few examples are included in the builtin configuration. Add your own as follow
 ```
 music:
   RadioStreams:
-	- Creator:  "SomaFM"
-	  Title:    "Groove Salad"
-	  Image:    "https://somafm.com/img3/groovesalad-400.jpg"
-	  Location: "https://somafm.com/groovesalad130.pls"
-	- Creator:  "SomaFM"
-	  Title:    "Indie Pop Rocks"
-	  Image:    "https://somafm.com/img3/indiepop-400.jpg"
-	  Location: "https://somafm.com/indiepop130.pls"
+    - Creator:  "SomaFM"
+      Title:    "Groove Salad"
+      Image:    "https://somafm.com/img3/groovesalad-400.jpg"
+      Location: "https://somafm.com/groovesalad130.pls"
+    - Creator:  "SomaFM"
+      Title:    "Indie Pop Rocks"
+      Image:    "https://somafm.com/img3/indiepop-400.jpg"
+      Location: "https://somafm.com/indiepop130.pls"
 ```
 
 ## Video Configuration
@@ -134,18 +151,18 @@ corresponds to Go's clever yet funky [date parsing layouts](https://pkg.go.dev/t
 video:
   Recommend:
     When:
-	  - Name:   "Friday the 13th Movies"
-	    Match:  "Fri 13"
-	    Layout: "Mon 02"
-		Query:  +character:voorhees
+      - Name:   "Friday the 13th Movies"
+        Match:  "Fri 13"
+        Layout: "Mon 02"
+        Query:  +character:voorhees
       - Name:   "Star Wars Day"
-	    Match:  "May 04"
-	    Layout: "Jan 02"
-		Query:  +title:"star wars"
-	  - Name:   "Christmas Movies"
-	    Match:  "Dec"
-		Layout: "Jan"
-		Query:  +keyword:christmas
+        Match:  "May 04"
+        Layout: "Jan 02"
+        Query:  +title:"star wars"
+      - Name:   "Christmas Movies"
+        Match:  "Dec"
+        Layout: "Jan"
+        Query:  +keyword:christmas
 ```
 
 ## Podcast Configuration
@@ -161,7 +178,7 @@ podcast:
   Series:
     - "https://feeds.twit.tv/twit.xml"
     - "https://www.pbs.org/newshour/feeds/rss/podcasts/show"
-	- "http://feeds.feedburner.com/TEDTalks_audio"
+    - "http://feeds.feedburner.com/TEDTalks_audio"
 ```
 
 ## HTTP Client Configuration
