@@ -97,7 +97,7 @@ func (c *Client) doGet(headers map[string]string, urlStr string) (*http.Response
 		if maxAge > 0 {
 			req.Header.Set(HeaderCacheControl, fmt.Sprintf("max-age=%d", maxAge))
 		}
-		// peek into the cache, is there's something there don't slow down
+		// peek into the cache, if there's something there don't slow down
 		cachedResp, err := httpcache.CachedResponse(c.cache, req)
 		if err != nil {
 			log.Printf("cache error %s\n", err)
@@ -119,7 +119,8 @@ func (c *Client) doGet(headers map[string]string, urlStr string) (*http.Response
 	}
 
 	if resp.StatusCode != 200 {
-		return nil, errors.New(fmt.Sprintf("http error %d", resp.StatusCode))
+		return resp, errors.New(fmt.Sprintf("http error %d: %s",
+			resp.StatusCode, url.String()))
 	}
 
 	// if resp.Header.Get(httpcache.XFromCache) != "" {
@@ -129,20 +130,49 @@ func (c *Client) doGet(headers map[string]string, urlStr string) (*http.Response
 	return resp, err
 }
 
+const (
+	maxAttempts = 3
+	backoff = time.Second * 3
+)
+
+func (c *Client) doGetWithRetry(headers map[string]string, url string) (*http.Response, error) {
+	var resp *http.Response
+	var err error
+
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		resp, err = c.doGet(headers, url)
+		if err == nil || (err != nil && resp == nil) {
+			// success
+			// or error with no response
+			break
+		}
+		if resp.StatusCode < http.StatusInternalServerError {
+			// non-server error, don't retry
+			break
+		}
+		// server error, try again with backoff
+		if attempt + 1 < maxAttempts {
+			log.Printf("got err %d: retry backoff attempt %d of %d\n",
+				resp.StatusCode,
+				attempt + 1,
+				maxAttempts)
+			time.Sleep(backoff)
+		}
+	}
+
+	return resp, err
+}
+
 func (c *Client) GetJson(url string, result interface{}) error {
 	return c.GetJsonWith(nil, url, result)
 }
 
 func (c *Client) GetJsonWith(headers map[string]string, url string, result interface{}) error {
-	resp, err := c.doGet(headers, url)
+	resp, err := c.doGetWithRetry(headers, url)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-
-	// bytes, _ := io.ReadAll(resp.Body)
-	// fmt.Println(string(bytes))
-
 	decoder := json.NewDecoder(resp.Body)
 	if err = decoder.Decode(result); err != nil {
 		return err
