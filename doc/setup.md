@@ -18,15 +18,16 @@ General VPS requirements:
 * Network - monthly 8GB in / 300MB out (depends on usage)
 * Storage - 500MB for databases and search index
 * CPU - Shared CPU with 1 core, 1GB RAM
+* RAM - The Takeout server needs around 1MB of RAM
 
 A recommended cloud setup would be:
 * Linode (Nanode 1GB $5/mo) for running Takeout
 * Wasabi ($5.99 TB/mo) for S3 media
 
-Remember that Takeout indirectly streams media and instead redirects
-clients/apps to the S3 bucket using pre-signed time-based URLs for
-streaming. Any media streaming network costs are only related to the S3 bucket
-provider and not the VPS.
+Remember that Takeout indirectly streams media and redirects clients/apps to
+the S3 bucket using pre-signed time-based URLs for streaming. Any media
+streaming network costs are only related to the S3 bucket provider and not the
+VPS.
 
 Please see [bucket.md](bucket.md) for further details on how you should
 organize your media in S3. [rclone](https://rclone.org) is an excellent tool to
