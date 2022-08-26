@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/defsub/takeout/config"
-	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/music"
 	"github.com/defsub/takeout/podcast"
 	"github.com/defsub/takeout/video"
@@ -32,8 +31,8 @@ var syncCmd = &cobra.Command{
 	Use:   "sync",
 	Short: "sync media metadata",
 	Long:  `TODO`,
-	Run: func(cmd *cobra.Command, args []string) {
-		sync()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return sync()
 	},
 }
 
@@ -57,25 +56,37 @@ func since(lastSync time.Time) time.Time {
 	return since
 }
 
-func sync() {
-	cfg := getConfig()
+func sync() error {
+	cfg, err := getConfig()
+	if err != nil {
+		return err
+	}
 	if mediaMusic {
-		syncMusic(cfg)
+		err = syncMusic(cfg)
+		if err != nil {
+			return err
+		}
 	}
 	if mediaVideo {
-		syncVideo(cfg)
+		err = syncVideo(cfg)
+		if err != nil {
+			return err
+		}
 	}
 	if mediaPodcast {
-		syncPodcast(cfg)
+		err = syncPodcast(cfg)
+		if err != nil {
+			return err
+		}
 	}
+	return err
 }
 
-func syncMusic(cfg *config.Config) {
+func syncMusic(cfg *config.Config) error {
 	m := music.NewMusic(cfg)
 	err := m.Open()
 	if err != nil {
-		log.Println(err)
-		return
+		return err
 	}
 	defer m.Close()
 	syncOptions := music.NewSyncOptions()
@@ -87,20 +98,29 @@ func syncMusic(cfg *config.Config) {
 		syncOptions.Resolve = true
 	}
 	m.Sync(syncOptions)
+	return nil
 }
 
-func syncVideo(cfg *config.Config) {
+func syncVideo(cfg *config.Config) error {
 	v := video.NewVideo(cfg)
-	v.Open()
+	err := v.Open()
+	if err != nil {
+		return err
+	}
 	defer v.Close()
 	v.SyncSince(since(v.LastModified()))
+	return nil
 }
 
-func syncPodcast(cfg *config.Config) {
+func syncPodcast(cfg *config.Config) error {
 	p := podcast.NewPodcast(cfg)
-	p.Open()
+	err := p.Open()
+	if err != nil {
+		return err
+	}
 	defer p.Close()
 	p.Sync()
+	return nil
 }
 
 func init() {

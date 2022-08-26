@@ -18,7 +18,6 @@
 package main
 
 import (
-	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/music"
 	"github.com/spf13/cobra"
 )
@@ -30,21 +29,28 @@ var radioCmd = &cobra.Command{
 	Use:   "radio",
 	Short: "radio",
 	Long:  `TODO`,
-	Run: func(cmd *cobra.Command, args []string) {
-		radio()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return radio()
 	},
 }
 
-func radio() {
-	m := music.NewMusic(getConfig())
-	err := m.Open()
-	log.CheckError(err)
+func radio() error {
+	cfg, err := getConfig()
+	if err != nil {
+		return err
+	}
+	m := music.NewMusic(cfg)
+	err = m.Open()
+	if err != nil {
+		return err
+	}
 	defer m.Close()
 	if radioCreate {
 		m.CreateStations()
 	} else if radioClear {
 		m.ClearStations()
 	}
+	return nil
 }
 
 func init() {

@@ -18,7 +18,6 @@
 package main
 
 import (
-	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/server"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -28,13 +27,17 @@ var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "takeout server",
 	Long:  `TODO`,
-	Run: func(cmd *cobra.Command, args []string) {
-		serve()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return serve()
 	},
 }
 
-func serve() {
-	log.CheckError(server.Serve(getConfig()))
+func serve() error {
+	cfg, err := getConfig()
+	if err != nil {
+		return err
+	}
+	return server.Serve(cfg)
 }
 
 func init() {

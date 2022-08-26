@@ -19,7 +19,6 @@ package main
 
 import (
 	"github.com/defsub/takeout/auth"
-	"github.com/defsub/takeout/lib/log"
 	"github.com/spf13/cobra"
 )
 
@@ -27,34 +26,48 @@ var userCmd = &cobra.Command{
 	Use:   "user",
 	Short: "user admin",
 	Long:  `TODO`,
-	Run: func(cmd *cobra.Command, args []string) {
-		doit()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return doit()
 	},
 }
 
 var user, pass, media string
 var add, change bool
 
-func doit() {
-	a := auth.NewAuth(getConfig())
-	err := a.Open()
-	log.CheckError(err)
+func doit() error {
+	cfg, err := getConfig()
+	if err != nil {
+		return err
+	}
+	a := auth.NewAuth(cfg)
+	err = a.Open()
+	if err != nil {
+		return err
+	}
 	defer a.Close()
 
 	if user != "" && pass != "" {
 		if add {
 			err := a.AddUser(user, pass)
-			log.CheckError(err)
+			if err != nil {
+				return err
+			}
 		} else if change {
 			err := a.ChangePass(user, pass)
-			log.CheckError(err)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
 	if user != "" && media != "" {
 		err := a.AssignMedia(user, media)
-		log.CheckError(err)
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 func init() {

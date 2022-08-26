@@ -50,6 +50,7 @@ available at a later time. Check the [Takeout Releases Page](https://github.com/
 ```console
 $ git clone https://github.com/defsub/takeout.git
 $ cd takeout
+$ cd cmd/takeout
 $ go build
 ```
 

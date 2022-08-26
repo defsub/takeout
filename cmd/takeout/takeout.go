@@ -22,7 +22,6 @@ import (
 	"os"
 
 	"github.com/defsub/takeout/config"
-	"github.com/defsub/takeout/lib/log"
 	"github.com/spf13/cobra"
 )
 
@@ -36,31 +35,31 @@ var rootCmd = &cobra.Command{
 }
 
 var configFile string
-var configPath string
 var configName string
 
-func getConfig() *config.Config {
-	if configPath == "" {
-		configPath = os.Getenv("TAKEOUT_HOME")
+func getConfig() (*config.Config, error) {
+	if configFile != "" {
+		config.SetConfigFile(configFile)
+		return config.GetConfig()
 	}
+
 	if configName == "" {
 		configName = os.Getenv("TAKEOUT_CONFIG")
 	}
-	if configFile != "" {
-		config.SetConfigFile(configFile)
-	} else {
-		if configPath == "" {
-			configPath = "."
+
+	config.AddConfigPath(".")
+
+	configNames := []string{configName, "takeout", "config"}
+	var err error
+	var cfg *config.Config
+	for _, name := range configNames {
+		config.SetConfigName(name)
+		cfg, err = config.GetConfig()
+		if err == nil {
+			break
 		}
-		if configName == "" {
-			configName = "takeout"
-		}
-		config.AddConfigPath(configPath)
-		config.SetConfigName(configName)
 	}
-	config, err := config.GetConfig()
-	log.CheckError(err)
-	return config
+	return cfg, err
 }
 
 func main() {
