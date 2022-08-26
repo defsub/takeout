@@ -240,8 +240,9 @@ func (a *Activity) UserScrobble(user *auth.User, s Scrobble, music *music.Music)
 	return nil
 }
 
-func (a *Activity) CreateEvents(events Events, m *music.Music, v *video.Video) error {
+func (a *Activity) CreateEvents(events Events, user *auth.User, m *music.Music, v *video.Video) error {
 	for _, e := range events.MovieEvents {
+		e.User = user.Name
 		if e.ETag != "" {
 			// resolve using ETag
 			video, err := v.LookupETag(e.ETag)
@@ -258,6 +259,7 @@ func (a *Activity) CreateEvents(events Events, m *music.Music, v *video.Video) e
 	}
 
 	for _, e := range events.ReleaseEvents {
+		e.User = user.Name
 		err := a.createReleaseEvent(&e)
 		if err != nil {
 			return err
@@ -265,6 +267,7 @@ func (a *Activity) CreateEvents(events Events, m *music.Music, v *video.Video) e
 	}
 
 	for _, e := range events.SeriesEpisodeEvents {
+		e.User = user.Name
 		err := a.createSeriesEpisodeEvent(&e)
 		if err != nil {
 			return err
@@ -272,6 +275,7 @@ func (a *Activity) CreateEvents(events Events, m *music.Music, v *video.Video) e
 	}
 
 	for _, e := range events.TrackEvents {
+		e.User = user.Name
 		if e.ETag != "" {
 			// resolve using ETag
 			track, err := m.LookupETag(e.ETag)
