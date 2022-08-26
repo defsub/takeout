@@ -84,6 +84,7 @@ type MovieEvent struct {
 	Date time.Time `gorm:"uniqueIndex:idx_movie_date"`
 	TMID string
 	IMID string
+	ETag string    `gorm:"-"`
 }
 
 type TrackEvent struct {
@@ -92,6 +93,7 @@ type TrackEvent struct {
 	Date time.Time `gorm:"uniqueIndex:idx_track_date"`
 	RID  string
 	RGID string
+	ETag string    `gorm:"-"`
 }
 
 type SeriesEpisodeEvent struct {

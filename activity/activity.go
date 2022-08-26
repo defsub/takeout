@@ -28,6 +28,7 @@ import (
 	"gorm.io/gorm"
 
 	"errors"
+	"strconv"
 	"time"
 )
 
@@ -239,8 +240,17 @@ func (a *Activity) UserScrobble(user *auth.User, s Scrobble, music *music.Music)
 	return nil
 }
 
-func (a *Activity) CreateEvents(events Events) error {
+func (a *Activity) CreateEvents(events Events, m *music.Music, v *video.Video) error {
 	for _, e := range events.MovieEvents {
+		if e.ETag != "" {
+			// resolve using ETag
+			video, err := v.LookupETag(e.ETag)
+			if err != nil {
+				return err
+			}
+			e.IMID = video.IMID
+			e.TMID = strconv.FormatInt(video.TMID, 10)
+		}
 		err := a.createMovieEvent(&e)
 		if err != nil {
 			return err
@@ -262,6 +272,15 @@ func (a *Activity) CreateEvents(events Events) error {
 	}
 
 	for _, e := range events.TrackEvents {
+		if e.ETag != "" {
+			// resolve using ETag
+			track, err := m.LookupETag(e.ETag)
+			if err != nil {
+				return err
+			}
+			e.RID = track.RID
+			e.RGID = track.RGID
+		}
 		err := a.createTrackEvent(&e)
 		if err != nil {
 			return err

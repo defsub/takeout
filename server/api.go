@@ -668,7 +668,7 @@ func apiActivityPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = ctx.Activity().CreateEvents(events)
+	err = ctx.Activity().CreateEvents(events, ctx.Music(), ctx.Video())
 	if err != nil {
 		serverErr(w, err)
 		return

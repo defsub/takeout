@@ -346,6 +346,12 @@ func (v *Video) RecentlyReleased() []Movie {
 	return movies
 }
 
+func (v *Video) LookupETag(etag string) (*Movie, error) {
+	movie := Movie{ETag: etag}
+	err := v.db.First(&movie, &movie).Error
+	return &movie, err
+}
+
 func (v *Video) MovieCount() int64 {
 	var count int64
 	v.db.Model(&Movie{}).Count(&count)
