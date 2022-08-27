@@ -699,6 +699,14 @@ func apiActivityTracksGet(w http.ResponseWriter, r *http.Request) {
 	apiView(w, r, view.ActivityTracksView(ctx, start, end))
 }
 
+func apiActivityTracksGetPlaylist(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	start, end := startEnd(r)
+	view := view.ActivityTracksView(ctx, start, end)
+	plist := ref.ResolveActivityTracksPlaylist(ctx, view, r.URL.Path)
+	writePlaylist(w, r, plist)
+}
+
 func apiActivityMoviesGet(w http.ResponseWriter, r *http.Request) {
 	ctx := contextValue(r)
 	start, end := startEnd(r)

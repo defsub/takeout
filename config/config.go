@@ -181,6 +181,8 @@ type ActivityConfig struct {
 	RecentReleaseLimit       int
 	RecentSeriesEpisodeLimit int
 	RecentTrackLimit         int
+	RecentMoviesTitle        string
+	RecentTracksTitle        string
 }
 
 type RecommendConfig struct {
@@ -493,6 +495,8 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Activity.RecentReleaseLimit", "10")
 	v.SetDefault("Activity.RecentSeriesEpisodeLimit", "10")
 	v.SetDefault("Activity.RecentTrackLimit", "10")
+	v.SetDefault("Activity.RecentMoviesTitle", "Recently Watched")
+	v.SetDefault("Activity.RecentTracksTitle", "Recently Played")
 }
 
 func userAgent() string {

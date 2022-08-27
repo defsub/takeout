@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -210,8 +211,6 @@ func resolveSearchRef(ctx Context, uri string, entries []spiff.Entry) ([]spiff.E
 	q := u.Query().Get("q")
 	radio := u.Query().Get("radio") != ""
 
-	fmt.Printf("search q=%s radio=%v\n", q, radio)
-
 	var tracks []music.Track
 	if q != "" {
 		limit := ctx.Config().Music.SearchLimit
@@ -228,8 +227,6 @@ func resolveSearchRef(ctx Context, uri string, entries []spiff.Entry) ([]spiff.E
 			tracks = tracks[:limit]
 		}
 	}
-
-	fmt.Printf("track is %d\n", len(tracks))
 
 	entries = addTrackEntries(ctx, tracks, entries)
 	return entries, nil
@@ -472,5 +469,39 @@ func ResolveSeriesEpisodePlaylist(ctx Context, series *view.Series,
 	plist.Spiff.Entries = []spiff.Entry{
 		episodeEntry(ctx, series.Series, v.Episode),
 	}
+	return plist
+}
+
+func ResolveActivityTracksPlaylist(ctx Context, v *view.ActivityTracks, path string) *spiff.Playlist {
+	var tracks []music.Track
+	artistMap := make(map[string]bool)
+	for _, t := range v.Tracks {
+		artistMap[t.Track.Artist] = true
+		tracks = append(tracks, t.Track)
+	}
+	var artists []string
+	for k := range artistMap {
+		artists = append(artists, k)
+	}
+	sort.Slice(artists, func(i, j int) bool {
+		return artists[i] < artists[j]
+	})
+	creators := strings.Join(artists, ", ")
+	image := ""
+	for _, t := range tracks {
+		img := ctx.TrackImage(t)
+		if img != "" {
+			image = img
+			break
+		}
+	}
+
+	plist := spiff.NewPlaylist(spiff.TypeMusic)
+	plist.Spiff.Location = path
+	plist.Spiff.Creator = creators
+	plist.Spiff.Title = ctx.Config().Activity.RecentTracksTitle
+	plist.Spiff.Image = image
+	plist.Spiff.Date = date.FormatJson(time.Now())
+	plist.Spiff.Entries = addTrackEntries(ctx, tracks, plist.Spiff.Entries)
 	return plist
 }
