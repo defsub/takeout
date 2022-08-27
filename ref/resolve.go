@@ -427,7 +427,7 @@ func ResolveReleasePlaylist(ctx Context, v *view.Release, path string) *spiff.Pl
 	plist := spiff.NewPlaylist(spiff.TypeMusic)
 	plist.Spiff.Location = path
 	plist.Spiff.Creator = v.Release.Artist
-	plist.Spiff.Title = v.Release.Artist
+	plist.Spiff.Title = v.Release.Name
 	plist.Spiff.Image = v.Image
 	plist.Spiff.Date = date.FormatJson(v.Release.Date)
 	plist.Spiff.Entries = addTrackEntries(ctx, v.Tracks, plist.Spiff.Entries)
