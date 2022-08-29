@@ -67,8 +67,8 @@ type RewriteRule struct {
 }
 
 type DatabaseConfig struct {
-	Driver  string
-	Source  string
+	Driver string
+	Source string
 	Logger string
 }
 
@@ -183,6 +183,8 @@ type ActivityConfig struct {
 	RecentTrackLimit         int
 	RecentMoviesTitle        string
 	RecentTracksTitle        string
+	PopularMoviesTitle       string
+	PopularTracksTitle       string
 }
 
 type RecommendConfig struct {
@@ -491,12 +493,14 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Activity.DB.Driver", "sqlite3")
 	v.SetDefault("Activity.DB.Source", "activity.db")
 	v.SetDefault("Activity.DB.Logger", "default")
-	v.SetDefault("Activity.RecentMovieLimit", "10")
-	v.SetDefault("Activity.RecentReleaseLimit", "10")
-	v.SetDefault("Activity.RecentSeriesEpisodeLimit", "10")
-	v.SetDefault("Activity.RecentTrackLimit", "10")
+	v.SetDefault("Activity.RecentMovieLimit", "50")
+	v.SetDefault("Activity.RecentReleaseLimit", "50")
+	v.SetDefault("Activity.RecentSeriesEpisodeLimit", "50")
+	v.SetDefault("Activity.RecentTrackLimit", "50")
 	v.SetDefault("Activity.RecentMoviesTitle", "Recently Watched")
 	v.SetDefault("Activity.RecentTracksTitle", "Recently Played")
+	v.SetDefault("Activity.PopularMoviesTitle", "Popular Tracks")
+	v.SetDefault("Activity.PopuarTracksTitle", "Popular Tracks")
 }
 
 func userAgent() string {

@@ -699,11 +699,42 @@ func apiActivityTracksGet(w http.ResponseWriter, r *http.Request) {
 	apiView(w, r, view.ActivityTracksView(ctx, start, end))
 }
 
+func apiActivityTracksGetResource(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	start, end := startEnd(r)
+	res := r.URL.Query().Get(":res")
+
+	switch res {
+	case "popular":
+		apiView(w, r, view.ActivityPopularTracksView(ctx, start, end))
+	case "recent":
+		apiView(w, r, view.ActivityTracksView(ctx, start, end))
+	case "playlist":
+		apiActivityTracksGetPlaylist(w, r)
+	default:
+		notFoundErr(w)
+	}
+}
+
 func apiActivityTracksGetPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := contextValue(r)
 	start, end := startEnd(r)
-	view := view.ActivityTracksView(ctx, start, end)
-	plist := ref.ResolveActivityTracksPlaylist(ctx, view, r.URL.Path)
+	res := r.URL.Query().Get(":res")
+	if res == "playlist" {
+		res = "recent"
+	}
+
+	var tracks *view.ActivityTracks
+	switch res {
+	case "popular":
+		tracks = view.ActivityPopularTracksView(ctx, start, end)
+	case "recent":
+		tracks = view.ActivityTracksView(ctx, start, end)
+	default:
+		notFoundErr(w)
+	}
+
+	plist := ref.ResolveActivityTracksPlaylist(ctx, tracks, res, r.URL.Path)
 	writePlaylist(w, r, plist)
 }
 

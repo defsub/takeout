@@ -309,22 +309,14 @@ func ArtistView(ctx Context, artist music.Artist) *Artist {
 	view.Popular = TrackList{
 		Title: fmt.Sprintf("%s \u2013 Popular", artist.Name),
 		Tracks: func() []music.Track {
-			tracks := m.ArtistPopularTracks(artist)
-			n := 5
-			if len(tracks) > n {
-				tracks = tracks[:n]
-			}
+			tracks := m.ArtistPopularTracks(artist, ctx.Config().Music.PopularLimit)
 			return tracks
 		},
 	}
 	view.Singles = TrackList{
 		Title: fmt.Sprintf("%s \u2013 Singles", artist.Name),
 		Tracks: func() []music.Track {
-			tracks := m.ArtistSingleTracks(artist)
-			n := 5
-			if len(tracks) > n {
-				tracks = tracks[:n]
-			}
+			tracks := m.ArtistSingleTracks(artist, ctx.Config().Music.SinglesLimit)
 			return tracks
 		},
 	}
@@ -574,6 +566,12 @@ func ActivityView(ctx Context) *Activity {
 func ActivityTracksView(ctx Context, start, end time.Time) *ActivityTracks {
 	view := &ActivityTracks{}
 	view.Tracks = ctx.Activity().Tracks(ctx.User(), ctx.Music(), start, end)
+	return view
+}
+
+func ActivityPopularTracksView(ctx Context, start, end time.Time) *ActivityTracks {
+	view := &ActivityTracks{}
+	view.Tracks = ctx.Activity().PopularTracks(ctx.User(), ctx.Music(), start, end)
 	return view
 }
 

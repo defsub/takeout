@@ -167,6 +167,11 @@ func (a *Activity) Tracks(user *auth.User, m *music.Music, start, end time.Time)
 	return a.resolveTrackEvents(events, m)
 }
 
+func (a *Activity) PopularTracks(user *auth.User, m *music.Music, start, end time.Time) []Track {
+	events := a.popularTrackEventsFrom(user.Name, start, end)
+	return a.resolveTrackEvents(events, m)
+}
+
 func (a *Activity) Releases(user *auth.User, m *music.Music, start, end time.Time) []Release {
 	events := a.releaseEventsFrom(user.Name, start, end)
 	return a.resolveReleaseEvents(events, m)
@@ -175,38 +180,17 @@ func (a *Activity) Releases(user *auth.User, m *music.Music, start, end time.Tim
 //
 func (a *Activity) RecentTracks(user *auth.User, m *music.Music) []Track {
 	events := a.recentTrackEvents(user.Name, a.config.Activity.RecentTrackLimit)
-	if len(events) == 0 {
-		a.createTrackEvent(&TrackEvent{
-			User: user.Name,
-			RID:  "063964f7-35c3-467f-b30c-cb7303d866b9",
-			Date: time.Now(),
-		})
-	}
 	return a.resolveTrackEvents(events, m)
 }
 
 //
 func (a *Activity) RecentMovies(user *auth.User, v *video.Video) []Movie {
 	events := a.recentMovieEvents(user.Name, a.config.Activity.RecentMovieLimit)
-	if len(events) == 0 {
-		a.createMovieEvent(&MovieEvent{
-			User: user.Name,
-			IMID: "tt0081505",
-			Date: time.Now(),
-		})
-	}
 	return a.resolveMovieEvents(events, v)
 }
 
 func (a *Activity) RecentReleases(user *auth.User, m *music.Music) []Release {
 	events := a.recentReleaseEvents(user.Name, a.config.Activity.RecentReleaseLimit)
-	if len(events) == 0 {
-		a.createReleaseEvent(&ReleaseEvent{
-			User: user.Name,
-			REID: "89b14227-9d08-4910-8c15-62755ba3b7bc",
-			Date: time.Now(),
-		})
-	}
 	return a.resolveReleaseEvents(events, m)
 }
 

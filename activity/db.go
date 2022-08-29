@@ -57,6 +57,14 @@ func (a *Activity) trackEventsFrom(user string, start, end time.Time) []TrackEve
 	return events
 }
 
+func (a *Activity) popularTrackEventsFrom(user string, start, end time.Time) []TrackEvent {
+	var events []TrackEvent
+	a.db.Where("user = ? and date >= ? and date <= ?", user, start, end).
+		Group("r_id").
+		Order("count(r_id) desc").Find(&events)
+	return events
+}
+
 func (a *Activity) movieEventsFrom(user string, start, end time.Time) []MovieEvent {
 	var events []MovieEvent
 	a.db.Where("user = ? and date >= ? and date <= ?", user, start, end).

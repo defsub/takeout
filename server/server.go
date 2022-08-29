@@ -342,7 +342,8 @@ func Serve(config *config.Config) error {
 	mux.Get("/api/activity", authHandler(ctx, apiActivityGet))
 	mux.Post("/api/activity", authHandler(ctx, apiActivityPost))
 	mux.Get("/api/activity/tracks", authHandler(ctx, apiActivityTracksGet))
-	mux.Get("/api/activity/tracks/playlist", authHandler(ctx, apiActivityTracksGetPlaylist))
+	mux.Get("/api/activity/tracks/:res", authHandler(ctx, apiActivityTracksGetResource))
+	mux.Get("/api/activity/tracks/:res/playlist", authHandler(ctx, apiActivityTracksGetPlaylist))
 	mux.Get("/api/activity/movies", authHandler(ctx, apiActivityMoviesGet))
 	mux.Get("/api/activity/releases", authHandler(ctx, apiActivityReleasesGet))
 	// /activity/radio - ?
