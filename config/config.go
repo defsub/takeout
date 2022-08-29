@@ -176,15 +176,14 @@ type ProgressConfig struct {
 }
 
 type ActivityConfig struct {
-	DB                       DatabaseConfig
-	RecentMovieLimit         int
-	RecentReleaseLimit       int
-	RecentSeriesEpisodeLimit int
-	RecentTrackLimit         int
-	RecentMoviesTitle        string
-	RecentTracksTitle        string
-	PopularMoviesTitle       string
-	PopularTracksTitle       string
+	DB                 DatabaseConfig
+	ActivityLimit      int
+	RecentLimit        int
+	PopularLimit       int
+	RecentMoviesTitle  string
+	RecentTracksTitle  string
+	PopularMoviesTitle string
+	PopularTracksTitle string
 }
 
 type RecommendConfig struct {
@@ -493,10 +492,9 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Activity.DB.Driver", "sqlite3")
 	v.SetDefault("Activity.DB.Source", "activity.db")
 	v.SetDefault("Activity.DB.Logger", "default")
-	v.SetDefault("Activity.RecentMovieLimit", "50")
-	v.SetDefault("Activity.RecentReleaseLimit", "50")
-	v.SetDefault("Activity.RecentSeriesEpisodeLimit", "50")
-	v.SetDefault("Activity.RecentTrackLimit", "50")
+	v.SetDefault("Activity.ActivityLimit", "50")
+	v.SetDefault("Activity.RecentLimit", "50")
+	v.SetDefault("Activity.PopularLimit", "50")
 	v.SetDefault("Activity.RecentMoviesTitle", "Recently Watched")
 	v.SetDefault("Activity.RecentTracksTitle", "Recently Played")
 	v.SetDefault("Activity.PopularMoviesTitle", "Popular Tracks")

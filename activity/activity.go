@@ -158,39 +158,39 @@ func (a *Activity) resolveTrackEvents(events []TrackEvent, m *music.Music) []Tra
 }
 
 func (a *Activity) Movies(user *auth.User, v *video.Video, start, end time.Time) []Movie {
-	events := a.movieEventsFrom(user.Name, start, end)
+	events := a.movieEventsFrom(user.Name, start, end, a.config.Activity.ActivityLimit)
 	return a.resolveMovieEvents(events, v)
 }
 
 func (a *Activity) Tracks(user *auth.User, m *music.Music, start, end time.Time) []Track {
-	events := a.trackEventsFrom(user.Name, start, end)
-	return a.resolveTrackEvents(events, m)
-}
-
-func (a *Activity) PopularTracks(user *auth.User, m *music.Music, start, end time.Time) []Track {
-	events := a.popularTrackEventsFrom(user.Name, start, end)
+	events := a.trackEventsFrom(user.Name, start, end, a.config.Activity.ActivityLimit)
 	return a.resolveTrackEvents(events, m)
 }
 
 func (a *Activity) Releases(user *auth.User, m *music.Music, start, end time.Time) []Release {
-	events := a.releaseEventsFrom(user.Name, start, end)
+	events := a.releaseEventsFrom(user.Name, start, end, a.config.Activity.ActivityLimit)
 	return a.resolveReleaseEvents(events, m)
+}
+
+func (a *Activity) PopularTracks(user *auth.User, m *music.Music, start, end time.Time) []Track {
+	events := a.popularTrackEventsFrom(user.Name, start, end, a.config.Activity.PopularLimit)
+	return a.resolveTrackEvents(events, m)
 }
 
 //
 func (a *Activity) RecentTracks(user *auth.User, m *music.Music) []Track {
-	events := a.recentTrackEvents(user.Name, a.config.Activity.RecentTrackLimit)
+	events := a.recentTrackEvents(user.Name, a.config.Activity.RecentLimit)
 	return a.resolveTrackEvents(events, m)
 }
 
 //
 func (a *Activity) RecentMovies(user *auth.User, v *video.Video) []Movie {
-	events := a.recentMovieEvents(user.Name, a.config.Activity.RecentMovieLimit)
+	events := a.recentMovieEvents(user.Name, a.config.Activity.RecentLimit)
 	return a.resolveMovieEvents(events, v)
 }
 
 func (a *Activity) RecentReleases(user *auth.User, m *music.Music) []Release {
-	events := a.recentReleaseEvents(user.Name, a.config.Activity.RecentReleaseLimit)
+	events := a.recentReleaseEvents(user.Name, a.config.Activity.RecentLimit)
 	return a.resolveReleaseEvents(events, m)
 }
 

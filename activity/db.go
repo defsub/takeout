@@ -50,39 +50,39 @@ func (a *Activity) closeDB() {
 	conn.Close()
 }
 
-func (a *Activity) trackEventsFrom(user string, start, end time.Time) []TrackEvent {
+func (a *Activity) trackEventsFrom(user string, start, end time.Time, limit int) []TrackEvent {
 	var events []TrackEvent
 	a.db.Where("user = ? and date >= ? and date <= ?", user, start, end).
-		Order("date desc").Find(&events)
+		Order("date desc").Limit(limit).Find(&events)
 	return events
 }
 
-func (a *Activity) popularTrackEventsFrom(user string, start, end time.Time) []TrackEvent {
+func (a *Activity) popularTrackEventsFrom(user string, start, end time.Time, limit int) []TrackEvent {
 	var events []TrackEvent
 	a.db.Where("user = ? and date >= ? and date <= ?", user, start, end).
 		Group("r_id").
-		Order("count(r_id) desc").Find(&events)
+		Order("count(r_id) desc").Limit(limit).Find(&events)
 	return events
 }
 
-func (a *Activity) movieEventsFrom(user string, start, end time.Time) []MovieEvent {
+func (a *Activity) movieEventsFrom(user string, start, end time.Time, limit int) []MovieEvent {
 	var events []MovieEvent
 	a.db.Where("user = ? and date >= ? and date <= ?", user, start, end).
-		Order("date desc").Find(&events)
+		Order("date desc").Limit(limit).Find(&events)
 	return events
 }
 
-func (a *Activity) releaseEventsFrom(user string, start, end time.Time) []ReleaseEvent {
+func (a *Activity) releaseEventsFrom(user string, start, end time.Time, limit int) []ReleaseEvent {
 	var events []ReleaseEvent
 	a.db.Where("user = ? and date >= ? and date <= ?", user, start, end).
-		Order("date desc").Find(&events)
+		Order("date desc").Limit(limit).Find(&events)
 	return events
 }
 
-func (a *Activity) seriesEpisodeEventsFrom(user string, start, end time.Time) []SeriesEpisodeEvent {
+func (a *Activity) seriesEpisodeEventsFrom(user string, start, end time.Time, limit int) []SeriesEpisodeEvent {
 	var events []SeriesEpisodeEvent
 	a.db.Where("user = ? and date >= ? and date <= ?", user, start, end).
-		Order("date desc").Find(&events)
+		Order("date desc").Limit(limit).Find(&events)
 	return events
 }
 
