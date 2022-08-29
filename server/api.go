@@ -678,8 +678,8 @@ func apiActivityPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func startEnd(r *http.Request) (time.Time, time.Time) {
-	start := time.Now()
-	end := start
+	end := time.Now()
+	start := end.AddDate(-1, 0, 0) // 1 year ago
 
 	s := r.URL.Query().Get("start")
 	if s != "" {
