@@ -498,7 +498,7 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Activity.RecentMoviesTitle", "Recently Watched")
 	v.SetDefault("Activity.RecentTracksTitle", "Recently Played")
 	v.SetDefault("Activity.PopularMoviesTitle", "Popular Tracks")
-	v.SetDefault("Activity.PopuarTracksTitle", "Popular Tracks")
+	v.SetDefault("Activity.PopularTracksTitle", "Popular Tracks")
 }
 
 func userAgent() string {

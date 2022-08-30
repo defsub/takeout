@@ -530,7 +530,7 @@ func ResolveActivityTracksPlaylist(ctx Context, v *view.ActivityTracks, res, pat
 	sort.Slice(artists, func(i, j int) bool {
 		return artists[i] < artists[j]
 	})
-	creators := strings.Join(artists, " \u2013 ")
+	creators := strings.Join(artists, " \u2022 ")
 	image := ""
 	for _, t := range tracks {
 		img := ctx.TrackImage(t)
