@@ -204,6 +204,20 @@ type Track struct {
 	Recording    Recording      `json:"recording"`
 }
 
+// A feat. B
+func (t Track) Artist() string {
+	var artist string
+	for _, a := range t.ArtistCredit {
+		join := a.Join
+		switch join {
+		case " featuring ", " ft. ":
+			join = " feat. "
+		}
+		artist += a.Name + join
+	}
+	return artist
+}
+
 type ReleasesPage struct {
 	Releases []Release `json:"releases"`
 	Offset   int       `json:"release-offset"`

@@ -140,6 +140,7 @@ type Track struct {
 	RID          string `gorm:"index:idx_track_rid"` // recording id
 	MediaTitle   string
 	ReleaseTitle string `spiff:"album"`
+	TrackArtist  string // artist with featured artists
 	ReleaseDate  time.Time
 	Artwork      bool
 	FrontArtwork bool
@@ -150,6 +151,14 @@ type Track struct {
 
 func (t Track) releaseKey() string {
 	return fmt.Sprintf("%s/%s/%d/%d", t.Artist, t.Release, t.TrackCount, t.DiscCount)
+}
+
+// Prefer A feat. B instead of just A.
+func (t Track) PreferredArtist() string {
+	if t.TrackArtist != "" && t.TrackArtist != t.Artist {
+		return t.TrackArtist
+	}
+	return t.Artist
 }
 
 type Playlist struct {

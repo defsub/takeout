@@ -59,7 +59,7 @@ type Context interface {
 
 func trackEntry(ctx Context, t music.Track) spiff.Entry {
 	return spiff.Entry{
-		Creator:    t.Artist,
+		Creator:    t.PreferredArtist(),
 		Album:      t.ReleaseTitle,
 		Title:      t.Title,
 		Image:      ctx.TrackImage(t),

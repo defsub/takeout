@@ -21,7 +21,7 @@
 	    <a data-playlist="add-ref"
 	       data-ref="{{.|ref}}"
 	       data-play="now"
-	       data-creator="{{.Artist}}"
+	       data-creator="{{.PreferredArtist}}"
 	       data-album="{{.ReleaseTitle}}"
 	       data-title="{{.Title}}"
 	       data-image="{{call $.CoverSmall .}}"
@@ -30,7 +30,7 @@
 	    </a>
 	  </div>
 	  <div class="track-artist">
-	    {{ .ReleaseTitle }}
+	    {{ .PreferredArtist }} &#x2022 {{ .ReleaseTitle }}
 	  </div>
 	</div>
       </div>

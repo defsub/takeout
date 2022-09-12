@@ -140,7 +140,7 @@ func (m *Music) updateTrackCount() error {
 // Tracks may have artist names that are modified to meet
 // file/directory naming limitations. Update track entries with these
 // modified names to the actual artist name.
-func (m *Music) updateTrackArtist(oldName, newName string) (err error) {
+func (m *Music) updateTrackAlbumArtist(oldName, newName string) (err error) {
 	var tracks []Track
 	m.db.Where("artist = ?", oldName).Find(&tracks)
 	for _, t := range tracks {
@@ -410,6 +410,12 @@ func (m *Music) trackArtistNames() []string {
 		artists = append(artists, t.Artist)
 	}
 	return artists
+}
+
+func (m *Music) assignTrackArtist(t Track, artist string) error {
+	err := m.db.Model(t).
+		Update("track_artist", artist).Error
+	return err
 }
 
 func (m *Music) ArtistSingleTracks(a Artist, limit ...int) []Track {

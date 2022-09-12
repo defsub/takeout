@@ -557,32 +557,32 @@ func OffsetView(ctx Context, offset progress.Offset) *Offset {
 
 func ActivityView(ctx Context) *Activity {
 	view := &Activity{}
-	view.RecentTracks = ctx.Activity().RecentTracks(ctx.User(), ctx.Music())
-	view.RecentMovies = ctx.Activity().RecentMovies(ctx.User(), ctx.Video())
-	view.RecentReleases = ctx.Activity().RecentReleases(ctx.User(), ctx.Music())
+	view.RecentTracks = ctx.Activity().RecentTracks(ctx)
+	view.RecentMovies = ctx.Activity().RecentMovies(ctx)
+	view.RecentReleases = ctx.Activity().RecentReleases(ctx)
 	return view
 }
 
 func ActivityTracksView(ctx Context, start, end time.Time) *ActivityTracks {
 	view := &ActivityTracks{}
-	view.Tracks = ctx.Activity().Tracks(ctx.User(), ctx.Music(), start, end)
+	view.Tracks = ctx.Activity().Tracks(ctx, start, end)
 	return view
 }
 
 func ActivityPopularTracksView(ctx Context, start, end time.Time) *ActivityTracks {
 	view := &ActivityTracks{}
-	view.Tracks = ctx.Activity().PopularTracks(ctx.User(), ctx.Music(), start, end)
+	view.Tracks = ctx.Activity().PopularTracks(ctx, start, end)
 	return view
 }
 
 func ActivityMoviesView(ctx Context, start, end time.Time) *ActivityMovies {
 	view := &ActivityMovies{}
-	view.Movies = ctx.Activity().Movies(ctx.User(), ctx.Video(), start, end)
+	view.Movies = ctx.Activity().Movies(ctx, start, end)
 	return view
 }
 
 func ActivityReleasesView(ctx Context, start, end time.Time) *ActivityReleases {
 	view := &ActivityReleases{}
-	view.Releases = ctx.Activity().Releases(ctx.User(), ctx.Music(), start, end)
+	view.Releases = ctx.Activity().Releases(ctx, start, end)
 	return view
 }

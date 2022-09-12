@@ -857,7 +857,7 @@ func (m *Music) syncArtist(name string) (*Artist, error) {
 	if name != artist.Name {
 		// fix track artist name: AC_DC -> AC/DC
 		log.Printf("fixing name %s to %s\n", name, artist.Name)
-		m.updateTrackArtist(name, artist.Name)
+		m.updateTrackAlbumArtist(name, artist.Name)
 	}
 
 	detail, err := m.mbz.ArtistDetail(artist.ARID)
@@ -959,6 +959,9 @@ func (m *Music) releaseIndex(release Release) (search.IndexMap, error) {
 				}
 				if index.RID != "" {
 					m.updateTrackRID(t, index.RID)
+				}
+				if index.Artist != "" {
+					m.assignTrackArtist(t, index.Artist)
 				}
 				matched = true
 			}

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Takeout</title>
+    <title>Takeout Login</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <style>
@@ -10,7 +10,9 @@
 	  color: #e6e6e6;
 	  border-color: #a6a6a6;
       }
-
+      a {
+	  text-decoration: none;
+      }
       .container {
 	  display: flex;
 	  flex-direction: column;
@@ -23,6 +25,10 @@
 	  margin: 5px;
 	  text-align: center;
       }
+      .footer {
+	  font-size: small;
+	  text-align: center;
+      }
     </style>
   </head>
   <body>
@@ -32,15 +38,24 @@
 	  <h2>Takeout Login</h2>
 	</div>
 	<div class="box">
-	  <input type="text" name="user" placeholder="Username..." size="32" required>
+	  <input type="text" name="user" placeholder="Username..." size="16" required>
 	</div>
 	<div class="box">
-	  <input type="password" name="pass" placeholder="Password..." size="32" required>
+	  <input type="password" name="pass" placeholder="Password..." size="16" required>
 	</div>
 	<div class="box">
 	  <button type="submit">Login</button>
 	</div>
       </div>
     </form>
+    <div class="footer">
+      <div>
+	<a href="https://github.com/defsub">@defsub</a>
+	&#x2022
+	<a href="https://github.com/defsub/takeout/blob/master/doc/privacy.md">Privacy</a>
+	&#x2022
+	<a href="https://github.com/defsub/takeout/blob/master/doc/contribute.md">Contribute</a>
+      </div>
+    </div>
   </body>
 </html>

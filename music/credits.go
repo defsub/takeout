@@ -67,6 +67,7 @@ type trackIndex struct {
 	DiscNum  int
 	TrackNum int
 	Title    string
+	Artist   string
 	RID      string
 	// these are the indexed fields to store in the search db
 	Fields   search.FieldMap
@@ -166,6 +167,7 @@ func (m *Music) creditsIndex(reid string) ([]trackIndex, error) {
 				DiscNum:  m.Position,
 				TrackNum: t.Position,
 				Title:    fixName(t.Recording.Title),
+				Artist:   fixName(t.Artist()),
 				RID:      t.Recording.ID,
 				Fields:   trackFields,
 			}

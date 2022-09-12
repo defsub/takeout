@@ -45,7 +45,7 @@ and excludes various artists.
 
 ## Decade Stations
 
-Decade based stations are created using search queries. The query used similar to:
+Decade based stations are created using search queries. Here's sample query:
 
 	+first_date:>="1980-01-01" +first_date:<="1980-12-31" +type:single +popularity:<11
 
