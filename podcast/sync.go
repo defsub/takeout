@@ -20,6 +20,7 @@ package podcast
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/defsub/takeout/lib/hash"
@@ -89,8 +90,13 @@ func (p *Podcast) syncPodcast(url string) error {
 
 	var episodes []string
 	for _, i := range channel.Items {
-		//eid := hash.MD5Hex(i.GUID)
-		eid := i.GUID
+		var eid string
+		if strings.Contains(i.GUID, "://") {
+			// some GUIDs are URLs, hash them
+			eid = hash.MD5Hex(i.GUID)
+		} else {
+			eid = i.GUID
+		}
 		episode := p.findEpisode(eid)
 		if episode == nil {
 			episode = &Episode{
