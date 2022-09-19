@@ -351,7 +351,7 @@ import (
 type LoginParam struct {
 	// in: body
 	Body struct {
-		login
+		credentials
 	}
 }
 

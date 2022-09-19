@@ -55,6 +55,7 @@ type Context interface {
 	Progress() *progress.Progress
 	Template() *template.Template
 	User() *auth.User
+	Session() *auth.Session
 	Video() *video.Video
 
 	LocateTrack(music.Track) string
@@ -80,6 +81,7 @@ type RequestContext struct {
 	user     *auth.User
 	media    *Media
 	progress *progress.Progress
+	session  *auth.Session
 	template *template.Template
 }
 
@@ -91,6 +93,13 @@ func makeContext(ctx Context, u *auth.User, c *config.Config, m *Media) RequestC
 		progress: ctx.Progress(),
 		template: ctx.Template(),
 		user:     u,
+	}
+}
+
+func makeAuthOnlyContext(ctx Context, session *auth.Session) RequestContext {
+	return RequestContext{
+		auth: ctx.Auth(),
+		session: session,
 	}
 }
 
@@ -124,6 +133,10 @@ func (ctx RequestContext) Template() *template.Template {
 
 func (ctx RequestContext) User() *auth.User {
 	return ctx.user
+}
+
+func (ctx RequestContext) Session() *auth.Session {
+	return ctx.session
 }
 
 func (ctx RequestContext) Video() *video.Video {

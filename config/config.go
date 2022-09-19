@@ -219,9 +219,12 @@ type SetlistAPIConfig struct {
 
 type AuthConfig struct {
 	DB            DatabaseConfig
-	MaxAge        time.Duration
+	SessionAge    time.Duration
 	CodeAge       time.Duration
 	SecureCookies bool
+	TokenIssuer   string
+	TokenAge      time.Duration
+	TokenSecret   string
 }
 
 type SearchConfig struct {
@@ -292,7 +295,10 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Auth.DB.Driver", "sqlite3")
 	v.SetDefault("Auth.DB.Logger", "default")
 	v.SetDefault("Auth.DB.Source", "auth.db")
-	v.SetDefault("Auth.MaxAge", "24h")
+	v.SetDefault("Auth.SessionAge", "720h") // 30 days
+	v.SetDefault("Auth.TokenAge", "8h")
+	v.SetDefault("Auth.TokenIssuer", "takeout")
+	v.SetDefault("Auth.TokenSecret", "") // must be assigned in config file
 	v.SetDefault("Auth.CodeAge", "1h")
 	v.SetDefault("Auth.SecureCookies", "true")
 

@@ -26,6 +26,7 @@ import (
 
 	"github.com/defsub/takeout"
 	"github.com/defsub/takeout/config"
+	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/scrypt"
 	"gorm.io/driver/sqlite"
@@ -37,14 +38,20 @@ const (
 )
 
 var (
-	ErrBadDriver       = errors.New("driver not supported")
-	ErrUserNotFound    = errors.New("user not found")
-	ErrKeyMismatch     = errors.New("key mismatch")
-	ErrSessionNotFound = errors.New("session not found")
-	ErrSessionExpired  = errors.New("session expired")
-	ErrCodeNotFound    = errors.New("code not found")
-	ErrCodeExpired     = errors.New("code has expired")
-	ErrCodeAlreadyUsed = errors.New("code already authorized")
+	ErrBadDriver           = errors.New("driver not supported")
+	ErrUserNotFound        = errors.New("user not found")
+	ErrKeyMismatch         = errors.New("key mismatch")
+	ErrSessionNotFound     = errors.New("session not found")
+	ErrSessionExpired      = errors.New("session expired")
+	ErrCodeNotFound        = errors.New("code not found")
+	ErrCodeExpired         = errors.New("code has expired")
+	ErrCodeAlreadyUsed     = errors.New("code already authorized")
+	ErrInvalidTokenSubject = errors.New("invalid subject")
+	ErrInvalidTokenMethod  = errors.New("invalid token method")
+	ErrInvalidTokenIssuer  = errors.New("invalid token issuer")
+	ErrInvalidTokenClaims  = errors.New("invalid token claims")
+	ErrInvalidTokenSecret  = errors.New("invalid token secret")
+	ErrTokenExpired        = errors.New("token expired")
 )
 
 type User struct {
@@ -55,18 +62,22 @@ type User struct {
 	Media string
 }
 
+// A Session is an authenticated user login session associated with a token and
+// expiration date.
 type Session struct {
 	gorm.Model
 	User    string `gorm:"unique_index:idx_session_user"`
-	Cookie  string `gorm:"unique_index:idx_session_cookie"`
+	Token   string `gorm:"unique_index:idx_session_token"`
 	Expires time.Time
 }
 
+// Expired returns whether or not the session is expired.
 func (s *Session) Expired() bool {
 	now := time.Now()
 	return now.After(s.Expires)
 }
 
+// Expires returns whether or not the session is not expired.
 func (s *Session) Valid() bool {
 	return !s.Expired()
 }
@@ -77,6 +88,9 @@ type Auth struct {
 }
 
 func NewAuth(config *config.Config) *Auth {
+	if config.Auth.TokenSecret == "" {
+		panic(ErrInvalidTokenSecret)
+	}
 	return &Auth{config: config}
 }
 
@@ -105,7 +119,8 @@ func (a *Auth) Close() {
 	conn.Close()
 }
 
-func (a *Auth) AddUser(email, pass string) error {
+// AddUser adds a new user to the user database.
+func (a *Auth) AddUser(userid, pass string) error {
 	salt := make([]byte, 8)
 	_, err := rand.Read(salt)
 	if err != nil {
@@ -117,40 +132,61 @@ func (a *Auth) AddUser(email, pass string) error {
 		return err
 	}
 
-	u := User{Name: email, Key: key, Salt: salt}
+	u := User{Name: userid, Key: key, Salt: salt}
 
 	return a.createUser(&u)
 }
 
-func (a *Auth) Login(email, pass string) (http.Cookie, error) {
+// User returns the user found with the provded userid.
+func (a *Auth) User(userid string) (User, error) {
 	var u User
-	err := a.db.Where("name = ?", email).First(&u).Error
+	err := a.db.Where("name = ?", userid).First(&u).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return http.Cookie{}, ErrUserNotFound
+		return User{}, ErrUserNotFound
+	}
+	return u, nil
+}
+
+// Check will check if the provided userid and password match a user in the
+// database.
+func (a *Auth) Check(userid, pass string) (User, error) {
+	u, err := a.User(userid)
+	if err != nil {
+		return u, ErrUserNotFound
 	}
 
 	key, err := a.key(pass, u.Salt)
 	if err != nil {
-		return http.Cookie{}, err
+		return User{}, err
 	}
 
 	if !bytes.Equal(u.Key, key) {
-		return http.Cookie{}, ErrKeyMismatch
+		return User{}, ErrKeyMismatch
 	}
 
-	session := a.session(&u)
-	err = a.createSession(session)
-	if err != nil {
-		return http.Cookie{}, err
-	}
-
-	return a.newCookie(session), nil
+	return u, nil
 }
 
-func (a *Auth) ChangePass(email, newpass string) error {
-	var u User
-	err := a.db.Where("name = ?", email).First(&u).Error
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+// Login will create a new login session after authenticating the userid and
+// password.
+func (a *Auth) Login(userid, pass string) (Session, error) {
+	u, err := a.Check(userid, pass)
+	if err != nil {
+		return Session{}, err
+	}
+	session := a.session(&u)
+	err = a.createSession(&session)
+	if err != nil {
+		return Session{}, err
+	}
+	return session, err
+}
+
+// ChangePass changes the password associated with the provided userid.  User
+// Check prior to this if you'd like to verify the current password.
+func (a *Auth) ChangePass(userid, newpass string) error {
+	u, err := a.User(userid)
+	if err != nil {
 		return ErrUserNotFound
 	}
 
@@ -171,54 +207,141 @@ func (a *Auth) ChangePass(email, newpass string) error {
 	return a.db.Model(u).Update("salt", u.Salt).Update("key", u.Key).Error
 }
 
-func (a *Auth) Expire(cookie *http.Cookie) {
-	cookie.MaxAge = 0
-	cookie.Expires = time.Now().Add(-24 * time.Hour)
+// NewToken creates a new JWT token associated with the provided session.
+func (a *Auth) NewToken(s Session) (string, error) {
+	age := int(a.config.Auth.TokenAge.Seconds())
+	remaining := s.timeRemaining()
+	if age > remaining {
+		// age cannot be larger than remaining session time
+		age = remaining
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
+		jwt.StandardClaims{
+			Subject:   s.User,
+			ExpiresAt: time.Now().Add(time.Second * time.Duration(age)).Unix(),
+			Issuer:    a.config.Auth.TokenIssuer,
+		})
+
+	return token.SignedString([]byte(a.config.Auth.TokenSecret))
 }
 
-func (a *Auth) newCookie(session *Session) http.Cookie {
+// NewCookie creates a new cookie associated with the provided session.
+func (a *Auth) NewCookie(session *Session) http.Cookie {
 	return http.Cookie{
 		Name:     CookieName,
-		Value:    session.Cookie,
-		MaxAge:   session.maxAge(),
+		Value:    session.Token,
+		MaxAge:   session.timeRemaining(),
 		Path:     "/",
 		Secure:   a.config.Auth.SecureCookies,
 		SameSite: http.SameSiteStrictMode,
 		HttpOnly: true}
 }
 
-func (a *Auth) AuthenticateCookie(cookie *http.Cookie) *Session {
+// ExpireCookie will update cookie fields to ensure it's expired.
+func ExpireCookie(cookie *http.Cookie) *http.Cookie {
+	cookie.MaxAge = 0
+	cookie.Expires = time.Now().Add(-24 * time.Hour)
+	return cookie
+}
+
+// CookieSession will find the session associated with the provided cookie.
+func (a *Auth) CookieSession(cookie *http.Cookie) *Session {
 	if cookie == nil || cookie.Name != CookieName {
 		return nil
 	}
 	return a.findCookieSession(cookie)
 }
 
-func (a *Auth) AuthenticateToken(token string) *Session {
+// TokenSession will find the session associated with this provided token.
+func (a *Auth) TokenSession(token string) *Session {
 	return a.findSession(token)
 }
 
-func (a *Auth) CheckToken(token string) bool {
-	session := a.AuthenticateToken(token)
-	return session != nil && session.Valid()
-}
-
-func (a *Auth) SessionUser(session *Session) (*User, error) {
-	var u User
-	err := a.db.Where("name = ?", session.User).First(&u).Error
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, ErrUserNotFound
+func (a *Auth) CheckCookie(cookie *http.Cookie) error {
+	session := a.CookieSession(cookie)
+	if session == nil {
+		return ErrSessionNotFound
 	}
-	return &u, nil
+	if session.Expired() {
+		return ErrSessionExpired
+	}
+	return nil
 }
 
+func (a *Auth) CheckToken(signedToken string) error {
+	_, _, err := a.processToken(signedToken)
+	return err
+}
+
+func (a *Auth) CheckTokenUser(signedToken string) (User, error) {
+	_, claims, err := a.processToken(signedToken)
+	if err != nil {
+		return User{}, err
+	}
+	return a.User(claims.Subject)
+}
+
+// processToken parses and verfies the signed token is valid.
+func (a *Auth) processToken(signedToken string) (*jwt.Token, *jwt.StandardClaims, error) {
+	token, err := jwt.ParseWithClaims(
+		signedToken,
+		&jwt.StandardClaims{},
+		func(token *jwt.Token) (interface{}, error) {
+			return []byte(a.config.Auth.TokenSecret), nil
+		})
+	if err != nil {
+		return nil, nil, err
+	}
+	if token.Method != jwt.SigningMethodHS256 {
+		return nil, nil, ErrInvalidTokenMethod
+	}
+	claims, ok := token.Claims.(*jwt.StandardClaims)
+	if !ok {
+		return nil, nil, ErrInvalidTokenClaims
+	}
+	if claims.Issuer != a.config.Auth.TokenIssuer {
+		return nil, nil, ErrInvalidTokenIssuer
+	}
+	if claims.ExpiresAt < time.Now().Unix() {
+		return nil, nil, ErrTokenExpired
+	}
+	if claims.Subject == "" {
+		return nil, nil, ErrInvalidTokenSubject
+	}
+	return token, claims, nil
+}
+
+// UpdateCookie will update the cookie age based on the time left for the session.
+func UpdateCookie(session *Session, cookie *http.Cookie) {
+	cookie.MaxAge = session.timeRemaining()
+}
+
+// RefreshCookie will renew a session and cookie.
 func (a *Auth) RefreshCookie(session *Session, cookie *http.Cookie) error {
 	err := a.Refresh(session)
 	if err != nil {
 		return err
 	}
-	cookie.MaxAge = session.maxAge()
+	cookie.MaxAge = session.timeRemaining()
 	return nil
+}
+
+// DeleteSession will delete the provided session
+func (a *Auth) DeleteSession(session Session) {
+	a.db.Delete(session)
+}
+
+func (a *Auth) DeleteSessions(u *User) error {
+	return a.db.Delete(Session{}, "name = ?", u.Name).Error
+}
+
+func (a *Auth) SessionUser(session *Session) (*User, error) {
+	u, err := a.User(session.User)
+	if err != nil {
+		return &u, ErrUserNotFound
+	}
+	return &u, nil
 }
 
 func (a *Auth) Refresh(session *Session) error {
@@ -227,12 +350,6 @@ func (a *Auth) Refresh(session *Session) error {
 	}
 	a.touch(session)
 	return nil
-}
-
-func (a *Auth) Logout(session *Session) {
-	if session != nil {
-		a.db.Delete(session)
-	}
 }
 
 func (a *Auth) key(pass string, salt []byte) ([]byte, error) {
@@ -245,22 +362,22 @@ func (a *Auth) findCookieSession(cookie *http.Cookie) *Session {
 
 func (a *Auth) findSession(token string) *Session {
 	var session Session
-	err := a.db.Where("cookie = ?", token).First(&session).Error
+	err := a.db.Where("token = ?", token).First(&session).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil
 	}
 	return &session
 }
 
-func (a *Auth) session(u *User) *Session {
-	cookie := uuid.New().String()
-	expires := time.Now().Add(a.maxAge())
-	session := &Session{User: u.Name, Cookie: cookie, Expires: expires}
+func (a *Auth) session(u *User) Session {
+	token := uuid.New().String()
+	expires := time.Now().Add(a.config.Auth.SessionAge)
+	session := Session{User: u.Name, Token: token, Expires: expires}
 	return session
 }
 
 func (a *Auth) touch(s *Session) error {
-	expires := time.Now().Add(a.maxAge())
+	expires := time.Now().Add(a.config.Auth.SessionAge)
 	return a.db.Model(s).Update("expires", expires).Error
 }
 
@@ -279,10 +396,12 @@ func (a *Auth) createSession(s *Session) (err error) {
 	return
 }
 
-func (a *Auth) maxAge() time.Duration {
-	return a.config.Auth.MaxAge
+// timeRemaing returns the number of number of seconds remaining in this session.
+func (s *Session) timeRemaining() int {
+	return int(s.Duration().Seconds())
 }
 
-func (s *Session) maxAge() int {
-	return int(s.Expires.Sub(time.Now()).Seconds())
+// Duration returns the remain time for this session.
+func (s *Session) Duration() time.Duration {
+	return s.Expires.Sub(time.Now())
 }

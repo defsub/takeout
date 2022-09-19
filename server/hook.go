@@ -286,7 +286,7 @@ func authNext(ctx Context, r *actions.WebhookRequest, w *actions.WebhookResponse
 		return
 	}
 
-	w.AddUserParam(UserParamCookie, code.Cookie)
+	w.AddUserParam(UserParamCookie, code.Token)
 	addSimple(w, ctx.Config().Assistant.Linked)
 	w.AddSuggestions("Talk to Takeout")
 }
@@ -294,19 +294,19 @@ func authNext(ctx Context, r *actions.WebhookRequest, w *actions.WebhookResponse
 func authCheck(ctx Context, r *actions.WebhookRequest, w *actions.WebhookResponse,
 	cookie string) (*auth.User, error) {
 	a := ctx.Auth()
-	session := a.AuthenticateToken(cookie)
+	session := a.TokenSession(cookie)
 	if session == nil {
 		return nil, ErrUnauthorized
 	} else if session.Expired() {
-		a.Logout(session)
+		a.DeleteSession(*session)
 		return nil, ErrUnauthorized
 	}
 	user, err := a.SessionUser(session)
 	if err != nil {
-		a.Logout(session)
+		a.DeleteSession(*session)
 		return nil, ErrUnauthorized
 	}
-	a.Refresh(session)
+	a.Refresh(session) // TODO remove
 	return user, nil
 }
 

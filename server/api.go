@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/defsub/takeout/activity"
+	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/lib/date"
 	"github.com/defsub/takeout/lib/encoding/xspf"
 	"github.com/defsub/takeout/lib/log"
@@ -42,48 +43,105 @@ const (
 	ApplicationJson = "application/json"
 )
 
-type login struct {
+type credentials struct {
 	User string
 	Pass string
 }
 
 type status struct {
-	Status  int
-	Message string
-	Cookie  string
+	Status       int
+	Message      string `json:,omitempty`
+	Cookie       string `json:,omitempty`
 }
 
 func apiLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := contextValue(r)
 	w.Header().Set("Content-type", ApplicationJson)
 
-	var l login
+	var creds credentials
 	body, _ := ioutil.ReadAll(r.Body)
-	err := json.Unmarshal(body, &l)
+	err := json.Unmarshal(body, &creds)
 	if err != nil {
 		serverErr(w, err)
 		return
 	}
 
 	var result status
-	cookie, err := doLogin(ctx, l.User, l.Pass)
-	if err == nil {
+	session, err := doLogin(ctx, creds.User, creds.Pass)
+	if err != nil {
+		authErr(w, err)
+		result = status{
+			Status:  http.StatusUnauthorized,
+			Message: "error",
+		}
+	} else {
+		cookie := ctx.Auth().NewCookie(&session)
 		http.SetCookie(w, &cookie)
 		result = status{
 			Status:  http.StatusOK,
 			Message: "ok",
 			Cookie:  cookie.Value,
 		}
-	} else {
-		authErr(w, err)
-		result = status{
-			Status:  http.StatusUnauthorized,
-			Message: "error",
-		}
 	}
 
 	enc := json.NewEncoder(w)
 	enc.Encode(result)
+}
+
+type tokenResponse struct {
+	AccessToken  string
+	RefreshToken string
+}
+
+func apiTokenLogin(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	w.Header().Set("Content-type", ApplicationJson)
+
+	var creds credentials
+	body, _ := ioutil.ReadAll(r.Body)
+	err := json.Unmarshal(body, &creds)
+	if err != nil {
+		authErr(w, err)
+		return
+	}
+
+	session, err := ctx.Auth().Login(creds.User, creds.Pass)
+	if err == auth.ErrUserNotFound || err == auth.ErrKeyMismatch {
+		authErr(w, err)
+		return
+	} else if err != nil {
+		serverErr(w, err)
+		return
+	}
+
+	var resp tokenResponse
+	resp.RefreshToken = session.Token
+	resp.AccessToken, err = ctx.Auth().NewToken(session)
+	if err != nil {
+		serverErr(w, err)
+		return
+	}
+
+	enc := json.NewEncoder(w)
+	enc.Encode(resp)
+}
+
+func apiTokenRefresh(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	w.Header().Set("Content-type", ApplicationJson)
+
+	var resp tokenResponse
+	var err error
+	session := ctx.Session()
+	resp.RefreshToken = session.Token
+	resp.AccessToken, err = ctx.Auth().NewToken(*session)
+	if err != nil {
+		serverErr(w, err)
+		return
+	}
+
+	enc := json.NewEncoder(w)
+	enc.Encode(resp)
 }
 
 var locationRegexp = regexp.MustCompile(`/api/(tracks)/([0-9]+)/location`)

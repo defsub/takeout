@@ -15,7 +15,10 @@ server:
   listen: :3000
 
 auth:
-  maxAge: 24h
+  sessionAge: 720h
+  tokenAge: 8h
+  tokenIssuer: takeout
+  tokenSecret: "some secret phrase"
   secureCookies: true
   DB:
     Driver: sqlite3

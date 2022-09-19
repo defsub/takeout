@@ -39,16 +39,16 @@ const (
 	BearerAuthorization = "Bearer"
 )
 
-func doLogin(ctx Context, user, pass string) (http.Cookie, error) {
+func doLogin(ctx Context, user, pass string) (auth.Session, error) {
 	return ctx.Auth().Login(user, pass)
 }
 
 func doCodeAuth(ctx Context, user, pass, value string) error {
-	cookie, err := ctx.Auth().Login(user, pass)
+	session, err := ctx.Auth().Login(user, pass)
 	if err != nil {
 		return err
 	}
-	err = ctx.Auth().AuthorizeCode(value, cookie.Value)
+	err = ctx.Auth().AuthorizeCode(value, session.Token)
 	if err != nil {
 		return ErrInvalidCode
 	}
@@ -60,16 +60,18 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	user := r.Form.Get("user")
 	pass := r.Form.Get("pass")
-	cookie, err := doLogin(ctx, user, pass)
-	if err == nil {
-		// success
-		http.SetCookie(w, &cookie)
-		// Use 303 for PRG
-		// https://en.wikipedia.org/wiki/Post/Redirect/Get
-		http.Redirect(w, r, SuccessRedirect, http.StatusSeeOther)
+	session, err := doLogin(ctx, user, pass)
+	if err != nil {
+		authErr(w, ErrUnauthorized)
 		return
 	}
-	authErr(w, ErrUnauthorized)
+
+	cookie := ctx.Auth().NewCookie(&session)
+	http.SetCookie(w, &cookie)
+
+	// Use 303 for PRG
+	// https://en.wikipedia.org/wiki/Post/Redirect/Get
+	http.Redirect(w, r, SuccessRedirect, http.StatusSeeOther)
 }
 
 func linkHandler(w http.ResponseWriter, r *http.Request) {
@@ -87,10 +89,10 @@ func linkHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, LinkRedirect, http.StatusTemporaryRedirect)
 }
 
-func authorizeBearer(ctx Context, w http.ResponseWriter, r *http.Request) *auth.User {
+func authorizationToken(r *http.Request) string {
 	value := r.Header.Get(AuthorizationHeader)
 	if value == "" {
-		return nil
+		return ""
 	}
 	result := strings.Split(value, " ")
 	var token string
@@ -104,24 +106,48 @@ func authorizeBearer(ctx Context, w http.ResponseWriter, r *http.Request) *auth.
 			token = result[1]
 		}
 	}
-	if len(token) == 0 {
+	return token
+}
+
+func authorizeBearer(ctx Context, w http.ResponseWriter, r *http.Request) *auth.User {
+	token := authorizationToken(r)
+	if token == "" {
 		return nil
 	}
+	// token should be a JWT
+	user, err := ctx.Auth().CheckTokenUser(token)
+	if err != nil {
+		authErr(w, err)
+		return nil
+	}
+	return &user
+}
+
+func authorizeRefreshToken(ctx Context, w http.ResponseWriter, r *http.Request) *auth.Session {
+	token := authorizationToken(r)
+	if token == "" {
+		authErr(w, ErrUnauthorized)
+		return nil
+	}
+	// token should be a refresh token not JWT
 	a := ctx.Auth()
-	session := a.AuthenticateToken(token)
+	session := a.TokenSession(token)
 	if session == nil {
+		// no session for token
+		authErr(w, ErrUnauthorized)
 		return nil
 	} else if session.Expired() {
-		a.Logout(session)
+		// session expired
+		a.DeleteSession(*session)
+		authErr(w, ErrUnauthorized)
+		return nil
+	} else if session.Duration() < ctx.Config().Auth.TokenAge {
+		// session will expire before token
+		authErr(w, ErrUnauthorized)
 		return nil
 	}
-	user, err := a.SessionUser(session)
-	if err != nil {
-		a.Logout(session)
-		return nil
-	}
-	a.Refresh(session)
-	return user
+	// session still valid
+	return session
 }
 
 func authorizeCookie(ctx Context, w http.ResponseWriter, r *http.Request) *auth.User {
@@ -129,22 +155,19 @@ func authorizeCookie(ctx Context, w http.ResponseWriter, r *http.Request) *auth.
 	cookie, err := r.Cookie(auth.CookieName)
 	if err != nil {
 		if cookie != nil {
-			a.Expire(cookie)
-			http.SetCookie(w, cookie)
+			http.SetCookie(w, auth.ExpireCookie(cookie))
 		}
 		http.Redirect(w, r, LoginRedirect, http.StatusTemporaryRedirect)
 		return nil
 	}
 
-	session := a.AuthenticateCookie(cookie)
+	session := a.CookieSession(cookie)
 	if session == nil {
 		authErr(w, ErrUnauthorized)
 		return nil
 	} else if session.Expired() {
-		// old session
-		a.Logout(session)
-		a.Expire(cookie)
-		http.SetCookie(w, cookie)
+		a.DeleteSession(*session)
+		http.SetCookie(w, auth.ExpireCookie(cookie))
 		authErr(w, ErrUnauthorized)
 		return nil
 	}
@@ -152,22 +175,21 @@ func authorizeCookie(ctx Context, w http.ResponseWriter, r *http.Request) *auth.
 	user, err := a.SessionUser(session)
 	if err != nil {
 		// session with no user?
-		a.Logout(session)
-		a.Expire(cookie)
+		a.DeleteSession(*session)
+		http.SetCookie(w, auth.ExpireCookie(cookie))
 		authErr(w, ErrUnauthorized)
-		http.SetCookie(w, cookie)
 		return nil
 	}
 
-	a.RefreshCookie(session, cookie)
+	// send back an updated cookie
+	auth.UpdateCookie(session, cookie)
 	http.SetCookie(w, cookie)
 
 	return user
 }
 
 func authorizeUser(ctx Context, w http.ResponseWriter, r *http.Request) *auth.User {
-	// TODO JWT
-	// check for bearer
+	// check for bearer token
 	user := authorizeBearer(ctx, w, r)
 	if user != nil {
 		return user
@@ -183,6 +205,21 @@ func upgradeContext(ctx Context, user *auth.User) (RequestContext, error) {
 	}
 	media := makeMedia(mediaName, userConfig)
 	return makeContext(ctx, user, userConfig, media), nil
+}
+
+func sessionContext(ctx Context, session *auth.Session) RequestContext {
+	return makeAuthOnlyContext(ctx, session)
+}
+
+func refreshAuthHandler(ctx RequestContext, handler http.HandlerFunc) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		session := authorizeRefreshToken(ctx, w, r)
+		if session != nil {
+			ctx := sessionContext(ctx, session)
+			handler.ServeHTTP(w, withContext(r, ctx))
+		}
+	}
+	return http.HandlerFunc(fn)
 }
 
 func authHandler(ctx RequestContext, handler http.HandlerFunc) http.Handler {
@@ -273,10 +310,14 @@ func Serve(config *config.Config) error {
 	mux.Get("/", authHandler(ctx, viewHandler))
 	mux.Get("/v", authHandler(ctx, viewHandler))
 
-	// authorize
+	// cookie auth
 	mux.Post("/api/login", requestHandler(ctx, apiLogin))
 	mux.Post("/login", requestHandler(ctx, loginHandler))
 	mux.Post("/link", requestHandler(ctx, linkHandler))
+
+	// token auth
+	mux.Post("/api/token", requestHandler(ctx, apiTokenLogin))
+	mux.Get("/api/token", refreshAuthHandler(ctx, apiTokenRefresh))
 
 	// misc
 	mux.Get("/api/home", authHandler(ctx, apiHome))

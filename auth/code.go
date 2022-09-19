@@ -34,7 +34,7 @@ type Code struct {
 	gorm.Model
 	Value   string `gorm:"unique_index:idx_code_value"`
 	Expires time.Time
-	Cookie  string
+	Token  string
 }
 
 func randomCode() string {
@@ -76,14 +76,14 @@ func (c *Code) expired() bool {
 
 func (a *Auth) LinkedCode(value string) *Code {
 	code := a.findCode(value)
-	if code == nil || code.Cookie == "" || code.expired() {
+	if code == nil || code.Token == "" || code.expired() {
 		return nil
 	}
 	return code
 }
 
-// This assumes cookie is valid
-func (a *Auth) AuthorizeCode(value, cookie string) error {
+// This assumes token is valid
+func (a *Auth) AuthorizeCode(value, token string) error {
 	code := a.findCode(value)
 	if code == nil {
 		return ErrCodeNotFound
@@ -91,10 +91,10 @@ func (a *Auth) AuthorizeCode(value, cookie string) error {
 	if code.expired() {
 		return ErrCodeExpired
 	}
-	if code.Cookie != "" {
+	if code.Token != "" {
 		return ErrCodeAlreadyUsed
 	}
-	return a.db.Model(code).Update("cookie", cookie).Error
+	return a.db.Model(code).Update("token", token).Error
 }
 
 func (a *Auth) codeAge() time.Duration {
