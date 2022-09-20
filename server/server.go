@@ -109,18 +109,17 @@ func authorizationToken(r *http.Request) string {
 	return token
 }
 
-func authorizeBearer(ctx Context, w http.ResponseWriter, r *http.Request) *auth.User {
+func authorizeBearer(ctx Context, w http.ResponseWriter, r *http.Request) (*auth.User, error) {
 	token := authorizationToken(r)
 	if token == "" {
-		return nil
+		return nil, nil
 	}
 	// token should be a JWT
 	user, err := ctx.Auth().CheckTokenUser(token)
 	if err != nil {
-		authErr(w, err)
-		return nil
+		return nil, err
 	}
-	return &user
+	return &user, nil
 }
 
 func authorizeRefreshToken(ctx Context, w http.ResponseWriter, r *http.Request) *auth.Session {
@@ -190,14 +189,15 @@ func authorizeCookie(ctx Context, w http.ResponseWriter, r *http.Request) *auth.
 
 func authorizeUser(ctx Context, w http.ResponseWriter, r *http.Request) *auth.User {
 	// check for bearer token
-	user := authorizeBearer(ctx, w, r)
+	user, err := authorizeBearer(ctx, w, r)
+	if err != nil {
+		authErr(w, err)
+		return nil
+	}
 	if user != nil {
 		return user
 	}
-	if authorizationToken(r) == "" {
-		return authorizeCookie(ctx, w, r)
-	}
-	return nil
+	return authorizeCookie(ctx, w, r)
 }
 
 func upgradeContext(ctx Context, user *auth.User) (RequestContext, error) {
