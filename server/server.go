@@ -194,8 +194,10 @@ func authorizeUser(ctx Context, w http.ResponseWriter, r *http.Request) *auth.Us
 	if user != nil {
 		return user
 	}
-	// check for cookie
-	return authorizeCookie(ctx, w, r)
+	if authorizationToken(r) == "" {
+		return authorizeCookie(ctx, w, r)
+	}
+	return nil
 }
 
 func upgradeContext(ctx Context, user *auth.User) (RequestContext, error) {
