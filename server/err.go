@@ -25,13 +25,17 @@ import (
 )
 
 var (
-	ErrNoMedia       = errors.New("media not available")
-	ErrInvalidMethod = errors.New("invalid request method")
-	ErrUnauthorized  = errors.New("unauthorized")
-	ErrInvalidCode   = errors.New("invalid code")
-	ErrNotFound      = errors.New("not found")
-	ErrInvalidOffset = errors.New("invalid offset")
-	ErrAccessDenied  = errors.New("access denied")
+	ErrNoMedia            = errors.New("media not available")
+	ErrInvalidMethod      = errors.New("invalid request method")
+	ErrUnauthorized       = errors.New("unauthorized")
+	ErrInvalidCode        = errors.New("invalid code")
+	ErrNotFound           = errors.New("not found")
+	ErrInvalidOffset      = errors.New("invalid offset")
+	ErrAccessDenied       = errors.New("access denied")
+	ErrMissingToken       = errors.New("missing token")
+	ErrMissingAccessToken = errors.New("missing access token")
+	ErrMissingMediaToken  = errors.New("missing media token")
+	ErrMissingCcookie     = errors.New("missing cookie")
 )
 
 func serverErr(w http.ResponseWriter, err error) {

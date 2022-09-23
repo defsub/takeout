@@ -19,12 +19,15 @@ package video
 
 import (
 	"github.com/defsub/takeout/lib/gorm"
+	"github.com/google/uuid"
+	g "gorm.io/gorm"
 	"time"
 )
 
 type Movie struct {
 	gorm.Model
-	TMID             int64 `gorm:"uniqueIndex:idx_movie_tmid"`
+	UUID             string `gorm:"index:idx_movie_uuid" json:"-"`
+	TMID             int64  `gorm:"uniqueIndex:idx_movie_tmid"`
 	IMID             string
 	Title            string
 	Date             time.Time
@@ -45,6 +48,11 @@ type Movie struct {
 	Size             int64
 	ETag             string
 	LastModified     time.Time
+}
+
+func (m *Movie) BeforeCreate(tx *g.DB) (err error) {
+	m.UUID = uuid.NewString()
+	return
 }
 
 type Collection struct {

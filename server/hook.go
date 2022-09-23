@@ -39,7 +39,7 @@ const (
 
 func hookHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := contextValue(r)
-	w.Header().Set("Content-type", ApplicationJson)
+	w.Header().Set(HeaderContentType, ApplicationJson)
 
 	tokenString := r.Header.Get(actions.GoogleAssistantSignature)
 	err := token.ValidateGoogleToken(ctx.Config(), tokenString, ctx.Config().Assistant.ProjectID)

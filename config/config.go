@@ -217,14 +217,19 @@ type SetlistAPIConfig struct {
 	ApiKey string
 }
 
+type TokenConfig struct {
+	Issuer string
+	Age    time.Duration
+	Secret string
+}
+
 type AuthConfig struct {
 	DB            DatabaseConfig
 	SessionAge    time.Duration
 	CodeAge       time.Duration
 	SecureCookies bool
-	TokenIssuer   string
-	TokenAge      time.Duration
-	TokenSecret   string
+	AccessToken   TokenConfig
+	MediaToken    TokenConfig
 }
 
 type SearchConfig struct {
@@ -296,14 +301,17 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Auth.DB.Logger", "default")
 	v.SetDefault("Auth.DB.Source", "auth.db")
 	v.SetDefault("Auth.SessionAge", "720h") // 30 days
-	v.SetDefault("Auth.TokenAge", "8h")
-	v.SetDefault("Auth.TokenIssuer", "takeout")
-	v.SetDefault("Auth.TokenSecret", "") // must be assigned in config file
 	v.SetDefault("Auth.CodeAge", "1h")
 	v.SetDefault("Auth.SecureCookies", "true")
+	v.SetDefault("Auth.AccessToken.Age", "8h")
+	v.SetDefault("Auth.AccessToken.Issuer", "takeout")
+	v.SetDefault("Auth.AccessToken.Secret", "") // must be assigned in config file
+	v.SetDefault("Auth.MediaToken.Age", "8766h") // 1 year
+	v.SetDefault("Auth.MediaToken.Issuer", "takeout")
+	v.SetDefault("Auth.MediaToken.Secret", "") // must be assigned in config file
 
 	// TODO apply as default
-	// v.SetDefault("Bucket.URLExpiration", "72h")
+	// v.SetDefault("Bucket.URLExpiration", "15m")
 	// v.SetDefault("Bucket.UseSSL", "true")
 
 	v.SetDefault("Client.CacheDir", ".httpcache")

@@ -20,6 +20,7 @@ package video
 import (
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/lib/bucket"
@@ -61,7 +62,19 @@ func (v *Video) Close() {
 func (v *Video) FindMovie(identifier string) (Movie, error) {
 	id, err := strconv.Atoi(identifier)
 	if err != nil {
-		return v.LookupIMID(identifier)
+		if strings.HasPrefix(identifier, "uuid:") {
+			return v.LookupUUID(identifier[5:])
+		} else if strings.HasPrefix(identifier, "imid:") {
+			return v.LookupIMID(identifier[4:])
+		} else if strings.HasPrefix(identifier, "tmid:") {
+			id, err := strconv.Atoi(identifier[4:])
+			if err != nil {
+				return Movie{}, err
+			}
+			return v.LookupTMID(id)
+		} else {
+			return v.LookupIMID(identifier)
+		}
 	} else {
 		return v.LookupMovie(id)
 	}

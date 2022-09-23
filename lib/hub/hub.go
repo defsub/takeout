@@ -31,7 +31,7 @@ import (
 )
 
 type Authenticator interface {
-	CheckToken(string) error
+	CheckAccessToken(string) error
 }
 
 type Message struct {
@@ -148,7 +148,7 @@ func (c *Client) reader(auth Authenticator) {
 		return
 	}
 	signedToken := cmd[1]
-	if err = auth.CheckToken(string(signedToken)); err != nil {
+	if err = auth.CheckAccessToken(string(signedToken)); err != nil {
 		// auth failed
 		log.Printf("bad token %s\n", string(signedToken))
 		return

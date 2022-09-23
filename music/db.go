@@ -708,6 +708,16 @@ func (m *Music) LookupRID(rid string) (Track, error) {
 	return track, err
 }
 
+// Lookup a track given the UUID.
+func (m *Music) LookupUUID(uuid string) (Track, error) {
+	var track Track
+	err := m.db.First(&track, "uuid = ?", uuid).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return Track{}, errors.New("track not found")
+	}
+	return track, err
+}
+
 // Lookup an artist given the internal record ID.
 func (m *Music) LookupArtist(id int) (Artist, error) {
 	var artist Artist

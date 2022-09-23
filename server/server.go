@@ -30,7 +30,13 @@ import (
 	"github.com/defsub/takeout/progress"
 )
 
+type bits uint8
+
 const (
+	AllowCookie bits = 1 << iota
+	AllowAccessToken
+	AllowMediaToken
+
 	SuccessRedirect = "/"
 	LinkRedirect    = "/static/link.html"
 	LoginRedirect   = "/static/login.html"
@@ -89,7 +95,7 @@ func linkHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, LinkRedirect, http.StatusTemporaryRedirect)
 }
 
-func authorizationToken(r *http.Request) string {
+func getAuthToken(r *http.Request) string {
 	value := r.Header.Get(AuthorizationHeader)
 	if value == "" {
 		return ""
@@ -109,21 +115,77 @@ func authorizationToken(r *http.Request) string {
 	return token
 }
 
-func authorizeBearer(ctx Context, w http.ResponseWriter, r *http.Request) (*auth.User, error) {
-	token := authorizationToken(r)
+func authorizeAccessToken(ctx Context, w http.ResponseWriter, r *http.Request) (*auth.User, error) {
+	token := getAuthToken(r)
 	if token == "" {
 		return nil, nil
 	}
 	// token should be a JWT
-	user, err := ctx.Auth().CheckTokenUser(token)
+	user, err := ctx.Auth().CheckAccessTokenUser(token)
 	if err != nil {
+		authErr(w, err)
 		return nil, err
 	}
 	return &user, nil
 }
 
+func authorizeMediaToken(ctx Context, w http.ResponseWriter, r *http.Request) (*auth.User, error) {
+	token := getAuthToken(r)
+	if token == "" {
+		return nil, nil
+	}
+	// token should be a JWT
+	user, err := ctx.Auth().CheckMediaTokenUser(token)
+	if err != nil {
+		authErr(w, err)
+		return nil, err
+	}
+	return &user, nil
+}
+
+func authorizeCookie(ctx Context, w http.ResponseWriter, r *http.Request) (*auth.User, error) {
+	a := ctx.Auth()
+	cookie, err := r.Cookie(auth.CookieName)
+	if err != nil {
+		if err == http.ErrNoCookie {
+			return nil, nil
+		}
+		http.SetCookie(w, auth.ExpireCookie(cookie)) // what cookie is this?
+		http.Redirect(w, r, LoginRedirect, http.StatusTemporaryRedirect)
+		return nil, err
+	}
+
+	session := a.CookieSession(cookie)
+	if session == nil {
+		http.SetCookie(w, auth.ExpireCookie(cookie))
+		http.Redirect(w, r, LoginRedirect, http.StatusTemporaryRedirect)
+		return nil, ErrAccessDenied
+	} else if session.Expired() {
+		err = ErrAccessDenied
+		a.DeleteSession(*session)
+		http.SetCookie(w, auth.ExpireCookie(cookie))
+		http.Redirect(w, r, LoginRedirect, http.StatusTemporaryRedirect)
+		return nil, ErrAccessDenied
+	}
+
+	user, err := a.SessionUser(session)
+	if err != nil {
+		// session with no user?
+		a.DeleteSession(*session)
+		http.SetCookie(w, auth.ExpireCookie(cookie))
+		http.Redirect(w, r, LoginRedirect, http.StatusTemporaryRedirect)
+		return nil, err
+	}
+
+	// send back an updated cookie
+	auth.UpdateCookie(session, cookie)
+	http.SetCookie(w, cookie)
+
+	return user, nil
+}
+
 func authorizeRefreshToken(ctx Context, w http.ResponseWriter, r *http.Request) *auth.Session {
-	token := authorizationToken(r)
+	token := getAuthToken(r)
 	if token == "" {
 		authErr(w, ErrUnauthorized)
 		return nil
@@ -140,7 +202,7 @@ func authorizeRefreshToken(ctx Context, w http.ResponseWriter, r *http.Request) 
 		a.DeleteSession(*session)
 		authErr(w, ErrUnauthorized)
 		return nil
-	} else if session.Duration() < ctx.Config().Auth.TokenAge {
+	} else if session.Duration() < ctx.Config().Auth.AccessToken.Age {
 		// session will expire before token
 		authErr(w, ErrUnauthorized)
 		return nil
@@ -149,55 +211,38 @@ func authorizeRefreshToken(ctx Context, w http.ResponseWriter, r *http.Request) 
 	return session
 }
 
-func authorizeCookie(ctx Context, w http.ResponseWriter, r *http.Request) *auth.User {
-	a := ctx.Auth()
-	cookie, err := r.Cookie(auth.CookieName)
-	if err != nil {
-		if cookie != nil {
-			http.SetCookie(w, auth.ExpireCookie(cookie))
+func authorizeRequest(ctx Context, w http.ResponseWriter, r *http.Request, auth bits) *auth.User {
+	if auth&AllowAccessToken != 0 {
+		user, err := authorizeAccessToken(ctx, w, r)
+		if user != nil {
+			return user
 		}
-		http.Redirect(w, r, LoginRedirect, http.StatusTemporaryRedirect)
-		return nil
+		if err != nil {
+			return nil
+		}
 	}
 
-	session := a.CookieSession(cookie)
-	if session == nil {
-		authErr(w, ErrUnauthorized)
-		return nil
-	} else if session.Expired() {
-		a.DeleteSession(*session)
-		http.SetCookie(w, auth.ExpireCookie(cookie))
-		authErr(w, ErrUnauthorized)
-		return nil
+	if auth&AllowMediaToken != 0 {
+		user, err := authorizeMediaToken(ctx, w, r)
+		if user != nil {
+			return user
+		}
+		if err != nil {
+			return nil
+		}
 	}
 
-	user, err := a.SessionUser(session)
-	if err != nil {
-		// session with no user?
-		a.DeleteSession(*session)
-		http.SetCookie(w, auth.ExpireCookie(cookie))
-		authErr(w, ErrUnauthorized)
-		return nil
+	if auth&AllowCookie != 0 {
+		user, err := authorizeCookie(ctx, w, r)
+		if user != nil {
+			return user
+		}
+		if err != nil {
+			return nil
+		}
 	}
 
-	// send back an updated cookie
-	auth.UpdateCookie(session, cookie)
-	http.SetCookie(w, cookie)
-
-	return user
-}
-
-func authorizeUser(ctx Context, w http.ResponseWriter, r *http.Request) *auth.User {
-	// check for bearer token
-	user, err := authorizeBearer(ctx, w, r)
-	if err != nil {
-		authErr(w, err)
-		return nil
-	}
-	if user != nil {
-		return user
-	}
-	return authorizeCookie(ctx, w, r)
+	return nil
 }
 
 func upgradeContext(ctx Context, user *auth.User) (RequestContext, error) {
@@ -213,7 +258,7 @@ func sessionContext(ctx Context, session *auth.Session) RequestContext {
 	return makeAuthOnlyContext(ctx, session)
 }
 
-func refreshAuthHandler(ctx RequestContext, handler http.HandlerFunc) http.Handler {
+func refreshTokenAuthHandler(ctx RequestContext, handler http.HandlerFunc) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		session := authorizeRefreshToken(ctx, w, r)
 		if session != nil {
@@ -224,9 +269,9 @@ func refreshAuthHandler(ctx RequestContext, handler http.HandlerFunc) http.Handl
 	return http.HandlerFunc(fn)
 }
 
-func authHandler(ctx RequestContext, handler http.HandlerFunc) http.Handler {
+func authHandler(ctx RequestContext, handler http.HandlerFunc, auth bits) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		user := authorizeUser(ctx, w, r)
+		user := authorizeRequest(ctx, w, r, auth)
 		if user != nil {
 			ctx, err := upgradeContext(ctx, user)
 			if err != nil {
@@ -237,6 +282,14 @@ func authHandler(ctx RequestContext, handler http.HandlerFunc) http.Handler {
 		}
 	}
 	return http.HandlerFunc(fn)
+}
+
+func mediaTokenAuthHandler(ctx RequestContext, handler http.HandlerFunc) http.Handler {
+	return authHandler(ctx, handler, AllowMediaToken|AllowCookie)
+}
+
+func accessTokenAuthHandler(ctx RequestContext, handler http.HandlerFunc) http.Handler {
+	return authHandler(ctx, handler, AllowAccessToken|AllowCookie)
 }
 
 func requestHandler(ctx RequestContext, handler http.HandlerFunc) http.Handler {
@@ -309,8 +362,8 @@ func Serve(config *config.Config) error {
 
 	mux := pat.New()
 	mux.Get("/static/", http.HandlerFunc(staticHandler))
-	mux.Get("/", authHandler(ctx, viewHandler))
-	mux.Get("/v", authHandler(ctx, viewHandler))
+	mux.Get("/", accessTokenAuthHandler(ctx, viewHandler))
+	mux.Get("/v", accessTokenAuthHandler(ctx, viewHandler))
 
 	// cookie auth
 	mux.Post("/api/login", requestHandler(ctx, apiLogin))
@@ -319,76 +372,76 @@ func Serve(config *config.Config) error {
 
 	// token auth
 	mux.Post("/api/token", requestHandler(ctx, apiTokenLogin))
-	mux.Get("/api/token", refreshAuthHandler(ctx, apiTokenRefresh))
+	mux.Get("/api/token", refreshTokenAuthHandler(ctx, apiTokenRefresh))
 
 	// misc
-	mux.Get("/api/home", authHandler(ctx, apiHome))
-	mux.Get("/api/index", authHandler(ctx, apiIndex))
-	mux.Get("/api/search", authHandler(ctx, apiSearch))
+	mux.Get("/api/home", accessTokenAuthHandler(ctx, apiHome))
+	mux.Get("/api/index", accessTokenAuthHandler(ctx, apiIndex))
+	mux.Get("/api/search", accessTokenAuthHandler(ctx, apiSearch))
 
 	// playlist
-	mux.Get("/api/playlist", authHandler(ctx, apiPlaylistGet))
-	mux.Patch("/api/playlist", authHandler(ctx, apiPlaylistPatch))
+	mux.Get("/api/playlist", accessTokenAuthHandler(ctx, apiPlaylistGet))
+	mux.Patch("/api/playlist", accessTokenAuthHandler(ctx, apiPlaylistPatch))
 
 	// music
-	mux.Get("/api/artists", authHandler(ctx, apiArtists))
-	mux.Get("/api/artists/:id", authHandler(ctx, apiArtistGet))
-	mux.Get("/api/artists/:id/:res", authHandler(ctx, apiArtistGetResource))
-	mux.Get("/api/artists/:id/:res/playlist", authHandler(ctx, apiArtistGetPlaylist))
-	mux.Get("/api/artists/:id/:res/playlist.xspf", authHandler(ctx, apiArtistGetPlaylist))
-	mux.Get("/api/radio", authHandler(ctx, apiRadioGet))
-	mux.Get("/api/radio/:id", authHandler(ctx, apiRadioStationGetPlaylist))
-	mux.Get("/api/radio/:id/playlist", authHandler(ctx, apiRadioStationGetPlaylist))
-	mux.Get("/api/radio/:id/playlist.xspf", authHandler(ctx, apiRadioStationGetPlaylist))
-	mux.Get("/api/radio/stations/:id", authHandler(ctx, apiRadioStationGetPlaylist))
-	mux.Get("/api/radio/stations/:id/playlist", authHandler(ctx, apiRadioStationGetPlaylist))
-	mux.Get("/api/radio/stations/:id/playlist.xspf", authHandler(ctx, apiRadioStationGetPlaylist))
-	mux.Get("/api/releases/:id", authHandler(ctx, apiReleaseGet))
-	mux.Get("/api/releases/:id/playlist", authHandler(ctx, apiReleaseGetPlaylist))
-	mux.Get("/api/releases/:id/playlist.xspf", authHandler(ctx, apiReleaseGetPlaylist))
+	mux.Get("/api/artists", accessTokenAuthHandler(ctx, apiArtists))
+	mux.Get("/api/artists/:id", accessTokenAuthHandler(ctx, apiArtistGet))
+	mux.Get("/api/artists/:id/:res", accessTokenAuthHandler(ctx, apiArtistGetResource))
+	mux.Get("/api/artists/:id/:res/playlist", accessTokenAuthHandler(ctx, apiArtistGetPlaylist))
+	mux.Get("/api/artists/:id/:res/playlist.xspf", accessTokenAuthHandler(ctx, apiArtistGetPlaylist))
+	mux.Get("/api/radio", accessTokenAuthHandler(ctx, apiRadioGet))
+	mux.Get("/api/radio/:id", accessTokenAuthHandler(ctx, apiRadioStationGetPlaylist))
+	mux.Get("/api/radio/:id/playlist", accessTokenAuthHandler(ctx, apiRadioStationGetPlaylist))
+	mux.Get("/api/radio/:id/playlist.xspf", accessTokenAuthHandler(ctx, apiRadioStationGetPlaylist))
+	mux.Get("/api/radio/stations/:id", accessTokenAuthHandler(ctx, apiRadioStationGetPlaylist))
+	mux.Get("/api/radio/stations/:id/playlist", accessTokenAuthHandler(ctx, apiRadioStationGetPlaylist))
+	mux.Get("/api/radio/stations/:id/playlist.xspf", accessTokenAuthHandler(ctx, apiRadioStationGetPlaylist))
+	mux.Get("/api/releases/:id", accessTokenAuthHandler(ctx, apiReleaseGet))
+	mux.Get("/api/releases/:id/playlist", accessTokenAuthHandler(ctx, apiReleaseGetPlaylist))
+	mux.Get("/api/releases/:id/playlist.xspf", accessTokenAuthHandler(ctx, apiReleaseGetPlaylist))
 
 	// video
-	mux.Get("/api/movies", authHandler(ctx, apiMovies))
-	mux.Get("/api/movies/:id", authHandler(ctx, apiMovieGet))
-	mux.Get("/api/movies/:id/playlist", authHandler(ctx, apiMovieGetPlaylist))
-	mux.Get("/api/movies/genres/:name", authHandler(ctx, apiMovieGenreGet))
-	mux.Get("/api/movies/keywords/:name", authHandler(ctx, apiMovieKeywordGet))
-	mux.Get("/api/profiles/:id", authHandler(ctx, apiMovieProfileGet))
+	mux.Get("/api/movies", accessTokenAuthHandler(ctx, apiMovies))
+	mux.Get("/api/movies/:id", accessTokenAuthHandler(ctx, apiMovieGet))
+	mux.Get("/api/movies/:id/playlist", accessTokenAuthHandler(ctx, apiMovieGetPlaylist))
+	mux.Get("/api/movies/genres/:name", accessTokenAuthHandler(ctx, apiMovieGenreGet))
+	mux.Get("/api/movies/keywords/:name", accessTokenAuthHandler(ctx, apiMovieKeywordGet))
+	mux.Get("/api/profiles/:id", accessTokenAuthHandler(ctx, apiMovieProfileGet))
 	// mux.Get("/api/tv", apiTVShows)
 	// mux.Get("/api/tv/:id", apiTVShowGet)
 	// mux.Get("/api/tv/:id/episodes/:eid", apiTVShowEpisodeGet)
 
 	// podcast
-	mux.Get("/api/podcasts", authHandler(ctx, apiPodcasts))
-	mux.Get("/api/podcasts/series/:id", authHandler(ctx, apiPodcastSeriesGet))
-	mux.Get("/api/podcasts/series/:id/playlist", authHandler(ctx, apiPodcastSeriesGetPlaylist))
-	mux.Get("/api/podcasts/series/:id/playlist.xspf", authHandler(ctx, apiPodcastSeriesGetPlaylist))
-	mux.Get("/api/podcasts/series/:id/episodes/:eid", authHandler(ctx, apiPodcastSeriesEpisodeGet))
-	mux.Get("/api/podcasts/series/:id/episodes/:eid/playlist", authHandler(ctx, apiPodcastSeriesEpisodeGetPlaylist))
-	mux.Get("/api/podcasts/series/:id/episodes/:eid/playlist.xspf", authHandler(ctx, apiPodcastSeriesEpisodeGetPlaylist))
-	mux.Get("/api/episodes/:eid", authHandler(ctx, apiPodcastSeriesEpisodeGet))
-	mux.Get("/api/series/:id", authHandler(ctx, apiPodcastSeriesGet))
-	mux.Get("/api/series/:id/playlist", authHandler(ctx, apiPodcastSeriesGetPlaylist))
-	mux.Get("/api/series/:id/playlist.xspf", authHandler(ctx, apiPodcastSeriesGetPlaylist))
+	mux.Get("/api/podcasts", accessTokenAuthHandler(ctx, apiPodcasts))
+	mux.Get("/api/podcasts/series/:id", accessTokenAuthHandler(ctx, apiPodcastSeriesGet))
+	mux.Get("/api/podcasts/series/:id/playlist", accessTokenAuthHandler(ctx, apiPodcastSeriesGetPlaylist))
+	mux.Get("/api/podcasts/series/:id/playlist.xspf", accessTokenAuthHandler(ctx, apiPodcastSeriesGetPlaylist))
+	mux.Get("/api/podcasts/series/:id/episodes/:eid", accessTokenAuthHandler(ctx, apiPodcastSeriesEpisodeGet))
+	mux.Get("/api/podcasts/series/:id/episodes/:eid/playlist", accessTokenAuthHandler(ctx, apiPodcastSeriesEpisodeGetPlaylist))
+	mux.Get("/api/podcasts/series/:id/episodes/:eid/playlist.xspf", accessTokenAuthHandler(ctx, apiPodcastSeriesEpisodeGetPlaylist))
+	mux.Get("/api/episodes/:eid", accessTokenAuthHandler(ctx, apiPodcastSeriesEpisodeGet))
+	mux.Get("/api/series/:id", accessTokenAuthHandler(ctx, apiPodcastSeriesGet))
+	mux.Get("/api/series/:id/playlist", accessTokenAuthHandler(ctx, apiPodcastSeriesGetPlaylist))
+	mux.Get("/api/series/:id/playlist.xspf", accessTokenAuthHandler(ctx, apiPodcastSeriesGetPlaylist))
 
 	// location
-	mux.Get("/api/tracks/:id/location", authHandler(ctx, apiTrackLocation))
-	mux.Get("/api/movies/:id/location", authHandler(ctx, apiMovieLocation))
-	mux.Get("/api/episodes/:eid/location", authHandler(ctx, apiSeriesEpisodeLocation))
-	mux.Get("/api/podcasts/:id/episodes/:eid/location", authHandler(ctx, apiSeriesEpisodeLocation))
+	mux.Get("/api/tracks/:uuid/location", mediaTokenAuthHandler(ctx, apiTrackLocation))
+	mux.Get("/api/movies/:uuid/location", mediaTokenAuthHandler(ctx, apiMovieLocation))
+	mux.Get("/api/episodes/:eid/location", mediaTokenAuthHandler(ctx, apiSeriesEpisodeLocation))
+	mux.Get("/api/podcasts/:id/episodes/:eid/location", mediaTokenAuthHandler(ctx, apiSeriesEpisodeLocation))
 
 	// progress
-	mux.Get("/api/progress", authHandler(ctx, apiProgressGet))
-	mux.Post("/api/progress", authHandler(ctx, apiProgressPost))
+	mux.Get("/api/progress", accessTokenAuthHandler(ctx, apiProgressGet))
+	mux.Post("/api/progress", accessTokenAuthHandler(ctx, apiProgressPost))
 
 	// activity
-	mux.Get("/api/activity", authHandler(ctx, apiActivityGet))
-	mux.Post("/api/activity", authHandler(ctx, apiActivityPost))
-	mux.Get("/api/activity/tracks", authHandler(ctx, apiActivityTracksGet))
-	mux.Get("/api/activity/tracks/:res", authHandler(ctx, apiActivityTracksGetResource))
-	mux.Get("/api/activity/tracks/:res/playlist", authHandler(ctx, apiActivityTracksGetPlaylist))
-	mux.Get("/api/activity/movies", authHandler(ctx, apiActivityMoviesGet))
-	mux.Get("/api/activity/releases", authHandler(ctx, apiActivityReleasesGet))
+	mux.Get("/api/activity", accessTokenAuthHandler(ctx, apiActivityGet))
+	mux.Post("/api/activity", accessTokenAuthHandler(ctx, apiActivityPost))
+	mux.Get("/api/activity/tracks", accessTokenAuthHandler(ctx, apiActivityTracksGet))
+	mux.Get("/api/activity/tracks/:res", accessTokenAuthHandler(ctx, apiActivityTracksGetResource))
+	mux.Get("/api/activity/tracks/:res/playlist", accessTokenAuthHandler(ctx, apiActivityTracksGetPlaylist))
+	mux.Get("/api/activity/movies", accessTokenAuthHandler(ctx, apiActivityMoviesGet))
+	mux.Get("/api/activity/releases", accessTokenAuthHandler(ctx, apiActivityReleasesGet))
 	// /activity/radio - ?
 
 	// Hub

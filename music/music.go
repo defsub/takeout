@@ -175,7 +175,13 @@ func (m *Music) FindStation(identifier string) (Station, error) {
 func (m *Music) FindTrack(identifier string) (Track, error) {
 	id, err := strconv.Atoi(identifier)
 	if err != nil {
-		return m.LookupRID(identifier)
+		if strings.HasPrefix(identifier, "uuid:") {
+			return m.LookupUUID(identifier[5:])
+		} else if strings.HasPrefix(identifier, "rid:") {
+			return m.LookupRID(identifier[4:])
+		} else {
+			return m.LookupRID(identifier)
+		}
 	} else {
 		return m.LookupTrack(id)
 	}

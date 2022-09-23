@@ -88,7 +88,10 @@ type Auth struct {
 }
 
 func NewAuth(config *config.Config) *Auth {
-	if config.Auth.TokenSecret == "" {
+	if config.Auth.AccessToken.Secret == "" {
+		panic(ErrInvalidTokenSecret)
+	}
+	if config.Auth.MediaToken.Secret == "" {
 		panic(ErrInvalidTokenSecret)
 	}
 	return &Auth{config: config}
@@ -167,6 +170,15 @@ func (a *Auth) Check(userid, pass string) (User, error) {
 	return u, nil
 }
 
+func CredentialsError(err error) bool {
+	switch err {
+	case ErrUserNotFound, ErrKeyMismatch:
+		return true
+	default:
+		return false
+	}
+}
+
 // Login will create a new login session after authenticating the userid and
 // password.
 func (a *Auth) Login(userid, pass string) (Session, error) {
@@ -207,23 +219,26 @@ func (a *Auth) ChangePass(userid, newpass string) error {
 	return a.db.Model(u).Update("salt", u.Salt).Update("key", u.Key).Error
 }
 
-// NewToken creates a new JWT token associated with the provided session.
-func (a *Auth) NewToken(s Session) (string, error) {
-	age := int(a.config.Auth.TokenAge.Seconds())
-	remaining := s.timeRemaining()
-	if age > remaining {
-		// age cannot be larger than remaining session time
-		age = remaining
-	}
-
+// newToken creates a new JWT token associated with the provided session.
+func newToken(s Session, cfg config.TokenConfig) (string, error) {
+	age := int(cfg.Age.Seconds())
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
 		jwt.StandardClaims{
+			Issuer:    cfg.Issuer,
 			Subject:   s.User,
 			ExpiresAt: time.Now().Add(time.Second * time.Duration(age)).Unix(),
-			Issuer:    a.config.Auth.TokenIssuer,
 		})
+	return token.SignedString([]byte(cfg.Secret))
+}
 
-	return token.SignedString([]byte(a.config.Auth.TokenSecret))
+// NewAccessToken creates a new JWT token associated with the provided session.
+func (a *Auth) NewAccessToken(s Session) (string, error) {
+	return newToken(s, a.config.Auth.AccessToken)
+}
+
+// NewMediaToken creates a new JWT token associated with the provided session.
+func (a *Auth) NewMediaToken(s Session) (string, error) {
+	return newToken(s, a.config.Auth.MediaToken)
 }
 
 // NewCookie creates a new cookie associated with the provided session.
@@ -269,13 +284,26 @@ func (a *Auth) CheckCookie(cookie *http.Cookie) error {
 	return nil
 }
 
-func (a *Auth) CheckToken(signedToken string) error {
-	_, _, err := a.processToken(signedToken)
+func (a *Auth) CheckAccessToken(signedToken string) error {
+	_, _, err := a.processToken(signedToken, a.config.Auth.AccessToken)
 	return err
 }
 
-func (a *Auth) CheckTokenUser(signedToken string) (User, error) {
-	_, claims, err := a.processToken(signedToken)
+func (a *Auth) CheckAccessTokenUser(signedToken string) (User, error) {
+	_, claims, err := a.processToken(signedToken, a.config.Auth.AccessToken)
+	if err != nil {
+		return User{}, err
+	}
+	return a.User(claims.Subject)
+}
+
+func (a *Auth) CheckMediaToken(signedToken string) error {
+	_, _, err := a.processToken(signedToken, a.config.Auth.MediaToken)
+	return err
+}
+
+func (a *Auth) CheckMediaTokenUser(signedToken string) (User, error) {
+	_, claims, err := a.processToken(signedToken, a.config.Auth.MediaToken)
 	if err != nil {
 		return User{}, err
 	}
@@ -283,12 +311,12 @@ func (a *Auth) CheckTokenUser(signedToken string) (User, error) {
 }
 
 // processToken parses and verfies the signed token is valid.
-func (a *Auth) processToken(signedToken string) (*jwt.Token, *jwt.StandardClaims, error) {
+func (a *Auth) processToken(signedToken string, cfg config.TokenConfig) (*jwt.Token, *jwt.StandardClaims, error) {
 	token, err := jwt.ParseWithClaims(
 		signedToken,
 		&jwt.StandardClaims{},
 		func(token *jwt.Token) (interface{}, error) {
-			return []byte(a.config.Auth.TokenSecret), nil
+			return []byte(cfg.Secret), nil
 		})
 	if err != nil {
 		return nil, nil, err
@@ -300,7 +328,7 @@ func (a *Auth) processToken(signedToken string) (*jwt.Token, *jwt.StandardClaims
 	if !ok {
 		return nil, nil, ErrInvalidTokenClaims
 	}
-	if claims.Issuer != a.config.Auth.TokenIssuer {
+	if claims.Issuer != cfg.Issuer {
 		return nil, nil, ErrInvalidTokenIssuer
 	}
 	if claims.ExpiresAt < time.Now().Unix() {

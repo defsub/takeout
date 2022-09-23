@@ -20,6 +20,8 @@ package music
 import (
 	"fmt"
 	"github.com/defsub/takeout/lib/gorm"
+	"github.com/google/uuid"
+	g "gorm.io/gorm"
 	"time"
 )
 
@@ -121,10 +123,11 @@ type ArtistTag struct {
 // data from MusicBrainz.
 type Track struct {
 	gorm.Model
+	UUID         string `gorm:"index:idx_track_uuid" json:"-"`
 	Artist       string `spiff:"creator" gorm:"index:idx_track_artist"`
 	Release      string `gorm:"index:idx_track_release"`
 	Date         string `gorm:"index:idx_track_date"`
-	TrackNum     int `spiff:"tracknum"`
+	TrackNum     int    `spiff:"tracknum"`
 	DiscNum      int
 	Title        string `spiff:"title" gorm:"index:idx_track_title"`
 	Key          string // TODO - unique constraint
@@ -147,6 +150,11 @@ type Track struct {
 	BackArtwork  bool
 	OtherArtwork string
 	GroupArtwork bool
+}
+
+func (t *Track) BeforeCreate(tx *g.DB) (err error) {
+	t.UUID = uuid.NewString()
+	return
 }
 
 func (t Track) releaseKey() string {

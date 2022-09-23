@@ -98,7 +98,7 @@ func makeContext(ctx Context, u *auth.User, c *config.Config, m *Media) RequestC
 
 func makeAuthOnlyContext(ctx Context, session *auth.Session) RequestContext {
 	return RequestContext{
-		auth: ctx.Auth(),
+		auth:    ctx.Auth(),
 		session: session,
 	}
 }
@@ -192,11 +192,11 @@ func (ctx RequestContext) EpisodeImage(e podcast.Episode) string {
 }
 
 func locateTrack(t music.Track) string {
-	return fmt.Sprintf("/api/tracks/%d/location", t.ID)
+	return fmt.Sprintf("/api/tracks/%s/location", t.UUID)
 }
 
 func locateMovie(v video.Movie) string {
-	return fmt.Sprintf("/api/movies/%d/location", v.ID)
+	return fmt.Sprintf("/api/movies/%d/location", v.UUID)
 }
 
 func locateEpisode(e podcast.Episode) string {

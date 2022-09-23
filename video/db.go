@@ -280,6 +280,15 @@ func (v *Video) LookupIMID(imid string) (Movie, error) {
 	return movie, err
 }
 
+func (v *Video) LookupUUID(uuid string) (Movie, error) {
+	var movie Movie
+	err := v.db.First(&movie, "uuid = ?", uuid).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return Movie{}, errors.New("movie not found")
+	}
+	return movie, err
+}
+
 func (v *Video) lookupIMIDs(imids []string) []Movie {
 	var movies []Movie
 	v.db.Where("im_id in (?)", imids).Find(&movies)

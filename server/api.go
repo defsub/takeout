@@ -41,6 +41,7 @@ import (
 
 const (
 	ApplicationJson = "application/json"
+	HeaderContentType = "Content-Type"
 )
 
 type credentials struct {
@@ -56,7 +57,7 @@ type status struct {
 
 func apiLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := contextValue(r)
-	w.Header().Set("Content-type", ApplicationJson)
+	w.Header().Set(HeaderContentType, ApplicationJson)
 
 	var creds credentials
 	body, _ := ioutil.ReadAll(r.Body)
@@ -91,11 +92,12 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 type tokenResponse struct {
 	AccessToken  string
 	RefreshToken string
+	MediaToken   string `json:",omitempty"`
 }
 
 func apiTokenLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := contextValue(r)
-	w.Header().Set("Content-type", ApplicationJson)
+	w.Header().Set(HeaderContentType, ApplicationJson)
 
 	var creds credentials
 	body, _ := ioutil.ReadAll(r.Body)
@@ -106,17 +108,23 @@ func apiTokenLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	session, err := ctx.Auth().Login(creds.User, creds.Pass)
-	if err == auth.ErrUserNotFound || err == auth.ErrKeyMismatch {
-		authErr(w, err)
-		return
-	} else if err != nil {
-		serverErr(w, err)
+	if err != nil {
+		if auth.CredentialsError(err) {
+			authErr(w, err)
+		} else {
+			serverErr(w, err)
+		}
 		return
 	}
 
 	var resp tokenResponse
 	resp.RefreshToken = session.Token
-	resp.AccessToken, err = ctx.Auth().NewToken(session)
+	resp.AccessToken, err = ctx.Auth().NewAccessToken(session)
+	if err != nil {
+		serverErr(w, err)
+		return
+	}
+	resp.MediaToken, err = ctx.Auth().NewMediaToken(session)
 	if err != nil {
 		serverErr(w, err)
 		return
@@ -128,13 +136,13 @@ func apiTokenLogin(w http.ResponseWriter, r *http.Request) {
 
 func apiTokenRefresh(w http.ResponseWriter, r *http.Request) {
 	ctx := contextValue(r)
-	w.Header().Set("Content-type", ApplicationJson)
+	w.Header().Set(HeaderContentType, ApplicationJson)
 
 	var resp tokenResponse
 	var err error
 	session := ctx.Session()
 	resp.RefreshToken = session.Token
-	resp.AccessToken, err = ctx.Auth().NewToken(*session)
+	resp.AccessToken, err = ctx.Auth().NewAccessToken(*session)
 	if err != nil {
 		serverErr(w, err)
 		return
@@ -150,7 +158,7 @@ func writePlaylist(w http.ResponseWriter, r *http.Request, plist *spiff.Playlist
 	if strings.HasSuffix(r.URL.Path, ".xspf") {
 		// create XML spiff with tracks fully resolved
 		ctx := contextValue(r)
-		w.Header().Set("Content-type", xspf.XMLContentType)
+		w.Header().Set(HeaderContentType, xspf.XMLContentType)
 		encoder := xspf.NewXMLEncoder(w)
 		encoder.Header(plist.Spiff.Title)
 		for i := range plist.Spiff.Entries {
@@ -174,7 +182,7 @@ func writePlaylist(w http.ResponseWriter, r *http.Request, plist *spiff.Playlist
 
 	} else {
 		// use json spiff with track location
-		w.Header().Set("Content-type", ApplicationJson)
+		w.Header().Set(HeaderContentType, ApplicationJson)
 		result, _ := plist.Marshal()
 		w.Write(result)
 	}
@@ -226,7 +234,7 @@ func apiPlaylistGet(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	w.Header().Set("Content-type", ApplicationJson)
+	w.Header().Set(HeaderContentType, ApplicationJson)
 	w.WriteHeader(http.StatusOK)
 	w.Write(p.Playlist)
 }
@@ -271,7 +279,7 @@ func apiPlaylistPatch(w http.ResponseWriter, r *http.Request) {
 		// entries didn't change, only metadata
 		w.WriteHeader(http.StatusNoContent)
 	} else {
-		w.Header().Set("Content-type", ApplicationJson)
+		w.Header().Set(HeaderContentType, ApplicationJson)
 		w.WriteHeader(http.StatusOK)
 		w.Write(p.Playlist)
 	}
@@ -321,7 +329,7 @@ func apiProgressPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func apiView(w http.ResponseWriter, r *http.Request, view interface{}) {
-	w.Header().Set("Content-type", ApplicationJson)
+	w.Header().Set(HeaderContentType, ApplicationJson)
 	json.NewEncoder(w).Encode(view)
 }
 
@@ -666,26 +674,36 @@ func apiReleaseGetPlaylist(w http.ResponseWriter, r *http.Request) {
 
 func apiTrackLocation(w http.ResponseWriter, r *http.Request) {
 	ctx := contextValue(r)
-	id := r.URL.Query().Get(":id")
-	track, err := ctx.FindTrack(id)
+	uuid := r.URL.Query().Get(":uuid")
+	track, err := ctx.FindTrack("uuid:" + uuid)
 	if err != nil {
 		notFoundErr(w)
-	} else {
-		url := ctx.Music().TrackURL(&track)
-		http.Redirect(w, r, url.String(), http.StatusFound)
+		return
 	}
+	if track.UUID != uuid {
+		accessDenied(w)
+		return
+	}
+
+	url := ctx.Music().TrackURL(&track)
+	http.Redirect(w, r, url.String(), http.StatusFound)
 }
 
 func apiMovieLocation(w http.ResponseWriter, r *http.Request) {
 	ctx := contextValue(r)
-	id := r.URL.Query().Get(":id")
-	movie, err := ctx.FindMovie(id)
+	uuid := r.URL.Query().Get(":uuid")
+	movie, err := ctx.FindMovie("uuid:" + uuid)
 	if err != nil {
 		notFoundErr(w)
-	} else {
-		url := ctx.Video().MovieURL(movie)
-		http.Redirect(w, r, url.String(), http.StatusFound)
+		return
 	}
+	if movie.UUID != uuid {
+		accessDenied(w)
+		return
+	}
+
+	url := ctx.Video().MovieURL(movie)
+	http.Redirect(w, r, url.String(), http.StatusFound)
 }
 
 func apiSeriesEpisodeLocation(w http.ResponseWriter, r *http.Request) {
