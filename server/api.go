@@ -148,11 +148,18 @@ func apiTokenRefresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// extend the session lifetime
+	err = ctx.Auth().Refresh(session)
+	if err != nil {
+		serverErr(w, err)
+		return
+	}
+
 	enc := json.NewEncoder(w)
 	enc.Encode(resp)
 }
 
-var locationRegexp = regexp.MustCompile(`/api/(tracks)/([0-9]+)/location`)
+var locationRegexp = regexp.MustCompile(`/api/(tracks)/([0-9a-zA-Z-]+)/location`)
 
 func writePlaylist(w http.ResponseWriter, r *http.Request, plist *spiff.Playlist) {
 	if strings.HasSuffix(r.URL.Path, ".xspf") {
@@ -167,8 +174,8 @@ func writePlaylist(w http.ResponseWriter, r *http.Request, plist *spiff.Playlist
 				src := matches[1]
 				if src == "tracks" {
 					m := ctx.Music()
-					id := str.Atoi(matches[2])
-					track, err := m.LookupTrack(id)
+					uuid := matches[2]
+					track, err := m.FindTrack("uuid:" + uuid)
 					if err != nil {
 						continue
 					}

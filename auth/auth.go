@@ -376,8 +376,7 @@ func (a *Auth) Refresh(session *Session) error {
 	if session == nil {
 		return ErrSessionNotFound
 	}
-	a.touch(session)
-	return nil
+	return a.touch(session)
 }
 
 func (a *Auth) key(pass string, salt []byte) ([]byte, error) {
