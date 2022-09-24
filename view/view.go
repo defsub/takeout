@@ -38,6 +38,7 @@ type Context interface {
 	Progress() *progress.Progress
 	User() *auth.User
 	Video() *video.Video
+	LocateMovie(video.Movie) string
 }
 
 type CoverFunc func(interface{}) string
@@ -157,6 +158,7 @@ type Movies struct {
 // swagger:model
 type Movie struct {
 	Movie       video.Movie
+	Location    string
 	Collection  video.Collection
 	Other       []video.Movie
 	Cast        []video.Cast
@@ -204,6 +206,7 @@ type Keyword struct {
 // swagger:model
 type Watch struct {
 	Movie       video.Movie
+	Location    string
 	PosterSmall PosterFunc   `json:"-"`
 	Backdrop    BackdropFunc `json:"-"`
 }
@@ -440,6 +443,7 @@ func MovieView(ctx Context, m video.Movie) *Movie {
 	v := ctx.Video()
 	view := &Movie{}
 	view.Movie = m
+	view.Location = ctx.LocateMovie(m)
 	collection := v.MovieCollection(m)
 	if collection != nil {
 		view.Collection = *collection
@@ -513,6 +517,7 @@ func WatchView(ctx Context, m video.Movie) *Watch {
 	v := ctx.Video()
 	view := &Watch{}
 	view.Movie = m
+	view.Location = ctx.LocateMovie(m)
 	view.PosterSmall = v.MoviePosterSmall
 	view.Backdrop = v.MovieBackdrop
 	return view
