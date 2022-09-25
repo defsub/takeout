@@ -196,7 +196,7 @@ func locateTrack(t music.Track) string {
 }
 
 func locateMovie(v video.Movie) string {
-	return fmt.Sprintf("/api/movies/%d/location", v.UUID)
+	return fmt.Sprintf("/api/movies/%s/location", v.UUID)
 }
 
 func locateEpisode(e podcast.Episode) string {
