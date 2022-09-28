@@ -70,6 +70,8 @@ type Context interface {
 	FindSeries(string) (podcast.Series, error)
 
 	TrackImage(music.Track) string
+	ArtistImage(music.Artist) string
+	ArtistBackground(music.Artist) string
 	MovieImage(video.Movie) string
 	EpisodeImage(podcast.Episode) string
 }
@@ -181,6 +183,14 @@ func (ctx RequestContext) FindSeries(id string) (podcast.Series, error) {
 
 func (ctx RequestContext) TrackImage(t music.Track) string {
 	return ctx.Music().TrackImage(t).String()
+}
+
+func (ctx RequestContext) ArtistImage(a music.Artist) string {
+	return ctx.Music().ArtistImage(&a)
+}
+
+func (ctx RequestContext) ArtistBackground(a music.Artist) string {
+	return ctx.Music().ArtistBackground(&a)
 }
 
 func (ctx RequestContext) MovieImage(m video.Movie) string {

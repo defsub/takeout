@@ -45,12 +45,14 @@ const (
 	BearerAuthorization = "Bearer"
 )
 
+// doLogin creates a login session for the provided user or returns an error
 func doLogin(ctx Context, user, pass string) (auth.Session, error) {
 	return ctx.Auth().Login(user, pass)
 }
 
+// doCodeAuth creates a login session and binds to the provided code value.
 func doCodeAuth(ctx Context, user, pass, value string) error {
-	session, err := ctx.Auth().Login(user, pass)
+	session, err := doLogin(ctx, user, pass)
 	if err != nil {
 		return err
 	}
@@ -61,6 +63,7 @@ func doCodeAuth(ctx Context, user, pass, value string) error {
 	return nil
 }
 
+// loginHandler performs a web based login session and sends back a cookie.
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := contextValue(r)
 	r.ParseForm()
@@ -80,6 +83,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, SuccessRedirect, http.StatusSeeOther)
 }
 
+// linkHandler performs a web based login and links to the provided code.
 func linkHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := contextValue(r)
 	r.ParseForm()
@@ -95,6 +99,7 @@ func linkHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, LinkRedirect, http.StatusTemporaryRedirect)
 }
 
+// getAuthToken returns the bearer token from the request, if any.
 func getAuthToken(r *http.Request) string {
 	value := r.Header.Get(AuthorizationHeader)
 	if value == "" {
@@ -115,6 +120,7 @@ func getAuthToken(r *http.Request) string {
 	return token
 }
 
+// authorizeAccessToken validates the provided JWT access token for API access.
 func authorizeAccessToken(ctx Context, w http.ResponseWriter, r *http.Request) (*auth.User, error) {
 	token := getAuthToken(r)
 	if token == "" {
@@ -129,6 +135,7 @@ func authorizeAccessToken(ctx Context, w http.ResponseWriter, r *http.Request) (
 	return &user, nil
 }
 
+// authorizeMediaToken validates the provided JWT media token for API access.
 func authorizeMediaToken(ctx Context, w http.ResponseWriter, r *http.Request) (*auth.User, error) {
 	token := getAuthToken(r)
 	if token == "" {
@@ -143,14 +150,14 @@ func authorizeMediaToken(ctx Context, w http.ResponseWriter, r *http.Request) (*
 	return &user, nil
 }
 
+// authorizeCookie validates the provided cookie for API or web view access.
 func authorizeCookie(ctx Context, w http.ResponseWriter, r *http.Request) (*auth.User, error) {
 	a := ctx.Auth()
 	cookie, err := r.Cookie(auth.CookieName)
 	if err != nil {
-		if err == http.ErrNoCookie {
-			return nil, nil
+		if err != http.ErrNoCookie {
+			http.SetCookie(w, auth.ExpireCookie(cookie)) // what cookie is this?
 		}
-		http.SetCookie(w, auth.ExpireCookie(cookie)) // what cookie is this?
 		http.Redirect(w, r, LoginRedirect, http.StatusTemporaryRedirect)
 		return nil, err
 	}
@@ -184,6 +191,7 @@ func authorizeCookie(ctx Context, w http.ResponseWriter, r *http.Request) (*auth
 	return user, nil
 }
 
+// authorizeRefreshToken validates the provided refresh token for API access.
 func authorizeRefreshToken(ctx Context, w http.ResponseWriter, r *http.Request) *auth.Session {
 	token := getAuthToken(r)
 	if token == "" {
@@ -211,6 +219,8 @@ func authorizeRefreshToken(ctx Context, w http.ResponseWriter, r *http.Request) 
 	return session
 }
 
+// authorizeRequest authorizes the request with one or more of the allowed
+// authorization methods.
 func authorizeRequest(ctx Context, w http.ResponseWriter, r *http.Request, auth bits) *auth.User {
 	if auth&AllowAccessToken != 0 {
 		user, err := authorizeAccessToken(ctx, w, r)
@@ -245,6 +255,8 @@ func authorizeRequest(ctx Context, w http.ResponseWriter, r *http.Request, auth 
 	return nil
 }
 
+// upgradeContext creates a full context based on user and media configuration.
+// This is used for most requests after the user has been authorized.
 func upgradeContext(ctx Context, user *auth.User) (RequestContext, error) {
 	mediaName, userConfig, err := mediaConfigFor(ctx.Config(), user)
 	if err != nil {
@@ -254,10 +266,12 @@ func upgradeContext(ctx Context, user *auth.User) (RequestContext, error) {
 	return makeContext(ctx, user, userConfig, media), nil
 }
 
+// sessionContext creates a minimal context with the provided session.
 func sessionContext(ctx Context, session *auth.Session) RequestContext {
 	return makeAuthOnlyContext(ctx, session)
 }
 
+// refreshTokenAuthHandler handles requests intended to refresh and access token.
 func refreshTokenAuthHandler(ctx RequestContext, handler http.HandlerFunc) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		session := authorizeRefreshToken(ctx, w, r)
@@ -269,9 +283,12 @@ func refreshTokenAuthHandler(ctx RequestContext, handler http.HandlerFunc) http.
 	return http.HandlerFunc(fn)
 }
 
+// authHandler authorizes and handles all (except refresh) requests based on
+// allowed auth methods.
 func authHandler(ctx RequestContext, handler http.HandlerFunc, auth bits) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		user := authorizeRequest(ctx, w, r, auth)
+		log.Printf("got %+v\n", user)
 		if user != nil {
 			ctx, err := upgradeContext(ctx, user)
 			if err != nil {
@@ -284,14 +301,17 @@ func authHandler(ctx RequestContext, handler http.HandlerFunc, auth bits) http.H
 	return http.HandlerFunc(fn)
 }
 
+// mediaTokenAuthHandler handles media access requests using the media token (or cookie).
 func mediaTokenAuthHandler(ctx RequestContext, handler http.HandlerFunc) http.Handler {
 	return authHandler(ctx, handler, AllowMediaToken|AllowCookie)
 }
 
+// accessTokenAuthHandler handles non-media requests using the access token (or cookie).
 func accessTokenAuthHandler(ctx RequestContext, handler http.HandlerFunc) http.Handler {
 	return authHandler(ctx, handler, AllowAccessToken|AllowCookie)
 }
 
+// requestHandler handles unauthenticated requests.
 func requestHandler(ctx RequestContext, handler http.HandlerFunc) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		handler.ServeHTTP(w, withContext(r, ctx))
@@ -299,6 +319,7 @@ func requestHandler(ctx RequestContext, handler http.HandlerFunc) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
+// hubHandler handles hub requests.
 func hubHandler(ctx RequestContext, h *hub.Hub) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		r = withContext(r, ctx)
@@ -331,6 +352,7 @@ func makeHub(config *config.Config) (*hub.Hub, error) {
 	return h, nil
 }
 
+// Serve configures and starts the Takeout web, websocket, and API services.
 func Serve(config *config.Config) error {
 	auth, err := makeAuth(config)
 	log.CheckError(err)
@@ -449,6 +471,15 @@ func Serve(config *config.Config) error {
 
 	// Hook
 	mux.Post("/hook/", requestHandler(ctx, hookHandler))
+
+	// Images
+	mux.Get("/img/mb/rg/:rgid", requestHandler(ctx, imgReleaseGroupFront))
+	mux.Get("/img/mb/rg/:rgid/:side", requestHandler(ctx, imgReleaseGroup))
+	mux.Get("/img/mb/re/:reid", requestHandler(ctx, imgReleaseFront))
+	mux.Get("/img/mb/re/:reid/:side", requestHandler(ctx, imgRelease))
+	mux.Get("/img/tm/:size/:path", requestHandler(ctx, imgVideo))
+	mux.Get("/img/fa/:arid/t/:path", requestHandler(ctx, imgArtistThumb))
+	mux.Get("/img/fa/:arid/b/:path", requestHandler(ctx, imgArtistBackground))
 
 	// // swaggerHandler := func(w http.ResponseWriter, r *http.Request) {
 	// // 	http.Redirect(w, r, "/static/swagger.json", 302)

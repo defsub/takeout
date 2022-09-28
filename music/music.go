@@ -83,16 +83,18 @@ func (m *Music) Close() {
 func Cover(r Release, size string) string {
 	var url string
 	if r.GroupArtwork {
-		url = fmt.Sprintf("https://coverartarchive.org/release-group/%s", r.RGID)
+		url = fmt.Sprintf("/img/mb/rg/%s", r.RGID)
 	} else {
-		url = fmt.Sprintf("https://coverartarchive.org/release/%s", r.REID)
+		url = fmt.Sprintf("/img/mb/re/%s", r.REID)
 	}
 	if r.Artwork && r.FrontArtwork {
 		// user front-250, front-500, front-1200
-		return fmt.Sprintf("%s/front-%s", url, size)
+		//return fmt.Sprintf("%s/front-%s", url, size)
+		return fmt.Sprintf("%s/front", url)
 	} else if r.Artwork && r.OtherArtwork != "" {
 		// use id-250, id-500, id-1200
-		return fmt.Sprintf("%s/%s-%s", url, r.OtherArtwork, size)
+		//return fmt.Sprintf("%s/%s-%s", url, r.OtherArtwork, size)
+		return url
 	} else {
 		return "/static/album-white-36dp.svg"
 	}
@@ -396,4 +398,36 @@ func (m *Music) SearchTracks(title, artist, album string) []Track {
 
 func (m *Music) UnmatchedTracks() []Track {
 	return m.tracksWithoutAssignedRelease()
+}
+
+func (m *Music) ArtistImage(artist *Artist) string {
+	imgs := m.artistImages(artist)
+	if len(imgs) == 0 {
+		return ""
+	}
+	// https://assets.fanart.tv/fanart/music/a6c6897a-7415-4f8d-b5a5-3a5e05f3be67/artistthumb/twenty-one-pilots-55362909e8765.jpg
+	pattern := fmt.Sprintf("/music/%s/artistthumb", artist.ARID)
+	for _, img := range imgs {
+		if strings.Contains(img, pattern) {
+			parts := strings.Split(img, "/")
+			return fmt.Sprintf("/img/fa/%s/t/%s", artist.ARID, parts[len(parts)-1])
+		}
+	}
+	return imgs[0]
+}
+
+func (m *Music) ArtistBackground(artist *Artist) string {
+	imgs := m.artistBackgrounds(artist)
+	if len(imgs) == 0 {
+		return ""
+	}
+	// https://assets.fanart.tv/fanart/music/a6c6897a-7415-4f8d-b5a5-3a5e05f3be67/artistbackground/twenty-one-pilots-538ed3f1068af.jpg
+	pattern := fmt.Sprintf("/music/%s/artistbackground", artist.ARID)
+	for _, img := range imgs {
+		if strings.Contains(img, pattern) {
+			parts := strings.Split(img, "/")
+			return fmt.Sprintf("/img/fa/%s/b/%s", artist.ARID, parts[len(parts)-1])
+		}
+	}
+	return imgs[0]
 }

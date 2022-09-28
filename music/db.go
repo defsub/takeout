@@ -859,26 +859,34 @@ func (m *Music) favoriteArtists(limit int) ([]string, error) {
 	return artists, nil
 }
 
-func (m *Music) ArtistBackground(a *Artist) string {
+func (m *Music) artistBackgrounds(a *Artist) []string {
 	var backgrounds []ArtistBackground
 	m.db.Where("artist = ?", a.Name).
 		Order("rank desc").
 		Find(&backgrounds)
 	if len(backgrounds) == 0 {
-		return ""
+		return []string{}
 	}
-	return backgrounds[0].URL
+	var list []string
+	for _, i := range backgrounds {
+		list = append(list, i.URL)
+	}
+	return list
 }
 
-func (m *Music) ArtistImage(a *Artist) string {
+func (m *Music) artistImages(a *Artist) []string {
 	var imgs []ArtistImage
 	m.db.Where("artist = ?", a.Name).
 		Order("rank desc").
 		Find(&imgs)
 	if len(imgs) == 0 {
-		return ""
+		return []string{}
 	}
-	return imgs[0].URL
+	var list []string
+	for _, i := range imgs {
+		list = append(list, i.URL)
+	}
+	return list
 }
 
 func (m *Music) artistGenres() []string {

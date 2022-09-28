@@ -55,6 +55,7 @@ type status struct {
 	Cookie       string `json:,omitempty`
 }
 
+// apiLogin handles login requests and returns a cookie.
 func apiLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := contextValue(r)
 	w.Header().Set(HeaderContentType, ApplicationJson)
@@ -95,6 +96,7 @@ type tokenResponse struct {
 	MediaToken   string `json:",omitempty"`
 }
 
+// apiTokenLogin handles login requests and returns tokens.
 func apiTokenLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := contextValue(r)
 	w.Header().Set(HeaderContentType, ApplicationJson)
@@ -107,7 +109,7 @@ func apiTokenLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := ctx.Auth().Login(creds.User, creds.Pass)
+	session, err := doLogin(ctx, creds.User, creds.Pass)
 	if err != nil {
 		if auth.CredentialsError(err) {
 			authErr(w, err)
@@ -134,6 +136,7 @@ func apiTokenLogin(w http.ResponseWriter, r *http.Request) {
 	enc.Encode(resp)
 }
 
+// apiTokenRefresh uses refresh token to create a new access token.
 func apiTokenRefresh(w http.ResponseWriter, r *http.Request) {
 	ctx := contextValue(r)
 	w.Header().Set(HeaderContentType, ApplicationJson)
@@ -161,6 +164,8 @@ func apiTokenRefresh(w http.ResponseWriter, r *http.Request) {
 
 var locationRegexp = regexp.MustCompile(`/api/(tracks)/([0-9a-zA-Z-]+)/location`)
 
+// writePlaylist will write a playlist to the response and optionally fully
+// resolve tracks for offline external app (vlc) playback.
 func writePlaylist(w http.ResponseWriter, r *http.Request, plist *spiff.Playlist) {
 	if strings.HasSuffix(r.URL.Path, ".xspf") {
 		// create XML spiff with tracks fully resolved
@@ -179,6 +184,7 @@ func writePlaylist(w http.ResponseWriter, r *http.Request, plist *spiff.Playlist
 					if err != nil {
 						continue
 					}
+					// TODO need to extent bucket URLExpiration for these tracks
 					url := m.TrackURL(&track)
 					plist.Spiff.Entries[i].Location = []string{url.String()}
 				}
@@ -607,11 +613,11 @@ func apiStation(w http.ResponseWriter, r *http.Request, id int) {
 	}
 
 	switch r.Method {
-	case "GET":
+	case http.MethodGet:
 		ref.RefreshStation(ctx, &s)
 		w.WriteHeader(http.StatusOK)
 		w.Write(s.Playlist)
-	case "PUT":
+	case http.MethodPut:
 		var up music.Station
 		err := recvStation(w, r, &up)
 		if err != nil {
@@ -626,7 +632,7 @@ func apiStation(w http.ResponseWriter, r *http.Request, id int) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
-	case "PATCH":
+	case http.MethodPatch:
 		patch, _ := ioutil.ReadAll(r.Body)
 		s.Playlist, err = spiff.Patch(s.Playlist, patch)
 		if err != nil {
@@ -643,7 +649,7 @@ func apiStation(w http.ResponseWriter, r *http.Request, id int) {
 		s.Playlist, _ = plist.Marshal()
 		ctx.Music().UpdateStation(&s)
 		w.WriteHeader(http.StatusNoContent)
-	case "DELETE":
+	case http.MethodDelete:
 		err = ctx.Music().DeleteStation(&s)
 		if err != nil {
 			serverErr(w, err)
