@@ -699,7 +699,7 @@ func apiTrackLocation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	url := ctx.Music().TrackURL(&track)
-	http.Redirect(w, r, url.String(), http.StatusFound)
+	http.Redirect(w, r, url.String(), http.StatusTemporaryRedirect)
 }
 
 func apiMovieLocation(w http.ResponseWriter, r *http.Request) {
@@ -716,7 +716,7 @@ func apiMovieLocation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	url := ctx.Video().MovieURL(movie)
-	http.Redirect(w, r, url.String(), http.StatusFound)
+	http.Redirect(w, r, url.String(), http.StatusTemporaryRedirect)
 }
 
 func apiSeriesEpisodeLocation(w http.ResponseWriter, r *http.Request) {
@@ -733,7 +733,7 @@ func apiSeriesEpisodeLocation(w http.ResponseWriter, r *http.Request) {
 		notFoundErr(w)
 	} else {
 		url := ctx.Podcast().EpisodeURL(episode)
-		http.Redirect(w, r, url.String(), http.StatusFound)
+		http.Redirect(w, r, url.String(), http.StatusTemporaryRedirect)
 	}
 }
 
