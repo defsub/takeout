@@ -25,6 +25,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/defsub/takeout/config"
+	"github.com/defsub/takeout/lib/client"
 	"github.com/defsub/takeout/lib/date"
 	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/lib/musicbrainz"
@@ -361,7 +363,7 @@ func (m *Music) checkReleaseArtwork(r *Release) error {
 
 var (
 	fuzzyArtistRegexp = regexp.MustCompile(`[^a-zA-Z0-9& -]`)
-	fuzzyNameRegexp = regexp.MustCompile(`[^a-zA-Z0-9]`)
+	fuzzyNameRegexp   = regexp.MustCompile(`[^a-zA-Z0-9]`)
 )
 
 func fuzzyArtist(name string) string {
@@ -1128,4 +1130,25 @@ func doRelease(artist string, r musicbrainz.Release) Release {
 		Status:         r.Status,
 		SingleName:     singleName,
 	}
+}
+
+func (m *Music) SyncCovers(cfg config.ClientConfig) error {
+	return m.syncCoversFor(cfg, m.Artists())
+}
+
+func (m *Music) syncCoversFor(cfg config.ClientConfig, artists []Artist) error {
+	log.Printf("xxx %+v\n", cfg)
+	client := client.NewClient(&cfg)
+	for _, a := range artists {
+		releases := m.ArtistReleases(&a)
+		for _, r := range releases {
+			img := CoverArtArchiveImage(r)
+			log.Printf("sync %s/%s %s\n", a.Name, r.Name, img)
+			if img == "" {
+				continue
+			}
+			client.Get(img)
+		}
+	}
+	return nil
 }

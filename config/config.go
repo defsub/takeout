@@ -149,6 +149,7 @@ type MusicConfig struct {
 	SyncInterval         time.Duration
 	PopularSyncInterval  time.Duration
 	SimilarSyncInterval  time.Duration
+	CoverSyncInterval    time.Duration
 }
 
 type VideoConfig struct {
@@ -237,7 +238,8 @@ type SearchConfig struct {
 }
 
 type ServerConfig struct {
-	Listen string
+	Listen      string
+	ImageClient ClientConfig
 }
 
 type ClientConfig struct {
@@ -305,7 +307,7 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Auth.SecureCookies", "true")
 	v.SetDefault("Auth.AccessToken.Age", "8h")
 	v.SetDefault("Auth.AccessToken.Issuer", "takeout")
-	v.SetDefault("Auth.AccessToken.Secret", "") // must be assigned in config file
+	v.SetDefault("Auth.AccessToken.Secret", "")  // must be assigned in config file
 	v.SetDefault("Auth.MediaToken.Age", "8766h") // 1 year
 	v.SetDefault("Auth.MediaToken.Issuer", "takeout")
 	v.SetDefault("Auth.MediaToken.Secret", "") // must be assigned in config file
@@ -316,7 +318,7 @@ func configDefaults(v *viper.Viper) {
 
 	v.SetDefault("Client.CacheDir", ".httpcache")
 	v.SetDefault("Client.MaxAge", "720h") // 30 days in hours
-	v.SetDefault("Client.UseCache", "false")
+	v.SetDefault("Client.UseCache", false)
 	v.SetDefault("Client.UserAgent", userAgent())
 
 	v.SetDefault("DataDir", ".")
@@ -374,6 +376,7 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Music.SyncInterval", "1h")
 	v.SetDefault("Music.PopularSyncInterval", "24h")
 	v.SetDefault("Music.SimilarSyncInterval", "24h")
+	v.SetDefault("Music.CoverSyncInterval", "24h")
 
 	// see https://wiki.musicbrainz.org/Release_Country
 	// v.SetDefault("Music.ReleaseCountries", []string{
@@ -394,6 +397,9 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Search.BleveDir", ".")
 
 	v.SetDefault("Server.Listen", "127.0.0.1:3000")
+	v.SetDefault("Server.ImageClient.UseCache", true)
+	v.SetDefault("Server.ImageClient.CacheDir", "imagecache")
+	v.SetDefault("Server.ImageClient.UserAgent", userAgent())
 
 	v.SetDefault("Video.DB.Driver", "sqlite3")
 	v.SetDefault("Video.DB.Source", "video.db")
@@ -516,7 +522,7 @@ func configDefaults(v *viper.Viper) {
 }
 
 func userAgent() string {
-	return takeout.AppName + "/" + takeout.Version + " ( " + takeout.Contact + " ) "
+	return takeout.AppName + "/" + takeout.Version + " (" + takeout.Contact + ")"
 }
 
 func readConfig(v *viper.Viper) (*Config, error) {

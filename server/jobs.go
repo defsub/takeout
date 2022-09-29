@@ -29,13 +29,19 @@ import (
 	"time"
 )
 
-type syncFunc func(config *config.Config) error
+type syncFunc func(config *config.Config, mediaConfig *config.Config) error
 
 func schedule(config *config.Config) {
 	scheduler := gocron.NewScheduler(time.UTC)
 
-	mediaSync := func(d time.Duration, doit syncFunc) {
-		scheduler.Every(d).WaitForSchedule().Do(func() {
+	mediaSync := func(d time.Duration, doit syncFunc, startImmediately bool) {
+		sched := scheduler.Every(d)
+		if startImmediately {
+			sched = sched.StartImmediately()
+		} else {
+			sched = sched.WaitForSchedule()
+		}
+		sched.Do(func() {
 			list, err := assignedMedia(config)
 			if err != nil {
 				log.Println(err)
@@ -47,21 +53,22 @@ func schedule(config *config.Config) {
 					log.Println(err)
 					return
 				}
-				doit(mediaConfig)
+				doit(config, mediaConfig)
 			}
 		})
 	}
 
 	// music
-	mediaSync(config.Music.SyncInterval, syncMusic)
-	mediaSync(config.Music.PopularSyncInterval, syncMusicPopular)
-	mediaSync(config.Music.SimilarSyncInterval, syncMusicSimilar)
+	mediaSync(config.Music.SyncInterval, syncMusic, false)
+	mediaSync(config.Music.PopularSyncInterval, syncMusicPopular, false)
+	mediaSync(config.Music.SimilarSyncInterval, syncMusicSimilar, false)
+	mediaSync(config.Music.CoverSyncInterval, syncMusicCovers, true)
 
 	// podcasts
-	mediaSync(config.Podcast.SyncInterval, syncPodcasts)
+	mediaSync(config.Podcast.SyncInterval, syncPodcasts, false)
 
 	// video
-	mediaSync(config.Video.SyncInterval, syncVideo)
+	mediaSync(config.Video.SyncInterval, syncVideo, false)
 
 	scheduler.StartAsync()
 }
@@ -76,8 +83,8 @@ func assignedMedia(config *config.Config) ([]string, error) {
 	return a.AssignedMedia(), nil
 }
 
-func syncMusic(config *config.Config) error {
-	m := music.NewMusic(config)
+func syncMusic(config *config.Config, mediaConfig *config.Config) error {
+	m := music.NewMusic(mediaConfig)
 	err := m.Open()
 	if err != nil {
 		return err
@@ -89,8 +96,8 @@ func syncMusic(config *config.Config) error {
 	return nil
 }
 
-func syncWithOptions(config *config.Config, syncOptions music.SyncOptions) error {
-	m := music.NewMusic(config)
+func syncWithOptions(mediaConfig *config.Config, syncOptions music.SyncOptions) error {
+	m := music.NewMusic(mediaConfig)
 	err := m.Open()
 	if err != nil {
 		return err
@@ -100,16 +107,27 @@ func syncWithOptions(config *config.Config, syncOptions music.SyncOptions) error
 	return nil
 }
 
-func syncMusicPopular(config *config.Config) error {
-	return syncWithOptions(config, music.NewSyncPopular())
+func syncMusicPopular(config *config.Config, mediaConfig *config.Config) error {
+	return syncWithOptions(mediaConfig, music.NewSyncPopular())
 }
 
-func syncMusicSimilar(config *config.Config) error {
-	return syncWithOptions(config, music.NewSyncSimilar())
+func syncMusicSimilar(config *config.Config, mediaConfig *config.Config) error {
+	return syncWithOptions(mediaConfig, music.NewSyncSimilar())
 }
 
-func syncVideo(config *config.Config) error {
-	v := video.NewVideo(config)
+func syncMusicCovers(config *config.Config, mediaConfig *config.Config) error {
+	m := music.NewMusic(mediaConfig)
+	err := m.Open()
+	if err != nil {
+		return err
+	}
+	defer m.Close()
+	m.SyncCovers(config.Server.ImageClient)
+	return nil
+}
+
+func syncVideo(config *config.Config, mediaConfig *config.Config) error {
+	v := video.NewVideo(mediaConfig)
 	err := v.Open()
 	if err != nil {
 		return err
@@ -118,8 +136,8 @@ func syncVideo(config *config.Config) error {
 	return v.SyncSince(v.LastModified())
 }
 
-func syncPodcasts(config *config.Config) error {
-	p := podcast.NewPodcast(config)
+func syncPodcasts(config *config.Config, mediaConfig *config.Config) error {
+	p := podcast.NewPodcast(mediaConfig)
 	err := p.Open()
 	if err != nil {
 		return err

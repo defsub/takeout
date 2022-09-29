@@ -40,8 +40,15 @@ import (
 )
 
 const (
-	ApplicationJson = "application/json"
-	HeaderContentType = "Content-Type"
+	ApplicationJson     = "application/json"
+)
+
+var (
+	HeaderContentType   = http.CanonicalHeaderKey("Content-Type")
+	HeaderContentLength = http.CanonicalHeaderKey("Content-Length")
+	HeaderLastModified  = http.CanonicalHeaderKey("Last-Modified")
+	HeaderCacheControl  = http.CanonicalHeaderKey("Cache-Control")
+	HeaderETag          = http.CanonicalHeaderKey("ETag")
 )
 
 type credentials struct {
@@ -50,9 +57,9 @@ type credentials struct {
 }
 
 type status struct {
-	Status       int
-	Message      string `json:,omitempty`
-	Cookie       string `json:,omitempty`
+	Status  int
+	Message string `json:,omitempty`
+	Cookie  string `json:,omitempty`
 }
 
 // apiLogin handles login requests and returns a cookie.

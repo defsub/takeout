@@ -37,7 +37,7 @@ type MusicBrainz struct {
 
 func NewMusicBrainz(config *config.Config) *MusicBrainz {
 	return &MusicBrainz{
-		client: client.NewClient(config),
+		client: client.NewClient(&config.Client),
 	}
 }
 

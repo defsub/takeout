@@ -40,10 +40,10 @@ func NewPodcast(config *config.Config) *Podcast {
 	}
 }
 
-func mergeClientConfig(cfg *config.Config) *config.Config {
-	var merged config.Config
-	merged.Client = cfg.Client
-	merged.Client.Merge(cfg.Podcast.Client)
+func mergeClientConfig(cfg *config.Config) *config.ClientConfig {
+	var merged config.ClientConfig
+	merged = cfg.Client
+	merged.Merge(cfg.Podcast.Client)
 	return &merged
 }
 

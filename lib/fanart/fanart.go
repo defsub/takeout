@@ -31,7 +31,7 @@ type Fanart struct {
 func NewFanart(config *config.Config) *Fanart {
 	return &Fanart{
 		config: config,
-		client: client.NewClient(config),
+		client: client.NewClient(&config.Client),
 	}
 }
 

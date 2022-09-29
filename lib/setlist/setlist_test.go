@@ -37,7 +37,7 @@ func TestSetlist(t *testing.T) {
 		t.Errorf("GetConfig %s\n", err)
 	}
 
-	s := NewSetlist(config, client.NewClient(config))
+	s := NewSetlist(config, client.NewClient(&config.Client))
 	result := s.ArtistYear(arid, 2001)
 
 	for _, sl := range result {

@@ -33,7 +33,7 @@ type Lastfm struct {
 func NewLastfm(config *config.Config) *Lastfm {
 	return &Lastfm{
 		config: config,
-		client: client.NewClient(config),
+		client: client.NewClient(&config.Client),
 	}
 }
 

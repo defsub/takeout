@@ -19,7 +19,7 @@ func TestRSS(t *testing.T) {
 	config.Client.UserAgent = "rss/test"
 	config.Client.UseCache = false
 
-	rss := NewRSS(client.NewClient(&config))
+	rss := NewRSS(client.NewClient(&config.Client))
 	for i := 0; i < len(urls); i++ {
 		url := urls[i]
 		podcast, err := rss.FetchPodcast(url)

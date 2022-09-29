@@ -57,7 +57,7 @@ type Music struct {
 func NewMusic(config *config.Config) *Music {
 	return &Music{
 		config: config,
-		client: client.NewClient(config),
+		client: client.NewClient(&config.Client),
 		fanart: fanart.NewFanart(config),
 		lastfm: lastfm.NewLastfm(config),
 		mbz:    musicbrainz.NewMusicBrainz(config),
@@ -97,6 +97,24 @@ func Cover(r Release, size string) string {
 		return url
 	} else {
 		return "/static/album-white-36dp.svg"
+	}
+}
+
+func CoverArtArchiveImage(r Release) string {
+	var url string
+	size := "250"
+	if r.GroupArtwork {
+		url = fmt.Sprintf("http://coverartarchive.org/release-group/%s", r.RGID)
+	} else {
+		url = fmt.Sprintf("http://coverartarchive.org/release/%s", r.RGID)
+	}
+	if r.Artwork && r.FrontArtwork {
+		return fmt.Sprintf("%s/front-%s", url, size)
+	} else if r.Artwork && r.OtherArtwork != "" {
+		// use id-250, id-500, id-1200
+		return fmt.Sprintf("%s/%s-%s", url, r.OtherArtwork, size)
+	} else {
+		return ""
 	}
 }
 

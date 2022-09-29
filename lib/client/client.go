@@ -22,6 +22,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -34,28 +35,33 @@ import (
 )
 
 const (
-	HeaderUserAgent    = "User-Agent"
-	HeaderCacheControl = "Cache-Control"
+	HeaderUserAgent       = "User-Agent"
+	HeaderCacheControl    = "Cache-Control"
+	DirectiveMaxAge       = "max-age"
+	DirectiveOnlyIfCached = "only-if-cached"
 )
 
 type Client struct {
-	client    *http.Client
-	useCache  bool
-	userAgent string
-	cache     httpcache.Cache
-	maxAge    time.Duration
+	client     *http.Client
+	useCache   bool
+	userAgent  string
+	cache      httpcache.Cache
+	maxAge     time.Duration
+	onlyCached bool
 }
 
-func NewClient(config *config.Config) *Client {
+func NewClient(config *config.ClientConfig) *Client {
 	c := Client{}
-	c.userAgent = config.Client.UserAgent
-	c.useCache = config.Client.UseCache
+	c.userAgent = config.UserAgent
+	c.useCache = config.UseCache
 	if c.useCache {
-		c.maxAge = config.Client.MaxAge
-		c.cache = diskcache.New(config.Client.CacheDir)
+		c.maxAge = config.MaxAge
+		c.cache = diskcache.New(config.CacheDir)
 		transport := httpcache.NewTransport(c.cache)
 		c.client = transport.Client()
+		log.Printf("using cache dir %s\n", config.CacheDir)
 	} else {
+		log.Printf("useCache disabled\n")
 		c.client = &http.Client{}
 	}
 	return &c
@@ -76,6 +82,10 @@ func RateLimit(host string) {
 	lastRequest[host] = t
 }
 
+func (c *Client) UseOnlyIfCached(enabled bool) {
+	c.onlyCached = enabled
+}
+
 func (c *Client) doGet(headers map[string]string, urlStr string) (*http.Response, error) {
 	// log.Printf("doGet %s\n", urlStr)
 	url, _ := url.Parse(urlStr)
@@ -94,8 +104,10 @@ func (c *Client) doGet(headers map[string]string, urlStr string) (*http.Response
 	throttle := true
 	if c.useCache {
 		maxAge := int(c.maxAge.Seconds())
-		if maxAge > 0 {
-			req.Header.Set(HeaderCacheControl, fmt.Sprintf("max-age=%d", maxAge))
+		if c.onlyCached {
+			req.Header.Set(HeaderCacheControl, DirectiveOnlyIfCached)
+		} else if maxAge > 0 {
+			req.Header.Set(HeaderCacheControl, fmt.Sprintf("%s=%d", DirectiveMaxAge, maxAge))
 		}
 		// peek into the cache, if there's something there don't slow down
 		cachedResp, err := httpcache.CachedResponse(c.cache, req)
@@ -112,11 +124,13 @@ func (c *Client) doGet(headers map[string]string, urlStr string) (*http.Response
 		RateLimit(url.Hostname())
 	}
 
+	log.Printf("get %s\n", req.URL.String())
 	resp, err := c.client.Do(req)
 	if err != nil {
 		log.Printf("client.Do err %s\n", err)
 		return nil, err
 	}
+	log.Printf("got %d\n", resp.StatusCode)
 
 	if resp.StatusCode != 200 {
 		return resp, errors.New(fmt.Sprintf("http error %d: %s",
@@ -131,8 +145,8 @@ func (c *Client) doGet(headers map[string]string, urlStr string) (*http.Response
 }
 
 const (
-	maxAttempts = 3
-	backoff = time.Second * 3
+	maxAttempts = 5
+	backoff     = time.Second * 3
 )
 
 func (c *Client) doGetWithRetry(headers map[string]string, url string) (*http.Response, error) {
@@ -146,21 +160,35 @@ func (c *Client) doGetWithRetry(headers map[string]string, url string) (*http.Re
 			// or error with no response
 			break
 		}
-		if resp.StatusCode < http.StatusInternalServerError {
-			// non-server error, don't retry
+		if resp.StatusCode < http.StatusInternalServerError &&
+			resp.StatusCode != http.StatusTooManyRequests {
 			break
 		}
 		// server error, try again with backoff
-		if attempt + 1 < maxAttempts {
+		if attempt+1 < maxAttempts {
 			log.Printf("got err %d: retry backoff attempt %d of %d\n",
 				resp.StatusCode,
-				attempt + 1,
+				attempt+1,
 				maxAttempts)
 			time.Sleep(backoff)
 		}
 	}
 
 	return resp, err
+}
+
+func (c *Client) GetWith(headers map[string]string, url string) (http.Header, []byte, error) {
+	resp, err := c.doGetWithRetry(headers, url)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	return resp.Header, body, err
+}
+
+func (c *Client) Get(url string) (http.Header, []byte, error) {
+	return c.GetWith(nil, url)
 }
 
 func (c *Client) GetJson(url string, result interface{}) error {

@@ -87,14 +87,14 @@ type JWKS struct {
 // https://[base-server-url]/.well-known/openid-configuration
 func DiscoverConfiguration(config *config.Config, url string) (OpenIDConfiguration, error) {
 	var result OpenIDConfiguration
-	c := client.NewClient(config)
+	c := client.NewClient(&config.Client)
 	err := c.GetJson(url, &result)
 	return result, err
 }
 
 func GetJWKS(config *config.Config, url string) (JWKS, error) {
 	var result JWKS
-	c := client.NewClient(config)
+	c := client.NewClient(&config.Client)
 	err := c.GetJson(url, &result)
 	return result, err
 }

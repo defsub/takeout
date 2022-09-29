@@ -65,7 +65,7 @@ type TMDB struct {
 func NewTMDB(config *config.Config) *TMDB {
 	return &TMDB{
 		config: config,
-		client: client.NewClient(config),
+		client: client.NewClient(&config.Client),
 	}
 }
 
