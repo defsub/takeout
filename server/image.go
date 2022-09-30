@@ -26,7 +26,7 @@ import (
 
 const (
 	CoverArtArchivePrefix = "http://coverartarchive.org"
-	TMDBPrefix            = "http://image.tmdb.org"
+	TMDBPrefix            = "https://image.tmdb.org"
 	FanArtPrefix          = "https://assets.fanart.tv/fanart"
 )
 
