@@ -63,9 +63,7 @@ func NewClient(config *config.ClientConfig) *Client {
 		c.cache = diskcache.New(config.CacheDir)
 		transport := httpcache.NewTransport(c.cache)
 		c.client = transport.Client()
-		log.Printf("using cache dir %s\n", config.CacheDir)
 	} else {
-		log.Printf("useCache disabled\n")
 		c.client = &http.Client{}
 	}
 	return &c
@@ -128,7 +126,7 @@ func (c *Client) doGet(headers map[string]string, urlStr string) (*http.Response
 		RateLimit(url.Hostname())
 	}
 
-	log.Printf("get %s\n", req.URL.String())
+	//log.Printf("get %s\n", req.URL.String())
 	resp, err := c.client.Do(req)
 	if err != nil {
 		log.Printf("client.Do err %s\n", err)

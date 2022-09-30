@@ -25,6 +25,7 @@ import (
 	"github.com/defsub/takeout/activity"
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
+	"github.com/defsub/takeout/lib/client"
 	"github.com/defsub/takeout/lib/hub"
 	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/progress"
@@ -271,6 +272,11 @@ func sessionContext(ctx Context, session *auth.Session) RequestContext {
 	return makeAuthOnlyContext(ctx, session)
 }
 
+// imageContext creates a minimal context with the provided client.
+func imageContext(ctx Context, client *client.Client) RequestContext {
+	return makeImageContext(ctx, client)
+}
+
 // refreshTokenAuthHandler handles requests intended to refresh and access token.
 func refreshTokenAuthHandler(ctx RequestContext, handler http.HandlerFunc) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
@@ -308,6 +314,15 @@ func mediaTokenAuthHandler(ctx RequestContext, handler http.HandlerFunc) http.Ha
 // accessTokenAuthHandler handles non-media requests using the access token (or cookie).
 func accessTokenAuthHandler(ctx RequestContext, handler http.HandlerFunc) http.Handler {
 	return authHandler(ctx, handler, AllowAccessToken|AllowCookie)
+}
+
+// imageHandler handles unauthenticated image requests.
+func imageHandler(ctx RequestContext, handler http.HandlerFunc, client *client.Client) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		ctx := imageContext(ctx, client)
+		handler.ServeHTTP(w, withContext(r, ctx))
+	}
+	return http.HandlerFunc(fn)
 }
 
 // requestHandler handles unauthenticated requests.
@@ -472,13 +487,15 @@ func Serve(config *config.Config) error {
 	mux.Post("/hook/", requestHandler(ctx, hookHandler))
 
 	// Images
-	mux.Get("/img/mb/rg/:rgid", requestHandler(ctx, imgReleaseGroupFront))
-	mux.Get("/img/mb/rg/:rgid/:side", requestHandler(ctx, imgReleaseGroup))
-	mux.Get("/img/mb/re/:reid", requestHandler(ctx, imgReleaseFront))
-	mux.Get("/img/mb/re/:reid/:side", requestHandler(ctx, imgRelease))
-	mux.Get("/img/tm/:size/:path", requestHandler(ctx, imgVideo))
-	mux.Get("/img/fa/:arid/t/:path", requestHandler(ctx, imgArtistThumb))
-	mux.Get("/img/fa/:arid/b/:path", requestHandler(ctx, imgArtistBackground))
+	client := client.NewClient(&config.Server.ImageClient)
+	client.UseOnlyIfCached(true)
+	mux.Get("/img/mb/rg/:rgid", imageHandler(ctx, imgReleaseGroupFront, client))
+	mux.Get("/img/mb/rg/:rgid/:side", imageHandler(ctx, imgReleaseGroup, client))
+	mux.Get("/img/mb/re/:reid", imageHandler(ctx, imgReleaseFront, client))
+	mux.Get("/img/mb/re/:reid/:side", imageHandler(ctx, imgRelease, client))
+	mux.Get("/img/tm/:size/:path", imageHandler(ctx, imgVideo, client))
+	mux.Get("/img/fa/:arid/t/:path", imageHandler(ctx, imgArtistThumb, client))
+	mux.Get("/img/fa/:arid/b/:path", imageHandler(ctx, imgArtistBackground, client))
 
 	// // swaggerHandler := func(w http.ResponseWriter, r *http.Request) {
 	// // 	http.Redirect(w, r, "/static/swagger.json", 302)

@@ -26,6 +26,7 @@ import (
 	"github.com/defsub/takeout/activity"
 	"github.com/defsub/takeout/auth"
 	"github.com/defsub/takeout/config"
+	"github.com/defsub/takeout/lib/client"
 	"github.com/defsub/takeout/music"
 	"github.com/defsub/takeout/podcast"
 	"github.com/defsub/takeout/progress"
@@ -57,6 +58,7 @@ type Context interface {
 	User() *auth.User
 	Session() *auth.Session
 	Video() *video.Video
+	ImageClient() *client.Client
 
 	LocateTrack(music.Track) string
 	LocateMovie(video.Movie) string
@@ -77,14 +79,15 @@ type Context interface {
 }
 
 type RequestContext struct {
-	activity *activity.Activity
-	auth     *auth.Auth
-	config   *config.Config
-	user     *auth.User
-	media    *Media
-	progress *progress.Progress
-	session  *auth.Session
-	template *template.Template
+	activity    *activity.Activity
+	auth        *auth.Auth
+	config      *config.Config
+	user        *auth.User
+	media       *Media
+	progress    *progress.Progress
+	session     *auth.Session
+	template    *template.Template
+	imageClient *client.Client
 }
 
 func makeContext(ctx Context, u *auth.User, c *config.Config, m *Media) RequestContext {
@@ -102,6 +105,12 @@ func makeAuthOnlyContext(ctx Context, session *auth.Session) RequestContext {
 	return RequestContext{
 		auth:    ctx.Auth(),
 		session: session,
+	}
+}
+
+func makeImageContext(ctx Context, client *client.Client) RequestContext {
+	return RequestContext{
+		imageClient: client,
 	}
 }
 
@@ -199,6 +208,10 @@ func (ctx RequestContext) MovieImage(m video.Movie) string {
 
 func (ctx RequestContext) EpisodeImage(e podcast.Episode) string {
 	return ctx.Podcast().EpisodeImage(e)
+}
+
+func (ctx RequestContext) ImageClient() *client.Client {
+	return ctx.imageClient
 }
 
 func locateTrack(t music.Track) string {

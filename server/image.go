@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/defsub/takeout/lib/client"
 	"github.com/defsub/takeout/lib/log"
 )
 
@@ -33,9 +32,7 @@ const (
 
 func checkImageCache(w http.ResponseWriter, r *http.Request, url string) {
 	ctx := contextValue(r)
-	// TODO store in context!
-	client := client.NewClient(&ctx.Config().Server.ImageClient)
-	client.UseOnlyIfCached(true)
+	client := ctx.ImageClient()
 	header, img, err := client.Get(url)
 	if err == nil && len(img) > 0 {
 		log.Printf("img using cached image %d for %s\n", len(img), url)
@@ -49,7 +46,6 @@ func checkImageCache(w http.ResponseWriter, r *http.Request, url string) {
 		w.WriteHeader(http.StatusOK)
 		w.Write(img)
 	} else {
-		log.Printf("img no cache for %s\n", url)
 		http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 	}
 }
