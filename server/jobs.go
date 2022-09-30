@@ -169,3 +169,33 @@ func syncPodcasts(config *config.Config, mediaConfig *config.Config) error {
 	defer p.Close()
 	return p.Sync()
 }
+
+func Job(config *config.Config, name string) error {
+	list, err := assignedMedia(config)
+	if err != nil {
+		return err
+	}
+	for _, mediaName := range list {
+		mediaConfig, err := mediaConfig(config, mediaName)
+		if err != nil {
+			return err
+		}
+		switch name {
+		case "SyncMusic":
+			syncMusic(config, mediaConfig)
+		case "SyncMusicPopular":
+			syncMusicPopular(config, mediaConfig)
+		case "SyncMusicSimilar":
+			syncMusicSimilar(config, mediaConfig)
+		case "SyncMusicCovers":
+			syncMusicCovers(config, mediaConfig)
+		case "SyncPodcasts":
+			syncPodcasts(config, mediaConfig)
+		case "SyncVideo":
+			syncVideo(config, mediaConfig)
+		case "SyncVideoPosters":
+			syncVideoPosters(config, mediaConfig)
+		}
+	}
+	return nil
+}
