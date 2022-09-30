@@ -62,7 +62,7 @@ func schedule(config *config.Config) {
 	mediaSync(config.Music.SyncInterval, syncMusic, false)
 	mediaSync(config.Music.PopularSyncInterval, syncMusicPopular, false)
 	mediaSync(config.Music.SimilarSyncInterval, syncMusicSimilar, false)
-	mediaSync(config.Music.CoverSyncInterval, syncMusicCovers, true)
+	mediaSync(config.Music.CoverSyncInterval, syncMusicCovers, false)
 	//mediaSync(config.Music.CoverSyncInterval, syncMusicFanArt, true)
 
 	// podcasts

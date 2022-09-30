@@ -288,7 +288,6 @@ func refreshTokenAuthHandler(ctx RequestContext, handler http.HandlerFunc) http.
 func authHandler(ctx RequestContext, handler http.HandlerFunc, auth bits) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		user := authorizeRequest(ctx, w, r, auth)
-		log.Printf("got %+v\n", user)
 		if user != nil {
 			ctx, err := upgradeContext(ctx, user)
 			if err != nil {
