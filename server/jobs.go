@@ -63,6 +63,7 @@ func schedule(config *config.Config) {
 	mediaSync(config.Music.PopularSyncInterval, syncMusicPopular, false)
 	mediaSync(config.Music.SimilarSyncInterval, syncMusicSimilar, false)
 	mediaSync(config.Music.CoverSyncInterval, syncMusicCovers, true)
+	//mediaSync(config.Music.CoverSyncInterval, syncMusicFanArt, true)
 
 	// podcasts
 	mediaSync(config.Podcast.SyncInterval, syncPodcasts, false)
@@ -123,6 +124,17 @@ func syncMusicCovers(config *config.Config, mediaConfig *config.Config) error {
 	}
 	defer m.Close()
 	m.SyncCovers(config.Server.ImageClient)
+	return nil
+}
+
+func syncMusicFanArt(config *config.Config, mediaConfig *config.Config) error {
+	m := music.NewMusic(mediaConfig)
+	err := m.Open()
+	if err != nil {
+		return err
+	}
+	defer m.Close()
+	m.SyncFanArt(config.Server.ImageClient)
 	return nil
 }
 

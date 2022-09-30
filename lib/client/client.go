@@ -35,10 +35,14 @@ import (
 )
 
 const (
-	HeaderUserAgent       = "User-Agent"
-	HeaderCacheControl    = "Cache-Control"
 	DirectiveMaxAge       = "max-age"
 	DirectiveOnlyIfCached = "only-if-cached"
+)
+
+var (
+	HeaderUserAgent    = http.CanonicalHeaderKey("User-Agent")
+	HeaderCacheControl = http.CanonicalHeaderKey("Cache-Control")
+	ErrCacheMiss       = errors.New("cache miss")
 )
 
 type Client struct {
@@ -130,16 +134,16 @@ func (c *Client) doGet(headers map[string]string, urlStr string) (*http.Response
 		log.Printf("client.Do err %s\n", err)
 		return nil, err
 	}
-	log.Printf("got %d\n", resp.StatusCode)
+
+	if c.onlyCached && resp.StatusCode == 504 {
+		// the cache returns 504 for cache only miss
+		return nil, ErrCacheMiss
+	}
 
 	if resp.StatusCode != 200 {
 		return resp, errors.New(fmt.Sprintf("http error %d: %s",
 			resp.StatusCode, url.String()))
 	}
-
-	// if resp.Header.Get(httpcache.XFromCache) != "" {
-	// 	fmt.Printf("cached!\n")
-	// }
 
 	return resp, err
 }

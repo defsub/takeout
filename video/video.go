@@ -132,11 +132,14 @@ func (v *Video) MovieURL(m Movie) *url.URL {
 func (v *Video) MoviePoster(m Movie) string {
 	url := fmt.Sprintf("/img/tm/%s/%s", tmdb.Poster342, m.PosterPath)
 	return url
-	// url := v.tmdb.Poster(m.PosterPath, tmdb.Poster342)
-	// if url == nil {
-	// 	return ""
-	// }
-	// return url.String()
+}
+
+func (v *Video) TMDBMoviePoster(m Movie) string {
+	url := v.tmdb.Poster(m.PosterPath, tmdb.Poster342)
+	if url == nil {
+		return ""
+	}
+	return url.String()
 }
 
 func (v *Video) MoviePosterSmall(m Movie) string {
@@ -159,6 +162,14 @@ func (v *Video) MovieBackdrop(m Movie) string {
 	// return url.String()
 }
 
+func (v *Video) TMDBMovieBackdrop(m Movie) string {
+	url := v.tmdb.Backdrop(m.BackdropPath, tmdb.Backdrop1280)
+	if url == nil {
+		return ""
+	}
+	return url.String()
+}
+
 func (v *Video) PersonProfile(p Person) string {
 	url := fmt.Sprintf("/img/tm/%s/%s", tmdb.Profile185, p.ProfilePath)
 	return url
@@ -167,6 +178,14 @@ func (v *Video) PersonProfile(p Person) string {
 	// 	return ""
 	// }
 	// return url.String()
+}
+
+func (v *Video) TMDBPersonProfile(p Person) string {
+	url := v.tmdb.PersonProfile(p.ProfilePath, tmdb.Profile185)
+	if url == nil {
+		return ""
+	}
+	return url.String()
 }
 
 func (v *Video) HasMovies() bool {

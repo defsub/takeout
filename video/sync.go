@@ -24,8 +24,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/lib/bucket"
+	"github.com/defsub/takeout/lib/client"
 	"github.com/defsub/takeout/lib/date"
+	"github.com/defsub/takeout/lib/log"
 	"github.com/defsub/takeout/lib/search"
 	"github.com/defsub/takeout/lib/str"
 	"github.com/defsub/takeout/lib/tmdb"
@@ -460,4 +463,31 @@ func (v *Video) processCredits(tmid int64, client *tmdb.TMDB, credits *tmdb.Cred
 		search.AddField(fields, c.Job, p.Name)
 	}
 	return nil
+}
+
+func (v *Video) SyncImages(cfg config.ClientConfig) {
+	client := client.NewClient(&cfg)
+	for _, m := range v.Movies() {
+		img := v.TMDBMoviePoster(m)
+		log.Printf("sync %s poster %s\n", m.Title, img)
+		client.Get(img)
+
+		img = v.TMDBMovieBackdrop(m)
+		log.Printf("sync %s backdrop %s\n", m.Title, img)
+		client.Get(img)
+
+		cast := v.Cast(m)
+		for _, p := range cast {
+			img = v.TMDBPersonProfile(p.Person)
+			log.Printf("sync %s cast profile %s\n", p.Person.Name, img)
+			client.Get(img)
+		}
+
+		crew := v.Crew(m)
+		for _, p := range crew {
+			img = v.TMDBPersonProfile(p.Person)
+			log.Printf("sync %s crew profile %s\n", p.Person.Name, img)
+			client.Get(img)
+		}
+	}
 }

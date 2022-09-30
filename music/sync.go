@@ -1137,7 +1137,6 @@ func (m *Music) SyncCovers(cfg config.ClientConfig) error {
 }
 
 func (m *Music) syncCoversFor(cfg config.ClientConfig, artists []Artist) error {
-	log.Printf("xxx %+v\n", cfg)
 	client := client.NewClient(&cfg)
 	for _, a := range artists {
 		releases := m.ArtistReleases(&a)
@@ -1147,6 +1146,27 @@ func (m *Music) syncCoversFor(cfg config.ClientConfig, artists []Artist) error {
 			if img == "" {
 				continue
 			}
+			client.Get(img)
+		}
+	}
+	return nil
+}
+
+func (m *Music) SyncFanArt(cfg config.ClientConfig) error {
+	return m.syncFanArtFor(cfg, m.Artists())
+}
+
+func (m *Music) syncFanArtFor(cfg config.ClientConfig, artists []Artist) error {
+	client := client.NewClient(&cfg)
+	for _, a := range artists {
+		thumbs := m.artistImages(&a)
+		for _, img := range thumbs {
+			log.Printf("sync %s thumb %s\n", a.Name, img)
+			client.Get(img)
+		}
+		bgs := m.artistBackgrounds(&a)
+		for _, img := range bgs {
+			log.Printf("sync %s bg %s\n", a.Name, img)
 			client.Get(img)
 		}
 	}
