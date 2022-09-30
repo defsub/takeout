@@ -70,6 +70,7 @@ func schedule(config *config.Config) {
 
 	// video
 	mediaSync(config.Video.SyncInterval, syncVideo, false)
+	mediaSync(config.Video.PosterSyncInterval, syncVideoPosters, false)
 
 	scheduler.StartAsync()
 }
@@ -124,6 +125,17 @@ func syncMusicCovers(config *config.Config, mediaConfig *config.Config) error {
 	}
 	defer m.Close()
 	m.SyncCovers(config.Server.ImageClient)
+	return nil
+}
+
+func syncVideoPosters(config *config.Config, mediaConfig *config.Config) error {
+	v := video.NewVideo(mediaConfig)
+	err := v.Open()
+	if err != nil {
+		return err
+	}
+	defer v.Close()
+	v.SyncImages(config.Server.ImageClient)
 	return nil
 }
 

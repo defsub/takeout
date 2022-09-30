@@ -153,15 +153,16 @@ type MusicConfig struct {
 }
 
 type VideoConfig struct {
-	DB               DatabaseConfig
-	ReleaseCountries []string
-	CastLimit        int
-	CrewJobs         []string
-	Recent           time.Duration
-	RecentLimit      int
-	SearchLimit      int
-	Recommend        RecommendConfig
-	SyncInterval     time.Duration
+	DB                 DatabaseConfig
+	ReleaseCountries   []string
+	CastLimit          int
+	CrewJobs           []string
+	Recent             time.Duration
+	RecentLimit        int
+	SearchLimit        int
+	Recommend          RecommendConfig
+	SyncInterval       time.Duration
+	PosterSyncInterval time.Duration
 }
 
 type PodcastConfig struct {
@@ -420,6 +421,7 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Video.RecentLimit", "50")
 	v.SetDefault("Video.SearchLimit", "100")
 	v.SetDefault("Video.SyncInterval", "1h")
+	v.SetDefault("Video.PosterSyncInterval", "24h")
 	v.SetDefault("Video.Recommend.When", []DateRecommend{
 		// day of week + day of month
 		{Match: "Fri 13", Layout: "Mon 02", Name: "Friday 13th Movies", Query: `+character:voorhees`},
