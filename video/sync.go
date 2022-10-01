@@ -468,34 +468,35 @@ func (v *Video) processCredits(tmid int64, client *tmdb.TMDB, credits *tmdb.Cred
 func (v *Video) SyncImages(cfg config.ClientConfig) {
 	client := client.NewClient(&cfg)
 	for _, m := range v.Movies() {
-		// sync posters
+		// sync poster
 		img := v.TMDBMoviePoster(m)
 		log.Printf("sync %s poster %s\n", m.Title, img)
 		client.Get(img)
 
+		// sync small poster
 		img = v.TMDBMoviePosterSmall(m)
 		log.Printf("sync %s small poster %s\n", m.Title, img)
 		client.Get(img)
 
-		// // sync backdrops
-		// img = v.TMDBMovieBackdrop(m)
-		// log.Printf("sync %s backdrop %s\n", m.Title, img)
-		// client.Get(img)
+		// sync backdrop
+		img = v.TMDBMovieBackdrop(m)
+		log.Printf("sync %s backdrop %s\n", m.Title, img)
+		client.Get(img)
 
-		// // cast images
-		// cast := v.Cast(m)
-		// for _, p := range cast {
-		// 	img = v.TMDBPersonProfile(p.Person)
-		// 	log.Printf("sync %s cast profile %s\n", p.Person.Name, img)
-		// 	client.Get(img)
-		// }
+		// cast images
+		cast := v.Cast(m)
+		for _, p := range cast {
+			img = v.TMDBPersonProfile(p.Person)
+			log.Printf("sync %s cast profile %s\n", p.Person.Name, img)
+			client.Get(img)
+		}
 
-		// // crew images
-		// crew := v.Crew(m)
-		// for _, p := range crew {
-		// 	img = v.TMDBPersonProfile(p.Person)
-		// 	log.Printf("sync %s crew profile %s\n", p.Person.Name, img)
-		// 	client.Get(img)
-		// }
+		// crew images
+		crew := v.Crew(m)
+		for _, p := range crew {
+			img = v.TMDBPersonProfile(p.Person)
+			log.Printf("sync %s crew profile %s\n", p.Person.Name, img)
+			client.Get(img)
+		}
 	}
 }
