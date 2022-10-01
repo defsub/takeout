@@ -473,6 +473,10 @@ func (v *Video) SyncImages(cfg config.ClientConfig) {
 		log.Printf("sync %s poster %s\n", m.Title, img)
 		client.Get(img)
 
+		img = v.TMDBMoviePosterSmall(m)
+		log.Printf("sync %s small poster %s\n", m.Title, img)
+		client.Get(img)
+
 		// // sync backdrops
 		// img = v.TMDBMovieBackdrop(m)
 		// log.Printf("sync %s backdrop %s\n", m.Title, img)

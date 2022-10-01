@@ -130,7 +130,7 @@ func (v *Video) MovieURL(m Movie) *url.URL {
 }
 
 func (v *Video) MoviePoster(m Movie) string {
-	url := fmt.Sprintf("/img/tm/%s/%s", tmdb.Poster342, m.PosterPath)
+	url := fmt.Sprintf("/img/tm/%s%s", tmdb.Poster342, m.PosterPath)
 	return url
 }
 
@@ -143,23 +143,21 @@ func (v *Video) TMDBMoviePoster(m Movie) string {
 }
 
 func (v *Video) MoviePosterSmall(m Movie) string {
-	url := fmt.Sprintf("/img/tm/%s/%s", tmdb.Poster154, m.PosterPath)
+	url := fmt.Sprintf("/img/tm/%s%s", tmdb.Poster154, m.PosterPath)
 	return url
-	// url := v.tmdb.Poster(m.PosterPath, tmdb.Poster154)
-	// if url == nil {
-	// 	return ""
-	// }
-	// return url.String()
+}
+
+func (v *Video) TMDBMoviePosterSmall(m Movie) string {
+	url := v.tmdb.Poster(m.PosterPath, tmdb.Poster154)
+	if url == nil {
+		return ""
+	}
+	return url.String()
 }
 
 func (v *Video) MovieBackdrop(m Movie) string {
-	url := fmt.Sprintf("/img/tm/%s/%s", tmdb.Backdrop1280, m.BackdropPath)
+	url := fmt.Sprintf("/img/tm/%s%s", tmdb.Backdrop1280, m.BackdropPath)
 	return url
-	// url := v.tmdb.Backdrop(m.BackdropPath, tmdb.Backdrop1280)
-	// if url == nil {
-	// 	return ""
-	// }
-	// return url.String()
 }
 
 func (v *Video) TMDBMovieBackdrop(m Movie) string {
@@ -171,13 +169,8 @@ func (v *Video) TMDBMovieBackdrop(m Movie) string {
 }
 
 func (v *Video) PersonProfile(p Person) string {
-	url := fmt.Sprintf("/img/tm/%s/%s", tmdb.Profile185, p.ProfilePath)
+	url := fmt.Sprintf("/img/tm/%s%s", tmdb.Profile185, p.ProfilePath)
 	return url
-	// url := v.tmdb.PersonProfile(p.ProfilePath, tmdb.Profile185)
-	// if url == nil {
-	// 	return ""
-	// }
-	// return url.String()
 }
 
 func (v *Video) TMDBPersonProfile(p Person) string {

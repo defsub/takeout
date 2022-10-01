@@ -20,8 +20,6 @@ package server
 import (
 	"fmt"
 	"net/http"
-
-	"github.com/defsub/takeout/lib/log"
 )
 
 const (
@@ -35,7 +33,6 @@ func checkImageCache(w http.ResponseWriter, r *http.Request, url string) {
 	client := ctx.ImageClient()
 	header, img, err := client.Get(url)
 	if err == nil && len(img) > 0 {
-		log.Printf("img using cached image %d for %s\n", len(img), url)
 		for k, v := range header {
 			switch k {
 			case HeaderContentType, HeaderContentLength, HeaderETag,
