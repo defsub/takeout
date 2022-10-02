@@ -1142,11 +1142,10 @@ func (m *Music) syncCoversFor(cfg config.ClientConfig, artists []Artist) error {
 		releases := m.ArtistReleases(&a)
 		for _, r := range releases {
 			img := CoverArtArchiveImage(r)
-			log.Printf("sync %s/%s %s\n", a.Name, r.Name, img)
-			if img == "" {
-				continue
+			if img != "" {
+				log.Printf("sync %s/%s %s\n", a.Name, r.Name, img)
+				client.Get(img)
 			}
-			client.Get(img)
 		}
 	}
 	return nil

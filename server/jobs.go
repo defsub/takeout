@@ -63,7 +63,6 @@ func schedule(config *config.Config) {
 	mediaSync(config.Music.PopularSyncInterval, syncMusicPopular, false)
 	mediaSync(config.Music.SimilarSyncInterval, syncMusicSimilar, false)
 	mediaSync(config.Music.CoverSyncInterval, syncMusicCovers, false)
-	//mediaSync(config.Music.CoverSyncInterval, syncMusicFanArt, true)
 
 	// podcasts
 	mediaSync(config.Podcast.SyncInterval, syncPodcasts, false)
@@ -71,6 +70,7 @@ func schedule(config *config.Config) {
 	// video
 	mediaSync(config.Video.SyncInterval, syncVideo, false)
 	mediaSync(config.Video.PosterSyncInterval, syncVideoPosters, false)
+	mediaSync(config.Video.BackdropSyncInterval, syncVideoBackdrops, false)
 
 	scheduler.StartAsync()
 }
@@ -128,17 +128,6 @@ func syncMusicCovers(config *config.Config, mediaConfig *config.Config) error {
 	return nil
 }
 
-func syncVideoPosters(config *config.Config, mediaConfig *config.Config) error {
-	v := video.NewVideo(mediaConfig)
-	err := v.Open()
-	if err != nil {
-		return err
-	}
-	defer v.Close()
-	v.SyncImages(config.Server.ImageClient)
-	return nil
-}
-
 func syncMusicFanArt(config *config.Config, mediaConfig *config.Config) error {
 	m := music.NewMusic(mediaConfig)
 	err := m.Open()
@@ -158,6 +147,39 @@ func syncVideo(config *config.Config, mediaConfig *config.Config) error {
 	}
 	defer v.Close()
 	return v.SyncSince(v.LastModified())
+}
+
+func syncVideoPosters(config *config.Config, mediaConfig *config.Config) error {
+	v := video.NewVideo(mediaConfig)
+	err := v.Open()
+	if err != nil {
+		return err
+	}
+	defer v.Close()
+	v.SyncPosters(config.Server.ImageClient)
+	return nil
+}
+
+func syncVideoBackdrops(config *config.Config, mediaConfig *config.Config) error {
+	v := video.NewVideo(mediaConfig)
+	err := v.Open()
+	if err != nil {
+		return err
+	}
+	defer v.Close()
+	v.SyncBackdrops(config.Server.ImageClient)
+	return nil
+}
+
+func syncVideoProfileImages(config *config.Config, mediaConfig *config.Config) error {
+	v := video.NewVideo(mediaConfig)
+	err := v.Open()
+	if err != nil {
+		return err
+	}
+	defer v.Close()
+	v.SyncProfileImages(config.Server.ImageClient)
+	return nil
 }
 
 func syncPodcasts(config *config.Config, mediaConfig *config.Config) error {
@@ -181,20 +203,33 @@ func Job(config *config.Config, name string) error {
 			return err
 		}
 		switch name {
-		case "SyncMusic":
-			syncMusic(config, mediaConfig)
-		case "SyncMusicPopular":
-			syncMusicPopular(config, mediaConfig)
-		case "SyncMusicSimilar":
-			syncMusicSimilar(config, mediaConfig)
-		case "SyncMusicCovers":
+		case "backdrops":
+			syncVideoBackdrops(config, mediaConfig)
+		case "covers":
 			syncMusicCovers(config, mediaConfig)
-		case "SyncPodcasts":
-			syncPodcasts(config, mediaConfig)
-		case "SyncVideo":
+		case "fanart":
+			syncMusicFanArt(config, mediaConfig)
+		case "lastfm":
+			syncMusicPopular(config, mediaConfig)
+			syncMusicSimilar(config, mediaConfig)
+		case "media":
+			syncMusic(config, mediaConfig)
 			syncVideo(config, mediaConfig)
-		case "SyncVideoPosters":
+			syncPodcasts(config, mediaConfig)
+		case "music":
+			syncMusic(config, mediaConfig)
+		case "popular":
+			syncMusicPopular(config, mediaConfig)
+		case "podcasts":
+			syncPodcasts(config, mediaConfig)
+		case "posters":
 			syncVideoPosters(config, mediaConfig)
+		case "profiles":
+			syncVideoProfileImages(config, mediaConfig)
+		case "similar":
+			syncMusicSimilar(config, mediaConfig)
+		case "video":
+			syncVideo(config, mediaConfig)
 		}
 	}
 	return nil
