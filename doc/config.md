@@ -11,27 +11,33 @@ stated otherwise.
 Most of these are defaults and are here as an example only.
 
 ```
-server:
-  listen: :3000
+Server:
+  Listen: :3000
+  DataDir: .
 
-auth:
-  sessionAge: 720h
-  tokenAge: 8h
-  tokenIssuer: takeout
-  tokenSecret: "some secret phrase"
-  secureCookies: true
+Auth:
+  SecureCookies: true
+  SessionAge: 720h
+  AccessToken:
+    Issuer: takeout
+    Secret: "some secret phrase"
+	Age: 4h
+  MediaToken:
+    Issuer: takeout
+    Secret: "some secret phrase"
+	Age: 8766h
   DB:
     Driver: sqlite3
     Source: auth.db
     Logger: default
 
-progress:
+Progress:
   DB:
     Driver: sqlite3
     Source: progress.db
     Logger: default
 
-activity:
+Activity:
   DB:
     Driver: sqlite3
     Source: activity.db
@@ -123,7 +129,7 @@ $ takeout radio
 A few examples are included in the builtin configuration. Add your own as follows:
 
 ```
-music:
+Music:
   RadioStreams:
     - Creator:  "SomaFM"
       Title:    "Groove Salad"
@@ -151,7 +157,7 @@ configuration. Add your own as shown below. Note that the Layout field
 corresponds to Go's clever yet funky [date parsing layouts](https://pkg.go.dev/time#pkg-constants).
 
 ```
-video:
+Video:
   Recommend:
     When:
       - Name:   "Friday the 13th Movies"
@@ -177,7 +183,7 @@ video:
 Below is an example showning how to add your own Podcast series.
 
 ```
-podcast:
+Podcast:
   Series:
     - "https://feeds.twit.tv/twit.xml"
     - "https://www.pbs.org/newshour/feeds/rss/podcasts/show"

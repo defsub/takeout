@@ -61,7 +61,7 @@ func mediaConfigFor(root *config.Config, user *auth.User) (string, *config.Confi
 }
 
 func mediaConfig(root *config.Config, mediaName string) (*config.Config, error) {
-	path := fmt.Sprintf("%s/%s", root.DataDir, mediaName)
+	path := fmt.Sprintf("%s/%s", root.Server.MediaDir, mediaName)
 	// load relative media configuration
 	userConfig, err := config.LoadConfig(path)
 	if err != nil {

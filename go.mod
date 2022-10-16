@@ -12,6 +12,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/go-co-op/gocron v1.11.0
 	github.com/gobwas/ws v1.1.0
+	github.com/gokyle/filecache v0.0.0-20220803205700-e8a4791094b7 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.3 // indirect

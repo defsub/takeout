@@ -221,9 +221,10 @@ type SetlistAPIConfig struct {
 }
 
 type TokenConfig struct {
-	Issuer string
-	Age    time.Duration
-	Secret string
+	Issuer     string
+	Age        time.Duration
+	Secret     string
+	SecretFile string
 }
 
 type AuthConfig struct {
@@ -241,6 +242,8 @@ type SearchConfig struct {
 
 type ServerConfig struct {
 	Listen      string
+	DataDir     string
+	MediaDir    string
 	ImageClient ClientConfig
 }
 
@@ -266,7 +269,6 @@ type Config struct {
 	Auth      AuthConfig
 	Buckets   []BucketConfig
 	Client    ClientConfig
-	DataDir   string
 	Fanart    FanartAPIConfig
 	LastFM    LastFMAPIConfig
 	Music     MusicConfig
@@ -301,18 +303,42 @@ func (mc *MusicConfig) readMaps() {
 }
 
 func configDefaults(v *viper.Viper) {
+	v.SetDefault("Server.Listen", "127.0.0.1:3000")
+	v.SetDefault("Server.DataDir", ".")
+	v.SetDefault("Server.MediaDir", ".")
+	v.SetDefault("Server.ImageClient.UseCache", true)
+	v.SetDefault("Server.ImageClient.CacheDir", "imagecache")
+	v.SetDefault("Server.ImageClient.UserAgent", userAgent())
+
 	v.SetDefault("Auth.DB.Driver", "sqlite3")
 	v.SetDefault("Auth.DB.Logger", "default")
-	v.SetDefault("Auth.DB.Source", "auth.db")
+	v.SetDefault("Auth.DB.Source", "${Server.DataDir}/auth.db")
 	v.SetDefault("Auth.SessionAge", "720h") // 30 days
 	v.SetDefault("Auth.CodeAge", "1h")
 	v.SetDefault("Auth.SecureCookies", "true")
-	v.SetDefault("Auth.AccessToken.Age", "8h")
+	v.SetDefault("Auth.AccessToken.Age", "4h")
 	v.SetDefault("Auth.AccessToken.Issuer", "takeout")
-	v.SetDefault("Auth.AccessToken.Secret", "")  // must be assigned in config file
-	v.SetDefault("Auth.MediaToken.Age", "8766h") // 1 year
+	v.SetDefault("Auth.AccessToken.Secret", "")     // must be assigned in config file
+	v.SetDefault("Auth.AccessToken.SecretFile", "") // must be assigned in config file
+	v.SetDefault("Auth.MediaToken.Age", "8766h")    // 1 year
 	v.SetDefault("Auth.MediaToken.Issuer", "takeout")
-	v.SetDefault("Auth.MediaToken.Secret", "") // must be assigned in config file
+	v.SetDefault("Auth.MediaToken.Secret", "")     // must be assigned in config file
+	v.SetDefault("Auth.MediaToken.SecretFile", "") // must be assigned in config file
+
+	v.SetDefault("Progress.DB.Driver", "sqlite3")
+	v.SetDefault("Progress.DB.Source", "${Server.DataDir}/progress.db")
+	v.SetDefault("Progress.DB.Logger", "default")
+
+	v.SetDefault("Activity.DB.Driver", "sqlite3")
+	v.SetDefault("Activity.DB.Source", "${Server.DataDir}/activity.db")
+	v.SetDefault("Activity.DB.Logger", "default")
+	v.SetDefault("Activity.ActivityLimit", "50")
+	v.SetDefault("Activity.RecentLimit", "50")
+	v.SetDefault("Activity.PopularLimit", "50")
+	v.SetDefault("Activity.RecentMoviesTitle", "Recently Watched")
+	v.SetDefault("Activity.RecentTracksTitle", "Recently Played")
+	v.SetDefault("Activity.PopularMoviesTitle", "Popular Tracks")
+	v.SetDefault("Activity.PopularTracksTitle", "Popular Tracks")
 
 	// TODO apply as default
 	// v.SetDefault("Bucket.URLExpiration", "15m")
@@ -322,8 +348,6 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Client.MaxAge", "720h") // 30 days in hours
 	v.SetDefault("Client.UseCache", false)
 	v.SetDefault("Client.UserAgent", userAgent())
-
-	v.SetDefault("DataDir", ".")
 
 	v.SetDefault("Fanart.ProjectKey", "93ede276ba6208318031727060b697c8")
 
@@ -397,11 +421,6 @@ func configDefaults(v *viper.Viper) {
 		"{{.Title}} ({{.Year}}){{if .Definition}} - {{.Definition}}{{end}}{{.Extension}}")
 
 	v.SetDefault("Search.BleveDir", ".")
-
-	v.SetDefault("Server.Listen", "127.0.0.1:3000")
-	v.SetDefault("Server.ImageClient.UseCache", true)
-	v.SetDefault("Server.ImageClient.CacheDir", "imagecache")
-	v.SetDefault("Server.ImageClient.UserAgent", userAgent())
 
 	v.SetDefault("Video.DB.Driver", "sqlite3")
 	v.SetDefault("Video.DB.Source", "video.db")
@@ -508,21 +527,6 @@ func configDefaults(v *viper.Viper) {
 		"https://feeds.npr.org/510019/podcast.xml", // all songs considered
 		"https://rss.art19.com/rotten-tomatoes-is-wrong",
 	})
-
-	v.SetDefault("Progress.DB.Driver", "sqlite3")
-	v.SetDefault("Progress.DB.Source", "progress.db")
-	v.SetDefault("Progress.DB.Logger", "default")
-
-	v.SetDefault("Activity.DB.Driver", "sqlite3")
-	v.SetDefault("Activity.DB.Source", "activity.db")
-	v.SetDefault("Activity.DB.Logger", "default")
-	v.SetDefault("Activity.ActivityLimit", "50")
-	v.SetDefault("Activity.RecentLimit", "50")
-	v.SetDefault("Activity.PopularLimit", "50")
-	v.SetDefault("Activity.RecentMoviesTitle", "Recently Watched")
-	v.SetDefault("Activity.RecentTracksTitle", "Recently Played")
-	v.SetDefault("Activity.PopularMoviesTitle", "Popular Tracks")
-	v.SetDefault("Activity.PopularTracksTitle", "Popular Tracks")
 }
 
 func userAgent() string {
@@ -534,19 +538,37 @@ func readConfig(v *viper.Viper) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	return postProcessConfig(v)
+	rootDir := filepath.Dir(v.ConfigFileUsed())
+	return postProcessConfig(v, rootDir)
 }
 
-func postProcessConfig(v *viper.Viper) (*Config, error) {
+func postProcessConfig(v *viper.Viper, rootDir string) (*Config, error) {
 	var config Config
 	var pathRegexp = regexp.MustCompile(`(file|dir|source)$`)
-	dir := filepath.Dir(v.ConfigFileUsed())
 	for _, k := range v.AllKeys() {
+		val := v.Get(k)
+		if _, ok := val.(string); ok {
+			// expand $var or ${var} on any string values
+			sval := val.(string)
+			if strings.Contains(sval, "$") {
+				v.Set(k, os.Expand(sval, func(s string) string {
+					r := v.Get(s)
+					if r == nil {
+						log.Panicf("'%s' not found for %s\n", s, sval)
+					}
+					if _, ok := r.(string); !ok {
+						log.Panicf("'%s' not a string for %s\n", s, sval)
+					}
+					return r.(string)
+				}))
+			}
+		}
 		if pathRegexp.MatchString(k) {
 			val := v.Get(k)
+			// resolve relative paths only
 			if strings.HasPrefix(val.(string), "/") == false &&
 				strings.Contains(val.(string), "@") == false {
-				val = fmt.Sprintf("%s/%s", dir, val.(string))
+				val = fmt.Sprintf("%s/%s", rootDir, val.(string))
 				v.Set(k, val)
 			}
 		}

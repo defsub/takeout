@@ -85,18 +85,24 @@ func (v *Video) FindMovies(identifiers []string) []Movie {
 	return v.lookupIMIDs(identifiers)
 }
 
-func (v *Video) newSearch() *search.Search {
+func (v *Video) newSearch() (*search.Search, error) {
 	s := search.NewSearch(v.config)
 	s.Keywords = []string{
 		FieldGenre,
 		FieldKeyword,
 	}
-	s.Open("video")
-	return s
+	err := s.Open("video")
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 func (v *Video) Search(q string, limit ...int) []Movie {
-	s := v.newSearch()
+	s, err := v.newSearch()
+	if err != nil {
+		return []Movie{}
+	}
 	defer s.Close()
 
 	l := v.config.Video.SearchLimit

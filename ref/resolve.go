@@ -477,9 +477,13 @@ func ResolveReleasePlaylist(ctx Context, v *view.Release, path string) *spiff.Pl
 
 func ResolveMoviePlaylist(ctx Context, v *view.Movie, path string) *spiff.Playlist {
 	// /movies/{id}
+	var directing []string
+	for _, p := range v.Directing {
+		directing = append(directing, p.Name)
+	}
 	plist := spiff.NewPlaylist(spiff.TypeVideo)
 	plist.Spiff.Location = path
-	plist.Spiff.Creator = "Movie"
+	plist.Spiff.Creator = strings.Join(directing, " \u2022 ")
 	plist.Spiff.Title = v.Movie.Title
 	plist.Spiff.Image = ctx.MovieImage(v.Movie)
 	plist.Spiff.Date = date.FormatJson(v.Movie.Date)

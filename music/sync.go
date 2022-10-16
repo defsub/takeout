@@ -296,6 +296,11 @@ func (m *Music) syncReleasesFor(artists []Artist) error {
 					log.Println(err)
 					return err
 				}
+				// update any assigned tracks
+				tracks := m.ReleaseTracks(r)
+				for _, t := range tracks {
+					m.assignTrackRelease(&t, &r)
+				}
 				// delete existing release and (re)add new
 				m.deleteReleaseMedia(r.REID)
 				for _, d := range r.Media {
@@ -1036,7 +1041,10 @@ func (m *Music) artistIndex(a *Artist) ([]search.IndexMap, error) {
 }
 
 func (m *Music) syncIndexFor(artists []Artist) error {
-	s := m.newSearch()
+	s, err := m.newSearch()
+	if err != nil {
+		return err
+	}
 	defer s.Close()
 
 	for _, a := range artists {

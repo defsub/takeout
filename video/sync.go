@@ -95,7 +95,10 @@ func (v *Video) syncBucket(bucket bucket.Bucket, lastSync time.Time) error {
 
 	client := tmdb.NewTMDB(v.config)
 
-	s := v.newSearch()
+	s, err := v.newSearch()
+	if err != nil {
+		return err
+	}
 	defer s.Close()
 
 	for o := range objectCh {

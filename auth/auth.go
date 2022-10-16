@@ -26,6 +26,7 @@ import (
 
 	"github.com/defsub/takeout"
 	"github.com/defsub/takeout/config"
+	"github.com/gokyle/filecache"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/scrypt"
@@ -38,20 +39,22 @@ const (
 )
 
 var (
-	ErrBadDriver           = errors.New("driver not supported")
-	ErrUserNotFound        = errors.New("user not found")
-	ErrKeyMismatch         = errors.New("key mismatch")
-	ErrSessionNotFound     = errors.New("session not found")
-	ErrSessionExpired      = errors.New("session expired")
-	ErrCodeNotFound        = errors.New("code not found")
-	ErrCodeExpired         = errors.New("code has expired")
-	ErrCodeAlreadyUsed     = errors.New("code already authorized")
-	ErrInvalidTokenSubject = errors.New("invalid subject")
-	ErrInvalidTokenMethod  = errors.New("invalid token method")
-	ErrInvalidTokenIssuer  = errors.New("invalid token issuer")
-	ErrInvalidTokenClaims  = errors.New("invalid token claims")
-	ErrInvalidTokenSecret  = errors.New("invalid token secret")
-	ErrTokenExpired        = errors.New("token expired")
+	ErrBadDriver                = errors.New("driver not supported")
+	ErrUserNotFound             = errors.New("user not found")
+	ErrKeyMismatch              = errors.New("key mismatch")
+	ErrSessionNotFound          = errors.New("session not found")
+	ErrSessionExpired           = errors.New("session expired")
+	ErrCodeNotFound             = errors.New("code not found")
+	ErrCodeExpired              = errors.New("code has expired")
+	ErrCodeAlreadyUsed          = errors.New("code already authorized")
+	ErrInvalidTokenSubject      = errors.New("invalid subject")
+	ErrInvalidTokenMethod       = errors.New("invalid token method")
+	ErrInvalidTokenIssuer       = errors.New("invalid token issuer")
+	ErrInvalidTokenClaims       = errors.New("invalid token claims")
+	ErrInvalidAccessTokenSecret = errors.New("invalid access token secret")
+	ErrInvalidMediaTokenSecret  = errors.New("invalid media token secret")
+	ErrInvalidTokenSecret       = errors.New("invalid token secret")
+	ErrTokenExpired             = errors.New("token expired")
 )
 
 type User struct {
@@ -83,18 +86,30 @@ func (s *Session) Valid() bool {
 }
 
 type Auth struct {
-	config *config.Config
-	db     *gorm.DB
+	config    *config.Config
+	db        *gorm.DB
+	fileCache *filecache.FileCache
 }
 
 func NewAuth(config *config.Config) *Auth {
-	if config.Auth.AccessToken.Secret == "" {
-		panic(ErrInvalidTokenSecret)
+	auth := &Auth{config: config, fileCache: filecache.NewDefaultCache()}
+
+	// ensure secrets exist before going any further
+	_, err := auth.readSecret(config.Auth.AccessToken)
+	if err != nil {
+		panic(ErrInvalidAccessTokenSecret)
 	}
-	if config.Auth.MediaToken.Secret == "" {
-		panic(ErrInvalidTokenSecret)
+	_, err = auth.readSecret(config.Auth.MediaToken)
+	if err != nil {
+		panic(ErrInvalidMediaTokenSecret)
 	}
-	return &Auth{config: config}
+
+	err = auth.fileCache.Start()
+	if err != nil {
+		panic(err)
+	}
+
+	return auth
 }
 
 func (a *Auth) Open() (err error) {
@@ -219,8 +234,24 @@ func (a *Auth) ChangePass(userid, newpass string) error {
 	return a.db.Model(u).Update("salt", u.Salt).Update("key", u.Key).Error
 }
 
+// readSecret returns secret from configured string or file
+func (a *Auth) readSecret(cfg config.TokenConfig) ([]byte, error) {
+	if cfg.Secret != "" {
+		return []byte(cfg.Secret), nil
+	}
+
+	data, err := a.fileCache.ReadFile(cfg.SecretFile)
+	if err != nil {
+		return nil, err
+	}
+	if len(data) == 0 {
+		return nil, ErrInvalidTokenSecret
+	}
+	return data, nil
+}
+
 // newToken creates a new JWT token associated with the provided session.
-func newToken(s Session, cfg config.TokenConfig) (string, error) {
+func (a *Auth) newToken(s Session, cfg config.TokenConfig) (string, error) {
 	age := int(cfg.Age.Seconds())
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
 		jwt.StandardClaims{
@@ -228,17 +259,21 @@ func newToken(s Session, cfg config.TokenConfig) (string, error) {
 			Subject:   s.User,
 			ExpiresAt: time.Now().Add(time.Second * time.Duration(age)).Unix(),
 		})
-	return token.SignedString([]byte(cfg.Secret))
+	secret, err := a.readSecret(cfg)
+	if err != nil {
+		return "", err
+	}
+	return token.SignedString(secret)
 }
 
 // NewAccessToken creates a new JWT token associated with the provided session.
 func (a *Auth) NewAccessToken(s Session) (string, error) {
-	return newToken(s, a.config.Auth.AccessToken)
+	return a.newToken(s, a.config.Auth.AccessToken)
 }
 
 // NewMediaToken creates a new JWT token associated with the provided session.
 func (a *Auth) NewMediaToken(s Session) (string, error) {
-	return newToken(s, a.config.Auth.MediaToken)
+	return a.newToken(s, a.config.Auth.MediaToken)
 }
 
 // NewCookie creates a new cookie associated with the provided session.
@@ -316,7 +351,8 @@ func (a *Auth) processToken(signedToken string, cfg config.TokenConfig) (*jwt.To
 		signedToken,
 		&jwt.StandardClaims{},
 		func(token *jwt.Token) (interface{}, error) {
-			return []byte(cfg.Secret), nil
+			secret, err := a.readSecret(cfg)
+			return secret, err
 		})
 	if err != nil {
 		return nil, nil, err

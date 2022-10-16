@@ -55,9 +55,11 @@ func (s *Search) Open(name string) error {
 	if err == bleve.ErrorIndexPathExists {
 		index, err = bleve.Open(path)
 		if err != nil {
+			fmt.Printf("bleve %s err %s\n", path, err)
 			return err
 		}
 	} else if err != nil {
+		fmt.Printf("bleve %s err %s\n", path, err)
 		return err
 	}
 	s.index = index
@@ -65,7 +67,10 @@ func (s *Search) Open(name string) error {
 }
 
 func (s *Search) Close() {
-	s.index.Close()
+	if s.index != nil {
+		s.index.Close()
+		s.index = nil
+	}
 }
 
 // see https://blevesearch.com/docs/Query-String-Query/

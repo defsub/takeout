@@ -1,17 +1,17 @@
 # Copyleft (C) 2022 The Takeout Authors. See COPYING.
 
 # Music configuration
-# - releaseCountries are preferred countries used in MusicBrainz release matching
-# - radioSeries are "series" names from MusicBrainz used to make radio stations
-# - radioOther are bleve search queries used to make radio stations
-music:
-  releaseCountries:
+# - ReleaseCountries are preferred countries used in MusicBrainz release matching
+# - RadioSeries are "series" names from MusicBrainz used to make radio stations
+# - RadioOther are bleve search queries used to make radio stations
+Music:
+  ReleaseCountries:
     - US
     - XW
     - XE
-  radioSeries:
+  RadioSeries:
     - The Rolling Stone Magazine's 500 Greatest Songs of All Time
-  radioOther:
+  RadioOther:
     - Top Hits:      +popularity:1
     - Top 3 Hits:    +popularity:<4
     - Top 5 Hits:    +popularity:<6
@@ -26,22 +26,22 @@ music:
 # - Multiple music and/or video buckets are supported
 # - Change endpoint and region to match your bucket provider (Wasabi used as an example)
 #   Any S3 compatible service should work, such as: AWS, Backblaze, Wasabi, and Minio
-# - Change accessKeyID to your bucket accessKeyID
-# - Change secretAccessKey to your bucket secretAccessKey
-# - Change bucketName to your bucket name
-# - Change objectPrefix to your prefix (used to narrow the bucket files)
+# - Change AccessKeyID to your bucket AccessKeyID
+# - Change SecretAccessKey to your bucket SecretAccessKey
+# - Change BucketName to your bucket name
+# - Change ObjectPrefix to your prefix (used to narrow the bucket files)
 # - Change URLExpiration based on your needs for pre-signed URL access to your media
 #   https://docs.aws.amazon.com/AmazonS3/latest/userguide/ShareObjectPreSignedURL.html
 # - Example RewriteRules are included by commented out
-buckets:
-  - media: music
-    endpoint: s3.us-west-1.wasabisys.com
-    region: us-west-1
-    accessKeyID: your-access-key-id
-    secretAccessKey: your-secret-access-key
-    bucketName: your-bucket-name
-    objectPrefix: Music
-    URLExpiration: 24h
+Buckets:
+  - Media: music
+    Endpoint: s3.us-west-1.wasabisys.com
+    Region: us-west-1
+    AccessKeyID: your-access-key-id
+    SecretAccessKey: your-secret-access-key
+    BucketName: your-bucket-name
+    ObjectPrefix: Music
+    URLExpiration: 15m
     UseSSL: true
     # RewriteRules:
     #  - Pattern: "^(.+/)Dr. Octagon(/Dr. Octagon, Part II.+/.+)$"
@@ -49,18 +49,22 @@ buckets:
     #  - Pattern: "^(.+/White Zombie/La Sexorcisto_ Devil Music, )Volume One(.+/.+)$"
     #    Replace: "$1Vol. 1$2"
 
-  - media: video
-    endpoint: s3.us-west-1.wasabisys.com
-    region: us-west-1
-    accessKeyID: your-access-key-id
-    secretAccessKey: your-secret-access-key
-    bucketName: your-bucket-name
-    objectPrefix: Movies
-    URLExpiration: 24h
+  - Media: video
+    Endpoint: s3.us-west-1.wasabisys.com
+    Region: us-west-1
+    AccessKeyID: your-access-key-id
+    SecretAccessKey: your-secret-access-key
+    BucketName: your-bucket-name
+    ObjectPrefix: Movies
+    URLExpiration: 15m
     UseSSL: true
 
 # Get your own API key from last.fm
 # https://www.last.fm/api
-lastfm:
-  key: "put api key here"
-  secret: "put shared secret here"
+Lastfm:
+  Key: "put api key here"
+  Secret: "put shared secret here"
+
+Client:
+  UseCache: true
+  CacheDir: /var/cache/takeout/httpcache
