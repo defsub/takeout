@@ -412,7 +412,7 @@ func (m *TMDB) tvGenreList() (genreList, error) {
 }
 
 func (m *TMDB) populateGenreCache() error {
-	if m.movieGenres == nil || m.tvGenres == nil {
+	if m.movieGenres != nil || m.tvGenres != nil {
 		return nil
 	}
 

@@ -19,6 +19,7 @@ package server
 
 import (
 	"net/http"
+	//"net/http/pprof"
 	"strings"
 
 	"github.com/bmizerany/pat"
@@ -496,6 +497,16 @@ func Serve(config *config.Config) error {
 	mux.Get("/img/tm/:size/:path", imageHandler(ctx, imgVideo, client))
 	mux.Get("/img/fa/:arid/t/:path", imageHandler(ctx, imgArtistThumb, client))
 	mux.Get("/img/fa/:arid/b/:path", imageHandler(ctx, imgArtistBackground, client))
+
+	// pprof
+	// mux.Get("/debug/pprof", http.HandlerFunc(pprof.Index))
+	// mux.Get("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
+	// mux.Get("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+	// mux.Get("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
+	// mux.Get("/debug/pprof/heap", pprof.Handler("heap"))
+	// mux.Get("/debug/pprof/block", pprof.Handler("block"))
+	// mux.Get("/debug/pprof/goroutine", pprof.Handler("goroutine"))
+	// mux.Get("/debug/pprof/threadcreate", pprof.Handler("threadcreate"))
 
 	// // swaggerHandler := func(w http.ResponseWriter, r *http.Request) {
 	// // 	http.Redirect(w, r, "/static/swagger.json", 302)

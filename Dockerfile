@@ -15,6 +15,10 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with Takeout.  If not, see <https://www.gnu.org/licenses/>.
 
+# This docker build use multi-stage builds to first build takeout using the
+# full golang image and then copies the result to minimal debian image.
+
+# build stage
 FROM golang:1.19.2-bullseye as builder
 ARG src=/go/src/github.com/defsub/takeout
 
@@ -26,6 +30,7 @@ RUN go mod download && go mod verify
 COPY . .
 RUN make install
 
+# final stage
 FROM debian:bullseye-slim
 ARG src=/go/src/github.com/defsub/takeout
 ARG user=takeout
