@@ -123,7 +123,7 @@ type ArtistTag struct {
 // data from MusicBrainz.
 type Track struct {
 	gorm.Model
-	UUID         string `gorm:"index:idx_track_uuid" json:"-"`
+	UUID         string `gorm:"index:idx_track_uuid"`
 	Artist       string `spiff:"creator" gorm:"index:idx_track_artist"`
 	Release      string `gorm:"index:idx_track_release"`
 	Date         string `gorm:"index:idx_track_date"`
@@ -134,8 +134,6 @@ type Track struct {
 	Size         int64
 	ETag         string
 	LastModified time.Time
-	// TODO remove Location, only needed for old spiff
-	Location     []string `gorm:"-" spiff:"location"`
 	TrackCount   int
 	DiscCount    int
 	REID         string `gorm:"index:idx_track_reid"`
