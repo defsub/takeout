@@ -171,6 +171,7 @@ type PodcastConfig struct {
 	Series       []string
 	Client       ClientConfig
 	RecentLimit  int
+	EpisodeLimit int
 	SyncInterval time.Duration
 }
 
@@ -516,11 +517,14 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Podcast.DB.Driver", "sqlite3")
 	v.SetDefault("Podcast.DB.Source", "podcast.db")
 	v.SetDefault("Podcast.DB.Logger", "default")
+	v.SetDefault("Podcast.EpisodeLimit", "52")
 	v.SetDefault("Podcast.RecentLimit", "25")
 	v.SetDefault("Podcast.SyncInterval", "1h")
 	v.SetDefault("Podcast.Series", []string{
 		"https://feeds.twit.tv/twit.xml",
 		"https://feeds.twit.tv/sn.xml",
+		"https://feeds.twit.tv/twig.xml",
+		"https://feeds.twit.tv/floss.xml",
 		"https://www.pbs.org/newshour/feeds/rss/podcasts/show",
 		"http://feeds.feedburner.com/TEDTalks_audio",
 		"https://feeds.eff.org/howtofixtheinternet",

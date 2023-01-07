@@ -81,6 +81,17 @@ func (p *Podcast) syncPodcast(url string) error {
 		series.Image = channel.Image.URL
 		series.Copyright = channel.Copyright
 		series.Date = channel.LastBuildTime()
+		if series.Date.IsZero() {
+			// no build time so use latest episode publish time
+			latest := time.Time{}
+			for _, i := range channel.Items {
+				t := i.PublishTime()
+				if t.After(latest) {
+					latest = t
+				}
+			}
+			series.Date = latest
+		}
 		series.TTL = channel.TTL
 		err := p.db.Save(series).Error
 		if err != nil {

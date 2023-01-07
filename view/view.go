@@ -536,6 +536,10 @@ func SeriesView(ctx Context, s podcast.Series) *Series {
 	view := &Series{}
 	view.Series = s
 	view.Episodes = p.Episodes(s)
+	limit := ctx.Config().Podcast.EpisodeLimit
+	if len(view.Episodes) > limit {
+		view.Episodes = view.Episodes[:limit]
+	}
 	view.SeriesImage = p.SeriesImage
 	view.EpisodeImage = p.EpisodeImage
 	return view

@@ -176,6 +176,7 @@ Video:
 
 ## Podcast Configuration
 
+* EpisodeLimit - How many episodes to include in a playlist (default 52)
 * RecentLimit - How many recent (default 25)
 * SyncInterval - How often to automtically resync from sources (1h)
 * Series - List of Podcasts sources. Several are builtin.

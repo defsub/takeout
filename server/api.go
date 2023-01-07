@@ -178,7 +178,7 @@ func apiTokenRefresh(w http.ResponseWriter, r *http.Request) {
 var locationRegexp = regexp.MustCompile(`/api/(tracks)/([0-9a-zA-Z-]+)/location`)
 
 // writePlaylist will write a playlist to the response and optionally fully
-// resolve tracks for offline external app (vlc) playback.
+// resolve tracks for external app (vlc) playback.
 func writePlaylist(w http.ResponseWriter, r *http.Request, plist *spiff.Playlist) {
 	if strings.HasSuffix(r.URL.Path, ".xspf") {
 		// create XML spiff with tracks fully resolved
