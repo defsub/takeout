@@ -360,7 +360,7 @@ var (
 	radioRegexp        = regexp.MustCompile(`^/music/radio/stations/([\d]+)$`)
 	moviesRegexp       = regexp.MustCompile(`^/movies/([\d]+)$`)
 	seriesRegexp       = regexp.MustCompile(`^/podcasts/series/([\d]+)$`)
-	episodeRegexp      = regexp.MustCompile(`^/podcasts/episodes/([\d]+)$`)
+	episodesRegexp     = regexp.MustCompile(`^/podcasts/episodes/([\d]+)$`)
 	recentTracksRegexp = regexp.MustCompile(`^/activity/tracks$`)
 	recentMoviesRegexp = regexp.MustCompile(`^/activity/movies$`)
 )
@@ -438,7 +438,7 @@ func Resolve(ctx Context, plist *spiff.Playlist) (err error) {
 			continue
 		}
 
-		matches = episodeRegexp.FindStringSubmatch(pathRef)
+		matches = episodesRegexp.FindStringSubmatch(pathRef)
 		if matches != nil {
 			entries, err = resolveEpisodeRef(ctx, matches[1], entries)
 			if err != nil {

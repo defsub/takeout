@@ -273,7 +273,7 @@ import (
 //  200: SeriesResponse
 //  404: description: series not found
 
-// swagger:route GET /series/{series_id}/episode/{episode_id} SeriesEpisodeGet
+// swagger:route GET /series/{series_id}/episode/{episode_id} EpisodeGet
 // parameters:
 //  + in: path
 //    name: series_id

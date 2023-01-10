@@ -291,7 +291,11 @@ func apiPlaylistPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	plist, _ := spiff.Unmarshal(p.Playlist)
-	ref.Resolve(ctx, plist)
+	err = ref.Resolve(ctx, plist)
+	if err != nil {
+		serverErr(w, err)
+		return
+	}
 
 	// save result
 	if plist.Spiff.Entries == nil {
