@@ -138,6 +138,15 @@ func (p *Podcast) LookupSeries(id int) (Series, error) {
 	return series, err
 }
 
+func (p *Podcast) LookupSID(sid string) (Series, error) {
+	var series Series
+	err := p.db.First(&series, "s_id = ?", sid).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return Series{}, errors.New("series not found")
+	}
+	return series, err
+}
+
 func (p *Podcast) LookupEpisode(id int) (Episode, error) {
 	var episode Episode
 	err := p.db.First(&episode, id).Error

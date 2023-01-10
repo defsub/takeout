@@ -18,7 +18,6 @@
 package podcast
 
 import (
-	"errors"
 	"net/url"
 	"strconv"
 
@@ -92,7 +91,7 @@ func (p *Podcast) EpisodeURL(e Episode) *url.URL {
 func (p *Podcast) FindSeries(identifier string) (Series, error) {
 	id, err := strconv.Atoi(identifier)
 	if err != nil {
-		return Series{}, errors.New("not supported")
+		return p.LookupSID(identifier)
 	} else {
 		return p.LookupSeries(id)
 	}
