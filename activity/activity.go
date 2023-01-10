@@ -75,7 +75,7 @@ func (a *Activity) DeleteUserEvents(ctx Context) error {
 		log.Println("release delete error: ", err)
 		return err
 	}
-	err = a.deleteSeriesEpisodeEvents(user.Name)
+	err = a.deleteEpisodeEvents(user.Name)
 	if err != nil {
 		log.Println("series delete error: ", err)
 		return err
@@ -97,13 +97,13 @@ func (a *Activity) resolveMovieEvent(e MovieEvent, ctx Context) *Movie {
 	return &Movie{Date: e.Date, Movie: movie}
 }
 
-func (a *Activity) resolveSeriesEpisodeEvent(e SeriesEpisodeEvent, ctx Context) *SeriesEpisode {
+func (a *Activity) resolveEpisodeEvent(e EpisodeEvent, ctx Context) *Episode {
 	p := ctx.Podcast()
 	episode, err := p.FindEpisode(e.EID)
 	if err != nil {
 		return nil
 	}
-	return &SeriesEpisode{Date: e.Date, Episode: episode}
+	return &Episode{Date: e.Date, Episode: episode}
 }
 
 func (a *Activity) resolveReleaseEvent(e ReleaseEvent, ctx Context) *Release {
@@ -135,10 +135,10 @@ func (a *Activity) resolveMovieEvents(events []MovieEvent, ctx Context) []Movie 
 	return movies
 }
 
-func (a *Activity) resolveSeriesEpisodeEvents(events []SeriesEpisodeEvent, ctx Context) []SeriesEpisode {
-	var episodes []SeriesEpisode
+func (a *Activity) resolveEpisodeEvents(events []EpisodeEvent, ctx Context) []Episode {
+	var episodes []Episode
 	for _, e := range events {
-		episode := a.resolveSeriesEpisodeEvent(e, ctx)
+		episode := a.resolveEpisodeEvent(e, ctx)
 		if episode != nil {
 			episodes = append(episodes, *episode)
 		}
@@ -269,9 +269,9 @@ func (a *Activity) CreateEvents(ctx Context, events Events) error {
 		}
 	}
 
-	for _, e := range events.SeriesEpisodeEvents {
+	for _, e := range events.EpisodeEvents {
 		e.User = user.Name
-		err := a.createSeriesEpisodeEvent(&e)
+		err := a.createEpisodeEvent(&e)
 		if err != nil {
 			return err
 		}

@@ -106,3 +106,7 @@ func (p *Podcast) FindEpisode(identifier string) (Episode, error) {
 		return p.LookupEpisode(id)
 	}
 }
+
+func (p *Podcast) Search(q string) ([]Series, []Episode) {
+	return p.search(q)
+}

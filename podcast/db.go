@@ -169,3 +169,11 @@ func (p *Podcast) retainEpisodes(series *Series, eids []string) error {
 	p.db.Where("s_id = ? and e_id not in (?)", sid, eids).Find(&list)
 	return p.db.Unscoped().Delete(Episode{}, "s_id = ? and e_id not in (?)", sid, eids).Error
 }
+
+func (p *Podcast) search(q string) ([]Series, []Episode) {
+	var series []Series
+	var episodes []Episode
+	p.db.Where("title like '%?%' or author like '%?%' or description like '%?%'", q, q, q).Find(&series)
+	p.db.Where("title like '%?%' or author like '%?%' or description like '%?%'", q, q, q).Find(&episodes)
+	return series, episodes
+}

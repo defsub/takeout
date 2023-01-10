@@ -38,7 +38,7 @@ func (a *Activity) openDB() (err error) {
 		return
 	}
 
-	a.db.AutoMigrate(&MovieEvent{}, &ReleaseEvent{}, &SeriesEpisodeEvent{}, &TrackEvent{})
+	a.db.AutoMigrate(&MovieEvent{}, &ReleaseEvent{}, &EpisodeEvent{}, &TrackEvent{})
 	return
 }
 
@@ -79,8 +79,8 @@ func (a *Activity) releaseEventsFrom(user string, start, end time.Time, limit in
 	return events
 }
 
-func (a *Activity) seriesEpisodeEventsFrom(user string, start, end time.Time, limit int) []SeriesEpisodeEvent {
-	var events []SeriesEpisodeEvent
+func (a *Activity) episodeEventsFrom(user string, start, end time.Time, limit int) []EpisodeEvent {
+	var events []EpisodeEvent
 	a.db.Where("user = ? and date >= ? and date <= ?", user, start, end).
 		Order("date desc").Limit(limit).Find(&events)
 	return events
@@ -93,8 +93,8 @@ func (a *Activity) movieEvents(user string) []MovieEvent {
 	return movies
 }
 
-func (a *Activity) seriesEpisodeEvents(user string) []SeriesEpisodeEvent {
-	var events []SeriesEpisodeEvent
+func (a *Activity) episodeEvents(user string) []EpisodeEvent {
+	var events []EpisodeEvent
 	a.db.Where("user = ?", user).
 		Order("date desc").Find(&events)
 	return events
@@ -128,8 +128,8 @@ func (a *Activity) recentReleaseEvents(user string, limit int) []ReleaseEvent {
 	return releases
 }
 
-func (a *Activity) recentSeriesEpisodeEvents(user string, limit int) []SeriesEpisodeEvent {
-	var events []SeriesEpisodeEvent
+func (a *Activity) recentEpisodeEvents(user string, limit int) []EpisodeEvent {
+	var events []EpisodeEvent
 	a.db.Where("user = ?", user).
 		Order("date desc").Limit(limit).Find(&events)
 	return events
@@ -154,8 +154,8 @@ func (a *Activity) deleteReleaseEvents(user string) error {
 	return a.db.Unscoped().Where("user = ?", user).Delete(ReleaseEvent{}).Error
 }
 
-func (a *Activity) deleteSeriesEpisodeEvents(user string) error {
-	return a.db.Unscoped().Where("user = ?", user).Delete(SeriesEpisodeEvent{}).Error
+func (a *Activity) deleteEpisodeEvents(user string) error {
+	return a.db.Unscoped().Where("user = ?", user).Delete(EpisodeEvent{}).Error
 }
 
 func (a *Activity) createMovieEvent(m *MovieEvent) error {
@@ -170,7 +170,7 @@ func (a *Activity) createTrackEvent(t *TrackEvent) error {
 	return a.db.Create(t).Error
 }
 
-func (a *Activity) createSeriesEpisodeEvent(m *SeriesEpisodeEvent) error {
+func (a *Activity) createEpisodeEvent(m *EpisodeEvent) error {
 	return a.db.Create(m).Error
 }
 
@@ -178,7 +178,7 @@ func (a *Activity) updateMovieEvent(m *MovieEvent) error {
 	return a.db.Save(m).Error
 }
 
-func (a *Activity) updateSeriesEpisodeEvent(m *SeriesEpisodeEvent) error {
+func (a *Activity) updateEpisodeEvent(m *EpisodeEvent) error {
 	return a.db.Save(m).Error
 }
 
@@ -202,6 +202,6 @@ func (a *Activity) deleteReleaseEvent(m *ReleaseEvent) error {
 	return a.db.Unscoped().Delete(m).Error
 }
 
-func (a *Activity) deleteSeriesEpisodeEvent(m *SeriesEpisodeEvent) error {
+func (a *Activity) deleteEpisodeEvent(m *EpisodeEvent) error {
 	return a.db.Unscoped().Delete(m).Error
 }

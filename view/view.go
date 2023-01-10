@@ -130,6 +130,8 @@ type Search struct {
 	Releases    []music.Release
 	Tracks      []music.Track
 	Movies      []video.Movie
+	Series      []podcast.Series
+	Episodes    []podcast.Episode
 	Query       string
 	Hits        int
 	CoverSmall  CoverFunc  `json:"-"`
@@ -226,7 +228,7 @@ type Series struct {
 }
 
 // swagger:model
-type SeriesEpisode struct {
+type Episode struct {
 	Episode      podcast.Episode
 	EpisodeImage EpisodeImageFunc `json:"-"`
 }
@@ -393,6 +395,7 @@ func ReleaseView(ctx Context, release music.Release) *Release {
 func SearchView(ctx Context, query string) *Search {
 	m := ctx.Music()
 	v := ctx.Video()
+	p := ctx.Podcast()
 	view := &Search{}
 	artists, releases, _ := m.Query(query)
 	view.Artists = artists
@@ -400,7 +403,10 @@ func SearchView(ctx Context, query string) *Search {
 	view.Query = query
 	view.Tracks = m.Search(query)
 	view.Movies = v.Search(query)
-	view.Hits = len(view.Artists) + len(view.Releases) + len(view.Tracks) + len(view.Movies)
+	view.Series, view.Episodes = p.Search(query)
+	view.Hits = len(view.Artists) + len(view.Releases) + len(view.Tracks) +
+		len(view.Movies) +
+		len(view.Series) + len(view.Episodes)
 	view.CoverSmall = m.CoverSmall
 	view.PosterSmall = v.MoviePosterSmall
 	return view
@@ -545,8 +551,8 @@ func SeriesView(ctx Context, s podcast.Series) *Series {
 	return view
 }
 
-func SeriesEpisodeView(ctx Context, e podcast.Episode) *SeriesEpisode {
-	view := &SeriesEpisode{}
+func EpisodeView(ctx Context, e podcast.Episode) *Episode {
+	view := &Episode{}
 	view.Episode = e
 	view.EpisodeImage = ctx.Podcast().EpisodeImage
 	return view

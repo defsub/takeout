@@ -262,7 +262,7 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 		p := ctx.Podcast()
 		id, _ := strconv.Atoi(v)
 		episode, _ := p.LookupEpisode(id)
-		result = view.SeriesEpisodeView(ctx, episode)
+		result = view.EpisodeView(ctx, episode)
 		temp = "episode.html"
 	} else {
 		result = view.IndexView(ctx)

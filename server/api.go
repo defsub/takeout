@@ -556,42 +556,32 @@ func apiPodcastSeriesGetPlaylist(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func apiPodcastSeriesEpisodeGet(w http.ResponseWriter, r *http.Request) {
+func apiPodcastEpisodeGet(w http.ResponseWriter, r *http.Request) {
 	ctx := contextValue(r)
 	id := r.URL.Query().Get(ParamID)
-	if id != "" {
-		// series is optional for now
-		_, err := ctx.Podcast().FindSeries(id)
+	episode, err := ctx.Podcast().FindEpisode(id)
+	if err != nil {
+		notFoundErr(w)
+	} else {
+		apiView(w, r, view.EpisodeView(ctx, episode))
+	}
+}
+
+func apiPodcastEpisodeGetPlaylist(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	id := r.URL.Query().Get(ParamID)
+	episode, err := ctx.Podcast().FindEpisode(id)
+	if err != nil {
+		notFoundErr(w)
+	} else {
+		series, err := ctx.Podcast().FindSeries(episode.SID)
 		if err != nil {
 			notFoundErr(w)
 			return
 		}
-	}
-	eid := r.URL.Query().Get(ParamEID)
-	episode, err := ctx.Podcast().FindEpisode(eid)
-	if err != nil {
-		notFoundErr(w)
-	} else {
-		apiView(w, r, view.SeriesEpisodeView(ctx, episode))
-	}
-}
-
-func apiPodcastSeriesEpisodeGetPlaylist(w http.ResponseWriter, r *http.Request) {
-	ctx := contextValue(r)
-	id := r.URL.Query().Get(ParamID)
-	eid := r.URL.Query().Get(ParamEID)
-	series, err := ctx.Podcast().FindSeries(id)
-	if err != nil {
-		notFoundErr(w)
-		return
-	}
-	episode, err := ctx.Podcast().FindEpisode(eid)
-	if err != nil {
-		notFoundErr(w)
-	} else {
 		plist := ref.ResolveSeriesEpisodePlaylist(ctx,
 			view.SeriesView(ctx, series),
-			view.SeriesEpisodeView(ctx, episode),
+			view.EpisodeView(ctx, episode),
 			r.URL.Path)
 		writePlaylist(w, r, plist)
 	}
@@ -732,16 +722,10 @@ func apiMovieLocation(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, url.String(), http.StatusTemporaryRedirect)
 }
 
-func apiSeriesEpisodeLocation(w http.ResponseWriter, r *http.Request) {
+func apiEpisodeLocation(w http.ResponseWriter, r *http.Request) {
 	ctx := contextValue(r)
-	//id := r.URL.Query().Get(ParamID)
-	eid := r.URL.Query().Get(ParamEID)
-	// series, err := ctx.Podcast().FindSeries(id)
-	// if err != nil {
-	// 	notFoundErr(w)
-	// 	return
-	// }
-	episode, err := ctx.Podcast().FindEpisode(eid)
+	id := r.URL.Query().Get(ParamID)
+	episode, err := ctx.Podcast().FindEpisode(id)
 	if err != nil {
 		notFoundErr(w)
 	} else {

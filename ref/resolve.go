@@ -46,6 +46,7 @@ type Locator interface {
 	FindStation(string) (music.Station, error)
 	FindMovie(string) (video.Movie, error)
 	FindSeries(string) (podcast.Series, error)
+	FindEpisode(string) (podcast.Episode, error)
 
 	TrackImage(music.Track) string
 	MovieImage(video.Movie) string
@@ -185,7 +186,7 @@ func resolveMovieRef(ctx Context, id string, entries []spiff.Entry) ([]spiff.Ent
 	return entries, nil
 }
 
-// /series/{id}
+// /podcasts/series/{id}
 func resolveSeriesRef(ctx Context, id string, entries []spiff.Entry) ([]spiff.Entry, error) {
 	series, err := ctx.FindSeries(id)
 	if err != nil {
@@ -196,6 +197,21 @@ func resolveSeriesRef(ctx Context, id string, entries []spiff.Entry) ([]spiff.En
 	if err != nil {
 		return entries, err
 	}
+	entries = addEpisodeEntries(ctx, series, episodes, entries)
+	return entries, nil
+}
+
+// /podcasts/episodes/{id}
+func resolveEpisodeRef(ctx Context, id string, entries []spiff.Entry) ([]spiff.Entry, error) {
+	episode, err := ctx.FindEpisode(id)
+	if err != nil {
+		return entries, err
+	}
+	series, err := ctx.FindSeries(episode.SID)
+	if err != nil {
+		return entries, err
+	}
+	episodes := []podcast.Episode{episode}
 	entries = addEpisodeEntries(ctx, series, episodes, entries)
 	return entries, nil
 }
@@ -344,6 +360,7 @@ var (
 	radioRegexp        = regexp.MustCompile(`^/music/radio/stations/([\d]+)$`)
 	moviesRegexp       = regexp.MustCompile(`^/movies/([\d]+)$`)
 	seriesRegexp       = regexp.MustCompile(`^/podcasts/series/([\d]+)$`)
+	episodeRegexp      = regexp.MustCompile(`^/podcasts/episodes/([\d]+)$`)
 	recentTracksRegexp = regexp.MustCompile(`^/activity/tracks$`)
 	recentMoviesRegexp = regexp.MustCompile(`^/activity/movies$`)
 )
@@ -415,6 +432,15 @@ func Resolve(ctx Context, plist *spiff.Playlist) (err error) {
 		matches = seriesRegexp.FindStringSubmatch(pathRef)
 		if matches != nil {
 			entries, err = resolveSeriesRef(ctx, matches[1], entries)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		matches = episodeRegexp.FindStringSubmatch(pathRef)
+		if matches != nil {
+			entries, err = resolveEpisodeRef(ctx, matches[1], entries)
 			if err != nil {
 				return err
 			}
@@ -506,8 +532,8 @@ func ResolveSeriesPlaylist(ctx Context, v *view.Series, path string) *spiff.Play
 }
 
 func ResolveSeriesEpisodePlaylist(ctx Context, series *view.Series,
-	v *view.SeriesEpisode, path string) *spiff.Playlist {
-	// /podcasts/series/{id}/episode/{eid}
+	v *view.Episode, path string) *spiff.Playlist {
+	// /podcasts/episode/{id}
 	plist := spiff.NewPlaylist(spiff.TypePodcast)
 	plist.Spiff.Location = path
 	plist.Spiff.Creator = series.Series.Author

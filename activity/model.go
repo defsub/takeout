@@ -64,10 +64,10 @@ type Playlist struct {
 }
 
 type Events struct {
-	MovieEvents         []MovieEvent
-	ReleaseEvents       []ReleaseEvent
-	SeriesEpisodeEvents []SeriesEpisodeEvent
-	TrackEvents         []TrackEvent
+	MovieEvents   []MovieEvent
+	ReleaseEvents []ReleaseEvent
+	EpisodeEvents []EpisodeEvent
+	TrackEvents   []TrackEvent
 }
 
 type ReleaseEvent struct {
@@ -84,7 +84,7 @@ type MovieEvent struct {
 	Date time.Time `gorm:"uniqueIndex:idx_movie_date"`
 	TMID string
 	IMID string
-	ETag string    `gorm:"-"`
+	ETag string `gorm:"-"`
 }
 
 type TrackEvent struct {
@@ -93,13 +93,13 @@ type TrackEvent struct {
 	Date time.Time `gorm:"uniqueIndex:idx_track_date"`
 	RID  string
 	RGID string
-	ETag string    `gorm:"-"`
+	ETag string `gorm:"-"`
 }
 
-type SeriesEpisodeEvent struct {
+type EpisodeEvent struct {
 	gorm.Model
-	User string    `gorm:"index:idx_series_episode_user" json:"-"`
-	Date time.Time `gorm:"uniqueIndex:idx_series_episode_date"`
+	User string    `gorm:"index:idx_episode_user" json:"-"`
+	Date time.Time `gorm:"uniqueIndex:idx_episode_date"`
 	EID  string
 }
 
@@ -118,7 +118,7 @@ type Track struct {
 	Track music.Track
 }
 
-type SeriesEpisode struct {
+type Episode struct {
 	Date    time.Time
 	Episode podcast.Episode
 }

@@ -516,10 +516,10 @@ type SeriesResponse struct {
 }
 
 // swagger:response
-type SeriesEpisodeResponse struct {
+type EpisodeResponse struct {
 	// in: body
 	Body struct {
-		view.SeriesEpisode
+		view.Episode
 	}
 }
 

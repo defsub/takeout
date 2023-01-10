@@ -450,22 +450,17 @@ func Serve(config *config.Config) error {
 
 	// podcast
 	mux.Get("/api/podcasts", accessTokenAuthHandler(ctx, apiPodcasts))
-	mux.Get("/api/podcasts/series/:id", accessTokenAuthHandler(ctx, apiPodcastSeriesGet))
-	mux.Get("/api/podcasts/series/:id/playlist", accessTokenAuthHandler(ctx, apiPodcastSeriesGetPlaylist))
-	mux.Get("/api/podcasts/series/:id/playlist.xspf", accessTokenAuthHandler(ctx, apiPodcastSeriesGetPlaylist))
-	mux.Get("/api/podcasts/series/:id/episodes/:eid", accessTokenAuthHandler(ctx, apiPodcastSeriesEpisodeGet))
-	mux.Get("/api/podcasts/series/:id/episodes/:eid/playlist", accessTokenAuthHandler(ctx, apiPodcastSeriesEpisodeGetPlaylist))
-	mux.Get("/api/podcasts/series/:id/episodes/:eid/playlist.xspf", accessTokenAuthHandler(ctx, apiPodcastSeriesEpisodeGetPlaylist))
-	mux.Get("/api/episodes/:eid", accessTokenAuthHandler(ctx, apiPodcastSeriesEpisodeGet))
 	mux.Get("/api/series/:id", accessTokenAuthHandler(ctx, apiPodcastSeriesGet))
 	mux.Get("/api/series/:id/playlist", accessTokenAuthHandler(ctx, apiPodcastSeriesGetPlaylist))
 	mux.Get("/api/series/:id/playlist.xspf", accessTokenAuthHandler(ctx, apiPodcastSeriesGetPlaylist))
+	mux.Get("/api/episodes/:id", accessTokenAuthHandler(ctx, apiPodcastEpisodeGet))
+	mux.Get("/api/episodes/:id/playlist", accessTokenAuthHandler(ctx, apiPodcastEpisodeGetPlaylist))
+	mux.Get("/api/episodes/:id/playlist.xspf", accessTokenAuthHandler(ctx, apiPodcastEpisodeGetPlaylist))
 
 	// location
 	mux.Get("/api/tracks/:uuid/location", mediaTokenAuthHandler(ctx, apiTrackLocation))
 	mux.Get("/api/movies/:uuid/location", mediaTokenAuthHandler(ctx, apiMovieLocation))
-	mux.Get("/api/episodes/:eid/location", mediaTokenAuthHandler(ctx, apiSeriesEpisodeLocation))
-	mux.Get("/api/podcasts/:id/episodes/:eid/location", mediaTokenAuthHandler(ctx, apiSeriesEpisodeLocation))
+	mux.Get("/api/episodes/:id/location", mediaTokenAuthHandler(ctx, apiEpisodeLocation))
 
 	// progress
 	mux.Get("/api/progress", accessTokenAuthHandler(ctx, apiProgressGet))
