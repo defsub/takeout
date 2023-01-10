@@ -173,7 +173,8 @@ func (p *Podcast) retainEpisodes(series *Series, eids []string) error {
 func (p *Podcast) search(q string) ([]Series, []Episode) {
 	var series []Series
 	var episodes []Episode
-	p.db.Where("title like '%?%' or author like '%?%' or description like '%?%'", q, q, q).Find(&series)
-	p.db.Where("title like '%?%' or author like '%?%' or description like '%?%'", q, q, q).Find(&episodes)
+	query := "%" + q + "%"
+	p.db.Where("title like ? or author like ? or description like ?", query, query, query).Find(&series)
+	p.db.Where("title like ? or author like ? or description like ?", query, query, query).Find(&episodes)
 	return series, episodes
 }
