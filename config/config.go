@@ -173,6 +173,7 @@ type PodcastConfig struct {
 	RecentLimit  int
 	EpisodeLimit int
 	SyncInterval time.Duration
+	SearchLimit  int
 }
 
 type ProgressConfig struct {
@@ -519,6 +520,7 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Podcast.DB.Logger", "default")
 	v.SetDefault("Podcast.EpisodeLimit", "52")
 	v.SetDefault("Podcast.RecentLimit", "25")
+	v.SetDefault("Podcast.SearchLimit", "100")
 	v.SetDefault("Podcast.SyncInterval", "1h")
 	v.SetDefault("Podcast.Series", []string{
 		"https://feeds.twit.tv/twit.xml",

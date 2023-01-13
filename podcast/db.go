@@ -172,11 +172,16 @@ func (p *Podcast) SeriesCount() int64 {
 	return count
 }
 
-func (p *Podcast) retainEpisodes(series *Series, eids []string) error {
+func (p *Podcast) retainEpisodes(series *Series, eids []string) ([]string, error) {
 	sid := series.SID
 	var list []Episode
+	var removed []string
 	p.db.Where("s_id = ? and e_id not in (?)", sid, eids).Find(&list)
-	return p.db.Unscoped().Delete(Episode{}, "s_id = ? and e_id not in (?)", sid, eids).Error
+	for _, e := range list {
+		removed = append(removed, e.EID)
+	}
+	err := p.db.Unscoped().Delete(Episode{}, "s_id = ? and e_id not in (?)", sid, eids).Error
+	return removed, err
 }
 
 func (p *Podcast) search(q string) ([]Series, []Episode) {
@@ -186,4 +191,16 @@ func (p *Podcast) search(q string) ([]Series, []Episode) {
 	p.db.Where("title like ? or author like ? or description like ?", query, query, query).Find(&series)
 	p.db.Where("title like ? or author like ? or description like ?", query, query, query).Find(&episodes)
 	return series, episodes
+}
+
+func (p *Podcast) episodesFor(keys []string) []Episode {
+	var episodes []Episode
+	p.db.Where("e_id in (?)", keys).Find(&episodes)
+	return episodes
+}
+
+func (p *Podcast) seriesFor(keys []string) []Series {
+	var series []Series
+	p.db.Where("s_id in (?)", keys).Find(&series)
+	return series
 }

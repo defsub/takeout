@@ -23,6 +23,7 @@ import (
 
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/lib/client"
+	"github.com/defsub/takeout/lib/search"
 	"gorm.io/gorm"
 )
 
@@ -37,6 +38,20 @@ func NewPodcast(config *config.Config) *Podcast {
 		config: config,
 		client: client.NewClient(mergeClientConfig(config)),
 	}
+}
+
+func (p *Podcast) newSearch() (*search.Search, error) {
+	s := search.NewSearch(p.config)
+	s.Keywords = []string{
+		FieldAuthor,
+		FieldDescription,
+		FieldTitle,
+	}
+	err := s.Open("podcast")
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 func mergeClientConfig(cfg *config.Config) *config.ClientConfig {
@@ -106,6 +121,45 @@ func (p *Podcast) FindEpisode(identifier string) (Episode, error) {
 	}
 }
 
-func (p *Podcast) Search(q string) ([]Series, []Episode) {
-	return p.search(q)
+func (p *Podcast) Search(q string, limit ...int) (series []Series, episodes []Episode) {
+	s, err := p.newSearch()
+	if err != nil {
+		return
+	}
+	defer s.Close()
+
+	l := p.config.Podcast.SearchLimit
+	if len(limit) == 1 {
+		l = limit[0]
+	}
+
+	keys, err := s.Search(q, l)
+	if err != nil {
+		return
+	}
+
+	seriesMap := make(map[string]bool)
+
+	// split potentially large # of result keys into chunks to query
+	chunkSize := 100
+	for i := 0; i < len(keys); i += chunkSize {
+		end := i + chunkSize
+		if end > len(keys) {
+			end = len(keys)
+		}
+		chunk := keys[i:end]
+		episodes = append(episodes, p.episodesFor(chunk)...)
+		for _, e := range episodes {
+			seriesMap[e.SID] = true
+		}
+	}
+
+	// include unique series for episode results
+	seriesKeys := make([]string, 0, len(seriesMap))
+	for k := range seriesMap {
+		seriesKeys = append(seriesKeys, k)
+	}
+	series = p.seriesFor(seriesKeys)
+
+	return series, episodes
 }

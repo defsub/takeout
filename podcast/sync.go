@@ -25,6 +25,15 @@ import (
 
 	"github.com/defsub/takeout/lib/hash"
 	"github.com/defsub/takeout/lib/rss"
+	"github.com/defsub/takeout/lib/search"
+)
+
+const (
+	FieldAuthor      = "author"
+	FieldDate        = "date"
+	FieldDescription = "desc"
+	FieldSeries      = "series"
+	FieldTitle       = "title"
 )
 
 func (p *Podcast) Sync() error {
@@ -55,6 +64,12 @@ func (p *Podcast) syncPodcast(url string) error {
 	}
 	sid := hash.MD5Hex(channel.Link())
 
+	s, err := p.newSearch()
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+
 	series := p.findSeries(sid)
 	if series == nil {
 		series = &Series{
@@ -68,7 +83,6 @@ func (p *Podcast) syncPodcast(url string) error {
 			Date:        channel.LastBuildTime(),
 			TTL:         channel.TTL,
 		}
-		err = p.createSeries(series)
 		if err != nil {
 			return err
 		}
@@ -98,6 +112,8 @@ func (p *Podcast) syncPodcast(url string) error {
 			return err
 		}
 	}
+
+	index := make(search.IndexMap)
 
 	var episodes []string
 	for _, i := range channel.Items {
@@ -141,8 +157,28 @@ func (p *Podcast) syncPodcast(url string) error {
 				return err
 			}
 		}
+
+		fields := make(search.FieldMap)
+		search.AddField(fields, FieldAuthor, episode.Author)
+		search.AddField(fields, FieldDate, episode.Date)
+		search.AddField(fields, FieldDescription, episode.Description) // html
+		search.AddField(fields, FieldSeries, series.Title + " / " + series.Author)
+		search.AddField(fields, FieldTitle, episode.Title)
+		index[episode.EID] = fields
+
 		episodes = append(episodes, eid)
 	}
-	p.retainEpisodes(series, episodes)
+
+	// remove episodes no longer in the podcast series
+	removed, err := p.retainEpisodes(series, episodes)
+	if err != nil {
+		return err
+	}
+	// remove from the search index
+	s.Delete(removed)
+
+	// update index for this series
+	s.Index(index)
+
 	return nil
 }
