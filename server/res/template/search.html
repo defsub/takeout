@@ -105,4 +105,58 @@
     {{ end }}
   </div>
   {{ end }}
+  {{ if .Series }}
+  <div>
+    <div class="parent">
+      <div class="left">
+	<h2>Series</h2>
+      </div>
+      <div class="right">
+      </div>
+    </div>
+    {{ range .Series }}
+    <div class="parent">
+      <div class="left" style="cursor: pointer;">
+	<div class="parent2">
+	  <div class="series-title">
+	    <a data-link="/v?series={{.ID}}">{{ .Title }}</a>
+	  </div>
+	  <div class="series-detail">
+	    {{ .Date | ymd }} ~ {{ .Author }}
+	  </div>
+	</div>
+      </div>
+      <div class="right">
+      </div>
+    </div>
+    {{ end }}
+  </div>
+  {{ end }}
+  {{ if .Episodes }}
+  <div>
+    <div class="parent">
+      <div class="left">
+	<h2>Episodes</h2>
+      </div>
+      <div class="right">
+      </div>
+    </div>
+    {{ range .Episodes }}
+    <div class="parent">
+      <div class="left" style="cursor: pointer;">
+	<div class="parent2">
+	  <div class="series-title">
+	    <a data-link="/v?episode={{.ID}}">{{ .Title }}</a>
+	  </div>
+	  <div class="series-detail">
+	    {{ .Date | ymd }} ~ {{ .Author }}
+	  </div>
+	</div>
+      </div>
+      <div class="right">
+      </div>
+    </div>
+    {{ end }}
+  </div>
+  {{ end }}
 </div>

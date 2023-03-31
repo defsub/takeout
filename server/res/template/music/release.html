@@ -1,5 +1,5 @@
 <div>
-  <h1>{{ .Release.Name }}</h1>
+  <h1>{{ .Release.Name }}{{ if .Release.Disambiguation }} ({{ .Release.Disambiguation }}){{ end }}</h1>
   <div class="parent3">
     <div class="middle">
       <a data-playlist="add-ref" data-ref="{{.Release|ref}}"><img src="{{call .CoverSmall .Release}}" class="release-cover-small"></a>

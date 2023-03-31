@@ -174,10 +174,8 @@ func (p *Podcast) syncPodcast(url string) error {
 	if err != nil {
 		return err
 	}
-	// remove from the search index
 	s.Delete(removed)
 
-	// update index for this series
 	s.Index(index)
 
 	return nil

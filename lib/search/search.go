@@ -20,10 +20,7 @@ package search
 import (
 	"fmt"
 	"github.com/blevesearch/bleve/v2"
-	"github.com/blevesearch/bleve/v2/analysis/analyzer/custom"
 	"github.com/blevesearch/bleve/v2/analysis/analyzer/keyword"
-	"github.com/blevesearch/bleve/v2/analysis/char/html"
-	"github.com/blevesearch/bleve/v2/analysis/token/lowercase"
 	"github.com/defsub/takeout/config"
 	"strings"
 )
@@ -52,20 +49,6 @@ func (s *Search) Open(name string) error {
 		keywordMapping.AddFieldMappingsAt(v, keywordFieldMapping)
 	}
 	mapping.AddDocumentMapping("_default", keywordMapping)
-
-	err := mapping.AddCustomAnalyzer("html", map[string]interface{}{
-		"type": custom.Name,
-		"char_filters": []string{
-			html.Name,
-		},
-		"token_filters": []string{
-			lowercase.Name,
-		},
-	})
-	if err != nil {
-		fmt.Printf("bleve err %s\n", err)
-		return err
-	}
 
 	path := fmt.Sprintf("%s/%s.bleve", s.config.BleveDir, name)
 	index, err := bleve.New(path, mapping)

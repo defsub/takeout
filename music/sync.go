@@ -522,9 +522,11 @@ func (m *Music) pickDisambiguation(t *Track, releases []Release) *Release {
 		name3 := fmt.Sprintf("%s %s", r.Name, r.Disambiguation)
 		name4 := fmt.Sprintf("%s [%s]", r.Name, r.Disambiguation)
 		name5 := fmt.Sprintf("%s", r.Disambiguation)
-		if name1 == t.Release || name2 == t.Release ||
-			name3 == t.Release || name4 == t.Release ||
-			name5 == t.Release {
+		if strings.EqualFold(name1, t.Release) ||
+			strings.EqualFold(name2, t.Release) ||
+			strings.EqualFold(name3, t.Release) ||
+			strings.EqualFold(name4, t.Release) ||
+			strings.EqualFold(name5, t.Release) {
 			_, prefCountry := countryMap[r.Country]
 			if prefCountry && r.FrontArtwork && r.official() {
 				first = i
