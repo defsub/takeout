@@ -12,7 +12,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/go-co-op/gocron v1.11.0
 	github.com/gobwas/ws v1.1.0
-	github.com/gokyle/filecache v0.0.0-20220803205700-e8a4791094b7 // indirect
+	github.com/gokyle/filecache v0.0.0-20220803205700-e8a4791094b7
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.3 // indirect
@@ -35,8 +35,7 @@ require (
 	github.com/stretchr/testify v1.7.2 // indirect
 	github.com/willf/bitset v1.2.0 // indirect
 	golang.org/x/crypto v0.0.0-20220919173607-35f4265a4bc0
-	golang.org/x/net v0.0.0-20220805013720-a33c5aa5df48 // indirect
-	golang.org/x/sys v0.0.0-20220919091848-fb04ddd9f9c8 // indirect
+	golang.org/x/net v0.7.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/alessio/shellescape.v1 v1.0.0-20170105083845-52074bc9df61
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
