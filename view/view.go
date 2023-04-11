@@ -113,6 +113,13 @@ type Singles struct {
 }
 
 // swagger:model
+type WantList struct {
+	Artist     music.Artist
+	Releases   []music.Release
+	CoverSmall CoverFunc `json:"-"`
+}
+
+// swagger:model
 type Release struct {
 	Artist     music.Artist
 	Release    music.Release
@@ -374,6 +381,15 @@ func SinglesView(ctx Context, artist music.Artist) *Singles {
 	if len(view.Singles) > limit {
 		view.Singles = view.Singles[:limit]
 	}
+	view.CoverSmall = m.CoverSmall
+	return view
+}
+
+func WantListView(ctx Context, artist music.Artist) *WantList {
+	m := ctx.Music()
+	view := &WantList{}
+	view.Artist = artist
+	view.Releases = m.WantArtistReleases(artist)
 	view.CoverSmall = m.CoverSmall
 	return view
 }

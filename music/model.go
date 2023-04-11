@@ -51,8 +51,8 @@ type Release struct {
 	Country        string
 	Type           string `gorm:"index:idx_release_type"`
 	SecondaryType  string
-	Date           time.Time // rg first release
-	ReleaseDate    time.Time // re release date
+	Date           time.Time `gorm:"index:idx_release_rgdate"` // rg first release
+	ReleaseDate    time.Time `gorm:"index:idx_release_redate"` // re release date
 	Status         string
 	TrackCount     int
 	DiscCount      int

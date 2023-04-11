@@ -976,3 +976,8 @@ func (m *Music) createArtistBackground(bg *ArtistBackground) error {
 func (m *Music) createArtistImage(img *ArtistImage) error {
 	return m.db.Create(img).Error
 }
+
+// select artist, name, date from releases where type = 'Album' and
+// secondary_type = '' and status = 'Official' and artist = 'Black Sabbath' and
+// lower(name) not in (select distinct lower(release) from tracks where artist
+// = 'Black Sabbath') group by name, date order by date;

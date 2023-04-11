@@ -417,6 +417,8 @@ func apiArtistGetResource(w http.ResponseWriter, r *http.Request) {
 			apiView(w, r, view.SinglesView(ctx, artist))
 		case "playlist":
 			apiArtistGetPlaylist(w, r)
+		case "wantlist":
+			apiView(w, r, view.WantListView(ctx, artist))
 		default:
 			notFoundErr(w)
 		}
