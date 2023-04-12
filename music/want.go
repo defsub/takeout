@@ -19,12 +19,13 @@ package music
 
 func (m *Music) WantArtistReleases(a Artist) []Release {
 	var releases []Release
-	m.db.Where("type = 'Album' and secondary_type = '' and status = 'Official'"+
-		" and artist = ?"+
+	m.db.Where("type = 'Album' and secondary_type = '' and status = 'Official' and asin <> ''"+
+		" and country in ? and artist = ?"+
 		" and lower(name) not in"+
 		" (select distinct lower(release) from tracks where artist = ?)"+
 		" and lower(name || ' (' || disambiguation || ')') not in"+
-		" (select distinct lower(release) from tracks where artist = ?)", a.Name, a.Name, a.Name).
+		" (select distinct lower(release) from tracks where artist = ?)",
+		m.config.Music.ReleaseCountries, a.Name, a.Name, a.Name).
 		Group("rg_id").
 		Order("date").
 		Find(&releases)
