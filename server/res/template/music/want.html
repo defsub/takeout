@@ -1,0 +1,21 @@
+<div>
+  <h1>{{ .Artist.Name }}</h1>
+  <div>
+    <h2>Want Releases</h2>
+    {{ range .Releases }}
+    <div style="float: left; padding: 10px; max-width: 110px;">
+      <a target="_blank" href="{{.|link_amz}}" style="text-decoration: none;">
+	<img width="110" height="110" src="{{call $.CoverSmall .}}" style="border-radius: 10px;">
+	<br/>
+	<div class="release-small-title">{{ .Name }}</div>
+	<br style="display: none"/>
+	<div class="release-small-year">{{ .Date.Year }}</div>
+      </a>
+    </div>
+    {{ end }}
+  </div>
+  <div style="clear: both;"/>
+  <h3>External Links</h3>
+  MusicBrainz:
+  <a target="_blank" href="{{.Artist|link_mbz}}">{{.Artist.Name}}</a>
+</div>

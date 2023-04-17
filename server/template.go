@@ -104,6 +104,52 @@ func doFuncMap() template.FuncMap {
 			}
 			return link
 		},
+		"link_amz": func(o interface{}) string {
+			var link string
+			switch o.(type) {
+			case music.Release:
+				link = fmt.Sprintf("https://www.amazon.com/dp/%s", o.(music.Release).Asin)
+			}
+			return link
+		},
+		"link_camel": func(o interface{}) string {
+			var link string
+			switch o.(type) {
+			case music.Release:
+				link = fmt.Sprintf("https://camelcamelcamel.com/product/%s", o.(music.Release).Asin)
+			}
+			return link
+		},
+		"link_mbz": func(o interface{}) string {
+			var link string
+			switch o.(type) {
+			case music.Release:
+				link = fmt.Sprintf("https://musicbrainz.org/release-group/%s", o.(music.Release).RGID)
+			case music.Artist:
+				link = fmt.Sprintf("https://musicbrainz.org/artist/%s", o.(music.Artist).ARID)
+			}
+			return link
+		},
+		"link_google": func(o interface{}) string {
+			var link string
+			switch o.(type) {
+			case music.Release:
+				link = fmt.Sprintf("https://www.google.com/search?q=%s",
+					url.QueryEscape(
+						strings.Join([]string{o.(music.Release).Name, "by", o.(music.Release).Artist}, " ")))
+			}
+			return link
+		},
+		"link_wiki": func(o interface{}) string {
+			var link string
+			switch o.(type) {
+			case music.Release:
+				link = fmt.Sprintf("https://en.wikipedia.org/w/index.php?title=Special:Search&search=%s",
+					url.QueryEscape(
+						strings.Join([]string{o.(music.Release).Name, "by", o.(music.Release).Artist}, " ")))
+			}
+			return link
+		},
 		"url": func(o interface{}) string {
 			var loc string
 			switch o.(type) {
@@ -129,6 +175,14 @@ func doFuncMap() template.FuncMap {
 			switch o.(type) {
 			case music.Artist:
 				link = fmt.Sprintf("/v?singles=%d", o.(music.Artist).ID)
+			}
+			return link
+		},
+		"want": func(o interface{}) string {
+			var link string
+			switch o.(type) {
+			case music.Artist:
+				link = fmt.Sprintf("/v?want=%d", o.(music.Artist).ID)
 			}
 			return link
 		},
@@ -199,6 +253,13 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 		artist, _ := m.LookupArtist(id)
 		result = view.SinglesView(ctx, artist)
 		temp = "singles.html"
+	} else if v := r.URL.Query().Get("want"); v != "" {
+		// /v?want={artist-id}
+		m := ctx.Music()
+		id, _ := strconv.Atoi(v)
+		artist, _ := m.LookupArtist(id)
+		result = view.WantListView(ctx, artist)
+		temp = "want.html"
 	} else if v := r.URL.Query().Get("home"); v != "" {
 		// /v?home=x
 		result = view.HomeView(ctx)

@@ -83,6 +83,7 @@ func (p *Podcast) syncPodcast(url string) error {
 			Date:        channel.LastBuildTime(),
 			TTL:         channel.TTL,
 		}
+		err := p.createSeries(series)
 		if err != nil {
 			return err
 		}
