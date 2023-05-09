@@ -112,7 +112,6 @@ type tokenResponse struct {
 // apiTokenLogin handles login requests and returns tokens.
 func apiTokenLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := contextValue(r)
-	w.Header().Set(HeaderContentType, ApplicationJson)
 
 	var creds credentials
 	body, _ := ioutil.ReadAll(r.Body)
@@ -132,7 +131,16 @@ func apiTokenLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	authorizeNew(session, w, r)
+}
+
+// authorizeNew creates and sends new tokens for the provided session.
+func authorizeNew(session auth.Session, w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	w.Header().Set(HeaderContentType, ApplicationJson)
+
 	var resp tokenResponse
+	var err error
 	resp.RefreshToken = session.Token
 	resp.AccessToken, err = ctx.Auth().NewAccessToken(session)
 	if err != nil {
@@ -149,23 +157,23 @@ func apiTokenLogin(w http.ResponseWriter, r *http.Request) {
 	enc.Encode(resp)
 }
 
-// apiTokenRefresh uses refresh token to create a new access token.
-func apiTokenRefresh(w http.ResponseWriter, r *http.Request) {
+// authorizeRefresh refreshes and sends new access token for the provided session.
+// MediaToken is unchanged.
+func authorizeRefresh(session auth.Session, w http.ResponseWriter, r *http.Request) {
 	ctx := contextValue(r)
 	w.Header().Set(HeaderContentType, ApplicationJson)
 
 	var resp tokenResponse
 	var err error
-	session := ctx.Session()
 	resp.RefreshToken = session.Token
-	resp.AccessToken, err = ctx.Auth().NewAccessToken(*session)
+	resp.AccessToken, err = ctx.Auth().NewAccessToken(session)
 	if err != nil {
 		serverErr(w, err)
 		return
 	}
 
 	// extend the session lifetime
-	err = ctx.Auth().Refresh(session)
+	err = ctx.Auth().Refresh(&session)
 	if err != nil {
 		serverErr(w, err)
 		return
@@ -173,6 +181,76 @@ func apiTokenRefresh(w http.ResponseWriter, r *http.Request) {
 
 	enc := json.NewEncoder(w)
 	enc.Encode(resp)
+}
+
+// apiTokenRefresh uses refresh token to create a new access token.
+func apiTokenRefresh(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	session := ctx.Session()
+	authorizeRefresh(*session, w, r)
+}
+
+type codeResponse struct {
+	AccessToken string
+	Code        string
+}
+
+// apiCodeGet begins a code-based authorization phase.
+// The code is used to separately link with a new or existing login.
+// The token is used to check if the code has been linked.
+func apiCodeGet(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+	w.Header().Set(HeaderContentType, ApplicationJson)
+
+	var resp codeResponse
+	var err error
+	ctx.Auth().DeleteExpiredCodes();
+	code := ctx.Auth().GenerateCode()
+	resp.Code = code.Value
+	resp.AccessToken, err = ctx.Auth().NewCodeToken(code.Value)
+	if err != nil {
+		serverErr(w, err)
+		return
+	}
+
+	enc := json.NewEncoder(w)
+	enc.Encode(resp)
+}
+
+type codeCheck struct {
+	Code string
+}
+
+// apiCodeCheck
+func apiCodeCheck(w http.ResponseWriter, r *http.Request) {
+	ctx := contextValue(r)
+
+	var check codeCheck
+	body, _ := ioutil.ReadAll(r.Body)
+	err := json.Unmarshal(body, &check)
+	if err != nil {
+		authErr(w, err)
+		return
+	}
+
+	code := ctx.Auth().LookupCode(check.Code)
+	if code == nil {
+		authErr(w, ErrInvalidCode)
+		return
+	}
+	if code.Linked() == false {
+		// valid but not linked yet
+		accessDenied(w)
+		return
+	}
+
+	session := ctx.Auth().TokenSession(code.Token)
+	if session == nil {
+		serverErr(w, ErrInvalidSession)
+		return
+	}
+
+	authorizeNew(*session, w, r)
 }
 
 var locationRegexp = regexp.MustCompile(`/api/(tracks)/([0-9a-zA-Z-]+)/location`)

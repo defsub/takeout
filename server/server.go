@@ -19,12 +19,11 @@ package server
 
 import (
 	"net/http"
-	//"net/http/pprof"
-	"strings"
 
 	"github.com/bmizerany/pat"
 	"github.com/defsub/takeout/activity"
 	"github.com/defsub/takeout/auth"
+
 	"github.com/defsub/takeout/config"
 	"github.com/defsub/takeout/lib/client"
 	"github.com/defsub/takeout/lib/hub"
@@ -32,19 +31,10 @@ import (
 	"github.com/defsub/takeout/progress"
 )
 
-type bits uint8
-
 const (
-	AllowCookie bits = 1 << iota
-	AllowAccessToken
-	AllowMediaToken
-
 	SuccessRedirect = "/"
 	LinkRedirect    = "/static/link.html"
 	LoginRedirect   = "/static/login.html"
-
-	AuthorizationHeader = "Authorization"
-	BearerAuthorization = "Bearer"
 )
 
 // doLogin creates a login session for the provided user or returns an error
@@ -52,17 +42,25 @@ func doLogin(ctx Context, user, pass string) (auth.Session, error) {
 	return ctx.Auth().Login(user, pass)
 }
 
-// doCodeAuth creates a login session and binds to the provided code value.
-func doCodeAuth(ctx Context, user, pass, value string) error {
-	session, err := doLogin(ctx, user, pass)
+// upgradeContext creates a full context based on user and media configuration.
+// This is used for most requests after the user has been authorized.
+func upgradeContext(ctx Context, user *auth.User) (RequestContext, error) {
+	mediaName, userConfig, err := mediaConfigFor(ctx.Config(), user)
 	if err != nil {
-		return err
+		return RequestContext{}, err
 	}
-	err = ctx.Auth().AuthorizeCode(value, session.Token)
-	if err != nil {
-		return ErrInvalidCode
-	}
-	return nil
+	media := makeMedia(mediaName, userConfig)
+	return makeContext(ctx, user, userConfig, media), nil
+}
+
+// sessionContext creates a minimal context with the provided session.
+func sessionContext(ctx Context, session *auth.Session) RequestContext {
+	return makeAuthOnlyContext(ctx, session)
+}
+
+// imageContext creates a minimal context with the provided client.
+func imageContext(ctx Context, client *client.Client) RequestContext {
+	return makeImageContext(ctx, client)
 }
 
 // loginHandler performs a web based login session and sends back a cookie.
@@ -95,226 +93,12 @@ func linkHandler(w http.ResponseWriter, r *http.Request) {
 	err := doCodeAuth(ctx, user, pass, value)
 	if err == nil {
 		// success
-		http.Redirect(w, r, SuccessRedirect, http.StatusTemporaryRedirect)
+		// Use 303 for PRG
+		http.Redirect(w, r, SuccessRedirect, http.StatusSeeOther)
 		return
 	}
-	http.Redirect(w, r, LinkRedirect, http.StatusTemporaryRedirect)
-}
-
-// getAuthToken returns the bearer token from the request, if any.
-func getAuthToken(r *http.Request) string {
-	value := r.Header.Get(AuthorizationHeader)
-	if value == "" {
-		return ""
-	}
-	result := strings.Split(value, " ")
-	var token string
-	switch len(result) {
-	case 1:
-		// Authorization: <token>
-		token = result[0]
-	case 2:
-		// Authorization: Bearer <token>
-		if strings.EqualFold(result[0], BearerAuthorization) {
-			token = result[1]
-		}
-	}
-	return token
-}
-
-// authorizeAccessToken validates the provided JWT access token for API access.
-func authorizeAccessToken(ctx Context, w http.ResponseWriter, r *http.Request) (*auth.User, error) {
-	token := getAuthToken(r)
-	if token == "" {
-		return nil, nil
-	}
-	// token should be a JWT
-	user, err := ctx.Auth().CheckAccessTokenUser(token)
-	if err != nil {
-		authErr(w, err)
-		return nil, err
-	}
-	return &user, nil
-}
-
-// authorizeMediaToken validates the provided JWT media token for API access.
-func authorizeMediaToken(ctx Context, w http.ResponseWriter, r *http.Request) (*auth.User, error) {
-	token := getAuthToken(r)
-	if token == "" {
-		return nil, nil
-	}
-	// token should be a JWT
-	user, err := ctx.Auth().CheckMediaTokenUser(token)
-	if err != nil {
-		authErr(w, err)
-		return nil, err
-	}
-	return &user, nil
-}
-
-// authorizeCookie validates the provided cookie for API or web view access.
-func authorizeCookie(ctx Context, w http.ResponseWriter, r *http.Request) (*auth.User, error) {
-	a := ctx.Auth()
-	cookie, err := r.Cookie(auth.CookieName)
-	if err != nil {
-		if err != http.ErrNoCookie {
-			http.SetCookie(w, auth.ExpireCookie(cookie)) // what cookie is this?
-		}
-		http.Redirect(w, r, LoginRedirect, http.StatusTemporaryRedirect)
-		return nil, err
-	}
-
-	session := a.CookieSession(cookie)
-	if session == nil {
-		http.SetCookie(w, auth.ExpireCookie(cookie))
-		http.Redirect(w, r, LoginRedirect, http.StatusTemporaryRedirect)
-		return nil, ErrAccessDenied
-	} else if session.Expired() {
-		err = ErrAccessDenied
-		a.DeleteSession(*session)
-		http.SetCookie(w, auth.ExpireCookie(cookie))
-		http.Redirect(w, r, LoginRedirect, http.StatusTemporaryRedirect)
-		return nil, ErrAccessDenied
-	}
-
-	user, err := a.SessionUser(session)
-	if err != nil {
-		// session with no user?
-		a.DeleteSession(*session)
-		http.SetCookie(w, auth.ExpireCookie(cookie))
-		http.Redirect(w, r, LoginRedirect, http.StatusTemporaryRedirect)
-		return nil, err
-	}
-
-	// send back an updated cookie
-	auth.UpdateCookie(session, cookie)
-	http.SetCookie(w, cookie)
-
-	return user, nil
-}
-
-// authorizeRefreshToken validates the provided refresh token for API access.
-func authorizeRefreshToken(ctx Context, w http.ResponseWriter, r *http.Request) *auth.Session {
-	token := getAuthToken(r)
-	if token == "" {
-		authErr(w, ErrUnauthorized)
-		return nil
-	}
-	// token should be a refresh token not JWT
-	a := ctx.Auth()
-	session := a.TokenSession(token)
-	if session == nil {
-		// no session for token
-		authErr(w, ErrUnauthorized)
-		return nil
-	} else if session.Expired() {
-		// session expired
-		a.DeleteSession(*session)
-		authErr(w, ErrUnauthorized)
-		return nil
-	} else if session.Duration() < ctx.Config().Auth.AccessToken.Age {
-		// session will expire before token
-		authErr(w, ErrUnauthorized)
-		return nil
-	}
-	// session still valid
-	return session
-}
-
-// authorizeRequest authorizes the request with one or more of the allowed
-// authorization methods.
-func authorizeRequest(ctx Context, w http.ResponseWriter, r *http.Request, auth bits) *auth.User {
-	if auth&AllowAccessToken != 0 {
-		user, err := authorizeAccessToken(ctx, w, r)
-		if user != nil {
-			return user
-		}
-		if err != nil {
-			return nil
-		}
-	}
-
-	if auth&AllowMediaToken != 0 {
-		user, err := authorizeMediaToken(ctx, w, r)
-		if user != nil {
-			return user
-		}
-		if err != nil {
-			return nil
-		}
-	}
-
-	if auth&AllowCookie != 0 {
-		user, err := authorizeCookie(ctx, w, r)
-		if user != nil {
-			return user
-		}
-		if err != nil {
-			return nil
-		}
-	}
-
-	return nil
-}
-
-// upgradeContext creates a full context based on user and media configuration.
-// This is used for most requests after the user has been authorized.
-func upgradeContext(ctx Context, user *auth.User) (RequestContext, error) {
-	mediaName, userConfig, err := mediaConfigFor(ctx.Config(), user)
-	if err != nil {
-		return RequestContext{}, err
-	}
-	media := makeMedia(mediaName, userConfig)
-	return makeContext(ctx, user, userConfig, media), nil
-}
-
-// sessionContext creates a minimal context with the provided session.
-func sessionContext(ctx Context, session *auth.Session) RequestContext {
-	return makeAuthOnlyContext(ctx, session)
-}
-
-// imageContext creates a minimal context with the provided client.
-func imageContext(ctx Context, client *client.Client) RequestContext {
-	return makeImageContext(ctx, client)
-}
-
-// refreshTokenAuthHandler handles requests intended to refresh and access token.
-func refreshTokenAuthHandler(ctx RequestContext, handler http.HandlerFunc) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		session := authorizeRefreshToken(ctx, w, r)
-		if session != nil {
-			ctx := sessionContext(ctx, session)
-			handler.ServeHTTP(w, withContext(r, ctx))
-		}
-	}
-	return http.HandlerFunc(fn)
-}
-
-// authHandler authorizes and handles all (except refresh) requests based on
-// allowed auth methods.
-func authHandler(ctx RequestContext, handler http.HandlerFunc, auth bits) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		user := authorizeRequest(ctx, w, r, auth)
-		if user != nil {
-			ctx, err := upgradeContext(ctx, user)
-			if err != nil {
-				serverErr(w, err)
-				return
-			}
-			handler.ServeHTTP(w, withContext(r, ctx))
-		}
-	}
-	return http.HandlerFunc(fn)
-}
-
-// mediaTokenAuthHandler handles media access requests using the media token (or cookie).
-func mediaTokenAuthHandler(ctx RequestContext, handler http.HandlerFunc) http.Handler {
-	return authHandler(ctx, handler, AllowMediaToken|AllowCookie)
-}
-
-// accessTokenAuthHandler handles non-media requests using the access token (or cookie).
-func accessTokenAuthHandler(ctx RequestContext, handler http.HandlerFunc) http.Handler {
-	return authHandler(ctx, handler, AllowAccessToken|AllowCookie)
+	// Use 303 for PRG
+	http.Redirect(w, r, LinkRedirect, http.StatusSeeOther)
 }
 
 // imageHandler handles unauthenticated image requests.
@@ -410,6 +194,10 @@ func Serve(config *config.Config) error {
 	// token auth
 	mux.Post("/api/token", requestHandler(ctx, apiTokenLogin))
 	mux.Get("/api/token", refreshTokenAuthHandler(ctx, apiTokenRefresh))
+
+	// code auth
+	mux.Get("/api/code", requestHandler(ctx, apiCodeGet))
+	mux.Post("/api/code", codeTokenAuthHandler(ctx, apiCodeCheck))
 
 	// misc
 	mux.Get("/api/home", accessTokenAuthHandler(ctx, apiHome))

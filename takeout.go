@@ -19,6 +19,6 @@ package takeout
 
 const (
 	AppName = "Takeout"
-	Version = "0.9.3"
+	Version = "0.10.0"
 	Contact = "https://defsub.github.io"
 )

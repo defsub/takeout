@@ -250,13 +250,13 @@ func (a *Auth) readSecret(cfg config.TokenConfig) ([]byte, error) {
 	return data, nil
 }
 
-// newToken creates a new JWT token associated with the provided session.
-func (a *Auth) newToken(s Session, cfg config.TokenConfig) (string, error) {
+// newToken creates a new JWT token
+func (a *Auth) newToken(subject string, cfg config.TokenConfig) (string, error) {
 	age := int(cfg.Age.Seconds())
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
 		jwt.StandardClaims{
 			Issuer:    cfg.Issuer,
-			Subject:   s.User,
+			Subject:   subject,
 			ExpiresAt: time.Now().Add(time.Second * time.Duration(age)).Unix(),
 		})
 	secret, err := a.readSecret(cfg)
@@ -266,14 +266,24 @@ func (a *Auth) newToken(s Session, cfg config.TokenConfig) (string, error) {
 	return token.SignedString(secret)
 }
 
+// newSessionToken creates a new JWT token associated with the provided session.
+func (a *Auth) newSessionToken(s Session, cfg config.TokenConfig) (string, error) {
+	return a.newToken(s.User, cfg)
+}
+
 // NewAccessToken creates a new JWT token associated with the provided session.
 func (a *Auth) NewAccessToken(s Session) (string, error) {
-	return a.newToken(s, a.config.Auth.AccessToken)
+	return a.newSessionToken(s, a.config.Auth.AccessToken)
 }
 
 // NewMediaToken creates a new JWT token associated with the provided session.
 func (a *Auth) NewMediaToken(s Session) (string, error) {
-	return a.newToken(s, a.config.Auth.MediaToken)
+	return a.newSessionToken(s, a.config.Auth.MediaToken)
+}
+
+// NewCodeToken creates a new JWT token for code-based authentication
+func (a *Auth) NewCodeToken(subject string) (string, error) {
+	return a.newToken(subject, a.config.Auth.CodeToken)
 }
 
 // NewCookie creates a new cookie associated with the provided session.
@@ -345,6 +355,20 @@ func (a *Auth) CheckMediaTokenUser(signedToken string) (User, error) {
 	return a.User(claims.Subject)
 }
 
+func (a *Auth) CheckCodeToken(signedToken string) error {
+	_, claims, err := a.processToken(signedToken, a.config.Auth.CodeToken)
+	if err != nil {
+		return err
+	}
+
+	code := a.ValidCode(claims.Subject)
+	if code == nil {
+		return ErrInvalidTokenSubject
+	}
+
+	return nil
+}
+
 // processToken parses and verfies the signed token is valid.
 func (a *Auth) processToken(signedToken string, cfg config.TokenConfig) (*jwt.Token, *jwt.StandardClaims, error) {
 	token, err := jwt.ParseWithClaims(
@@ -371,6 +395,7 @@ func (a *Auth) processToken(signedToken string, cfg config.TokenConfig) (*jwt.To
 		return nil, nil, ErrTokenExpired
 	}
 	if claims.Subject == "" {
+		// XXX FIX code no subject
 		return nil, nil, ErrInvalidTokenSubject
 	}
 	return token, claims, nil
@@ -398,6 +423,11 @@ func (a *Auth) DeleteSession(session Session) {
 
 func (a *Auth) DeleteSessions(u *User) error {
 	return a.db.Delete(Session{}, "name = ?", u.Name).Error
+}
+
+func (a *Auth) DeleteExpiredSessions() error {
+	now := time.Now()
+	return a.db.Unscoped().Where("expires < ?", now).Delete(Session{}).Error
 }
 
 func (a *Auth) SessionUser(session *Session) (*User, error) {

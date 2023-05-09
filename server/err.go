@@ -36,6 +36,7 @@ var (
 	ErrMissingAccessToken = errors.New("missing access token")
 	ErrMissingMediaToken  = errors.New("missing media token")
 	ErrMissingCcookie     = errors.New("missing cookie")
+	ErrInvalidSession     = errors.New("invalid session")
 )
 
 func serverErr(w http.ResponseWriter, err error) {
@@ -51,12 +52,14 @@ func badRequest(w http.ResponseWriter, err error) {
 	}
 }
 
+// client provided no credentials or invalid credentials.
 func authErr(w http.ResponseWriter, err error) {
 	if err != nil {
 		handleErr(w, err.Error(), http.StatusUnauthorized)
 	}
 }
 
+// client provided credentials but access is not allowed.
 func accessDenied(w http.ResponseWriter) {
 	handleErr(w, ErrAccessDenied.Error(), http.StatusForbidden)
 }

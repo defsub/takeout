@@ -34,7 +34,7 @@ type Code struct {
 	gorm.Model
 	Value   string `gorm:"unique_index:idx_code_value"`
 	Expires time.Time
-	Token  string
+	Token   string
 }
 
 func randomCode() string {
@@ -61,6 +61,15 @@ func (a *Auth) findCode(value string) *Code {
 	return &code
 }
 
+func (a *Auth) deleteCode(c *Code) {
+	a.db.Delete(c)
+}
+
+func (a *Auth) DeleteExpiredCodes() error {
+	now := time.Now()
+	return a.db.Unscoped().Where("expires < ?", now).Delete(Code{}).Error
+}
+
 func (a *Auth) GenerateCode() *Code {
 	value := randomCode()
 	expires := time.Now().Add(a.codeAge())
@@ -72,6 +81,22 @@ func (a *Auth) GenerateCode() *Code {
 func (c *Code) expired() bool {
 	now := time.Now()
 	return now.After(c.Expires)
+}
+
+func (c *Code) Linked() bool {
+	return c.Token != ""
+}
+
+func (a *Auth) LookupCode(value string) *Code {
+	return a.findCode(value)
+}
+
+func (a *Auth) ValidCode(value string) *Code {
+	code := a.findCode(value)
+	if code == nil || code.expired() {
+		return nil
+	}
+	return code
 }
 
 func (a *Auth) LinkedCode(value string) *Code {

@@ -236,6 +236,7 @@ type AuthConfig struct {
 	SecureCookies bool
 	AccessToken   TokenConfig
 	MediaToken    TokenConfig
+	CodeToken     TokenConfig
 }
 
 type SearchConfig struct {
@@ -316,7 +317,7 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Auth.DB.Logger", "default")
 	v.SetDefault("Auth.DB.Source", "${Server.DataDir}/auth.db")
 	v.SetDefault("Auth.SessionAge", "720h") // 30 days
-	v.SetDefault("Auth.CodeAge", "1h")
+	v.SetDefault("Auth.CodeAge", "5m")
 	v.SetDefault("Auth.SecureCookies", "true")
 	v.SetDefault("Auth.AccessToken.Age", "4h")
 	v.SetDefault("Auth.AccessToken.Issuer", "takeout")
@@ -326,6 +327,10 @@ func configDefaults(v *viper.Viper) {
 	v.SetDefault("Auth.MediaToken.Issuer", "takeout")
 	v.SetDefault("Auth.MediaToken.Secret", "")     // must be assigned in config file
 	v.SetDefault("Auth.MediaToken.SecretFile", "") // must be assigned in config file
+	v.SetDefault("Auth.CodeToken.Age", "5m")
+	v.SetDefault("Auth.CodeToken.Issuer", "takeout")
+	v.SetDefault("Auth.CodeToken.Secret", "")     // must be assigned in config file
+	v.SetDefault("Auth.CodeToken.SecretFile", "") // must be assigned in config file
 
 	v.SetDefault("Progress.DB.Driver", "sqlite3")
 	v.SetDefault("Progress.DB.Source", "${Server.DataDir}/progress.db")

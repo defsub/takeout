@@ -72,6 +72,24 @@ func schedule(config *config.Config) {
 	mediaSync(config.Video.PosterSyncInterval, syncVideoPosters, false)
 	mediaSync(config.Video.BackdropSyncInterval, syncVideoBackdrops, false)
 
+	scheduler.Every(time.Minute * 5).WaitForSchedule().Do(func() {
+		a := auth.NewAuth(config)
+		err := a.Open()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		defer a.Close()
+		err = a.DeleteExpiredCodes()
+		if err != nil {
+			log.Println(err)
+		}
+		err = a.DeleteExpiredSessions()
+		if err != nil {
+			log.Println(err)
+		}
+	})
+
 	scheduler.StartAsync()
 }
 
