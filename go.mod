@@ -35,7 +35,7 @@ require (
 	github.com/stretchr/testify v1.7.2 // indirect
 	github.com/willf/bitset v1.2.0 // indirect
 	golang.org/x/crypto v0.17.0
-	google.golang.org/protobuf v1.28.1 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/alessio/shellescape.v1 v1.0.0-20170105083845-52074bc9df61
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
